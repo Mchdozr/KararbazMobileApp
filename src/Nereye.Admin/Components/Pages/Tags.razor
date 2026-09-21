@@ -1,0 +1,15 @@
+@page "/tags"
+@attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
+@inject IAdminService Admin
+
+<h1>Vibe sözlüğü</h1>
+<p class="text-muted">Mobil filtre ve skor bu etiketleri kullanır.</p>
+<ul class="list-group">
+    @foreach (var tag in Admin.Tags())
+    {
+        <li class="list-group-item d-flex justify-content-between">
+            <span>@tag.LabelTr</span>
+            <code>@tag.Tag</code>
+        </li>
+    }
+</ul>

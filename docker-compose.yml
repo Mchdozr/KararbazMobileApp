@@ -1,0 +1,48 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nereye
+    ports:
+      - "5432:5432"
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+  api:
+    build:
+      context: .
+      dockerfile: src/Nereye.Api/Dockerfile
+    ports:
+      - "5079:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Database=nereye;Username=postgres;Password=postgres
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-dev-only-change-me-32-chars-minimum!!}
+      Redis__ConnectionString: redis:6379
+      Database__UseInMemory: "false"
+      Redis__UseMemory: "false"
+      Places__UseFake: "false"
+    depends_on:
+      - postgres
+      - redis
+  admin:
+    build:
+      context: .
+      dockerfile: src/Nereye.Admin/Dockerfile
+    ports:
+      - "5118:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Database=nereye;Username=postgres;Password=postgres
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-dev-only-change-me-32-chars-minimum!!}
+      Redis__ConnectionString: redis:6379
+      Database__UseInMemory: "false"
+      Redis__UseMemory: "false"
+      Places__UseFake: "false"
+    depends_on:
+      - postgres
+      - redis

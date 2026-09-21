@@ -1,0 +1,58 @@
+﻿@page "/"
+@attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
+@rendermode InteractiveServer
+@inject IAdminService Admin
+
+<h1>Şikayetler</h1>
+
+@if (_reports is null)
+{
+    <p>Yükleniyor…</p>
+}
+else if (_reports.Count == 0)
+{
+    <p class="text-muted">Açık şikayet yok.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Neden</th>
+                <th>Yorum</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in _reports)
+            {
+                <tr>
+                    <td>@r.CreatedAt.ToLocalTime().ToString("g")</td>
+                    <td>@r.Reason</td>
+                    <td>@(r.ReviewId?.ToString("N")[..8] ?? "—")</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => Resolve(r.Id, false)">Kapat</button>
+                        @if (r.ReviewId is not null)
+                        {
+                            <button class="btn btn-sm btn-danger" @onclick="() => Resolve(r.Id, true)">Gizle + kapat</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<ReportAdminDto>? _reports;
+
+    protected override async Task OnInitializedAsync() =>
+        _reports = await Admin.ListReportsAsync(true);
+
+    private async Task Resolve(Guid id, bool hide)
+    {
+        await Admin.ResolveReportAsync(id, hide);
+        _reports = await Admin.ListReportsAsync(true);
+    }
+}

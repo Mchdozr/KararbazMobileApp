@@ -1,0 +1,51 @@
+@page "/users"
+@attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
+@rendermode InteractiveServer
+@inject IAdminService Admin
+
+<h1>Kullanıcılar</h1>
+
+@if (_users is null)
+{
+    <p>Yükleniyor…</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>E-posta</th>
+                <th>Ad</th>
+                <th>Durum</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var u in _users)
+            {
+                <tr>
+                    <td>@u.Email</td>
+                    <td>@u.DisplayName</td>
+                    <td>@(u.IsBanned ? "Banlı" : "Aktif")</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Ban(u.Id, !u.IsBanned)">
+                            @(u.IsBanned ? "Ban kaldır" : "Banla")
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<UserAdminDto>? _users;
+
+    protected override async Task OnInitializedAsync() => _users = await Admin.ListUsersAsync();
+
+    private async Task Ban(Guid id, bool banned)
+    {
+        await Admin.BanUserAsync(id, banned);
+        _users = await Admin.ListUsersAsync();
+    }
+}

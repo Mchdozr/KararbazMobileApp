@@ -1,0 +1,33 @@
+@page "/login"
+@layout EmptyLayout
+@attribute [AllowAnonymous]
+
+<div class="d-flex align-items-center justify-content-center min-vh-100 bg-dark">
+    <div class="card shadow" style="width: 22rem;">
+        <div class="card-body p-4">
+            <h1 class="h4 mb-3">Nereye Admin</h1>
+            <form method="post" action="/account/login">
+                <AntiforgeryToken />
+                <div class="mb-3">
+                    <label class="form-label">E-posta</label>
+                    <input class="form-control" name="email" value="admin@nereye.app" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Şifre</label>
+                    <input class="form-control" type="password" name="password" />
+                </div>
+                @if (Error)
+                {
+                    <div class="alert alert-danger py-2">Geçersiz giriş.</div>
+                }
+                <button class="btn btn-warning w-100" type="submit">Giriş</button>
+            </form>
+            <p class="text-muted small mt-3 mb-0">admin@nereye.app / Admin!12345</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")]
+    public bool Error { get; set; }
+}

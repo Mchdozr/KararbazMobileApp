@@ -1,0 +1,60 @@
+@page "/claims"
+@attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
+@rendermode InteractiveServer
+@inject NereyeDbContext Db
+@inject Nereye.Application.Claims.IClaimService ClaimService
+
+<h1>Sahiplenme talepleri</h1>
+
+@if (_claims is null)
+{
+    <p>Yükleniyor…</p>
+}
+else if (_claims.Count == 0)
+{
+    <p class="text-muted">Bekleyen talep yok.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Mesaj</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in _claims)
+            {
+                <tr>
+                    <td>@c.CreatedAt.ToLocalTime().ToString("g")</td>
+                    <td>@c.Message</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" @onclick="() => Approve(c.Id)">Onayla</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Reject(c.Id)">Reddet</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<VenueClaim>? _claims;
+
+    protected override async Task OnInitializedAsync() =>
+        _claims = await Db.VenueClaims.Where(c => c.Status == ClaimStatus.Pending).ToListAsync();
+
+    private async Task Approve(Guid id)
+    {
+        await ClaimService.ApproveAsync(id);
+        _claims = await Db.VenueClaims.Where(c => c.Status == ClaimStatus.Pending).ToListAsync();
+    }
+
+    private async Task Reject(Guid id)
+    {
+        await ClaimService.RejectAsync(id);
+        _claims = await Db.VenueClaims.Where(c => c.Status == ClaimStatus.Pending).ToListAsync();
+    }
+}

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nereye.Admin/Nereye.Admin.csproj" />
+    <Project Path="src/Nereye.Api/Nereye.Api.csproj" />
+    <Project Path="src/Nereye.Application/Nereye.Application.csproj" />
+    <Project Path="src/Nereye.Domain/Nereye.Domain.csproj" />
+    <Project Path="src/Nereye.Infrastructure/Nereye.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nereye.Api.Tests/Nereye.Api.Tests.csproj" />
+    <Project Path="tests/Nereye.Domain.Tests/Nereye.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
