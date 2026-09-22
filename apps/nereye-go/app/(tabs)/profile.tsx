@@ -1,5 +1,7 @@
-import { HorizontalVenueRow } from '@/components/home/HorizontalVenueRow';
-import { INTENTS, RADIUS_OPTIONS, VIBES, intentLabel, vibeLabel } from '@/lib/constants';
+import { VenueImage } from '@/components/VenueImage';
+import { RadiusPicker } from '@/components/RadiusPicker';
+import { INTENTS, VIBES, intentLabel, vibeLabel } from '@/lib/constants';
+import { clampRadius, radiusLabel as formatRadius } from '@/lib/radius';
 import { api, mediaUrl } from '@/lib/api';
 import { useFilters } from '@/lib/filters';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
@@ -43,7 +45,9 @@ export default function Profile() {
       setSaved([]);
       return;
     }
-    void api.preferences().then(setPrefs);
+    void api.preferences().then((p) =>
+      setPrefs({ ...p, defaultRadiusMeters: clampRadius(p.defaultRadiusMeters) }),
+    );
     void api.favorites().then(setSaved);
     void hydrateSavedPlaces(true);
   }, [session]);
@@ -53,10 +57,10 @@ export default function Profile() {
   const role = session?.roles.includes('Admin') ? 'Admin' : 'Gezgin';
   const selectedCount = (prefs?.intents.length ?? 0) + (prefs?.vibes.length ?? 0);
 
-  const radiusLabel = useMemo(() => {
-    const hit = RADIUS_OPTIONS.find((r) => r.meters === (prefs?.defaultRadiusMeters ?? 1500));
-    return hit ? `${hit.label} · ${hit.sub}` : 'Mahalle';
-  }, [prefs?.defaultRadiusMeters]);
+  const radiusLabel = useMemo(
+    () => formatRadius(prefs?.defaultRadiusMeters ?? 1500),
+    [prefs?.defaultRadiusMeters],
+  );
 
   function toggleIntent(intent: string) {
     if (!prefs) return;
@@ -154,7 +158,7 @@ export default function Profile() {
       <StatusBar style="light" />
       <View style={styles.hero}>
         <Image source={INTENT_PHOTOS[heroIntent] ?? INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <LinearGradient colors={['rgba(28,20,16,0.15)', 'rgba(28,20,16,0.78)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(6,78,59,0.15)', 'rgba(6,78,59,0.78)']} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroCopy, { paddingTop: insets.top + 12 }]}>
           <Text style={styles.kicker}>Profil</Text>
           <Text style={styles.heroLine}>Karar tarzın.</Text>
@@ -218,7 +222,29 @@ export default function Profile() {
       )}
 
       {saved.length > 0 ? (
-        <HorizontalVenueRow title="Kaydettiklerin" subtitle="Tekrar git" items={saved} />
+        <View style={styles.card}>
+          <Text style={styles.sectionKicker}>Kayıtlı</Text>
+          <Text style={styles.sectionTitle}>Kaydettiklerin</Text>
+          <View style={styles.saveGrid}>
+            {saved.map((card) => (
+              <Pressable
+                key={card.placeId}
+                style={styles.saveCell}
+                onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId } })}
+                accessibilityRole="button"
+                accessibilityLabel={card.name}>
+                <VenueImage
+                  placeId={card.placeId}
+                  photoUrl={card.photoUrl}
+                  photoReference={card.photoReference}
+                  name={card.name}
+                  style={StyleSheet.absoluteFill}
+                  radius={0}
+                />
+              </Pressable>
+            ))}
+          </View>
+        </View>
       ) : session ? (
         <Text style={styles.emptySaved}>Henüz kayıt yok. Mekanda kalp bırak.</Text>
       ) : null}
@@ -234,7 +260,7 @@ export default function Profile() {
                 return (
                   <Pressable key={intent} onPress={() => toggleIntent(intent)} style={[styles.tile, on && styles.tileOn]}>
                     <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />
-                    <LinearGradient colors={['transparent', 'rgba(28,20,16,0.72)']} style={StyleSheet.absoluteFill} />
+                    <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={StyleSheet.absoluteFill} />
                     {on ? (
                       <View style={styles.check}>
                         <Ionicons name="checkmark" size={14} color={colors.white} />
@@ -265,23 +291,14 @@ export default function Profile() {
           <View style={styles.card}>
             <Text style={styles.sectionKicker}>Mesafe</Text>
             <Text style={styles.sectionTitle}>Ne kadar uzağa?</Text>
-            <View style={styles.radiusRow}>
-              {RADIUS_OPTIONS.map((opt) => {
-                const on = prefs.defaultRadiusMeters === opt.meters;
-                return (
-                  <Pressable
-                    key={opt.meters}
-                    onPress={() => {
-                      setPrefs({ ...prefs, defaultRadiusMeters: opt.meters });
-                      setSavedOk(false);
-                    }}
-                    style={[styles.radius, on && styles.radiusOn]}>
-                    <Text style={[styles.radiusLabel, on && styles.radiusOnText]}>{opt.label}</Text>
-                    <Text style={[styles.radiusSub, on && styles.radiusOnText]}>{opt.sub}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <RadiusPicker
+              meters={prefs.defaultRadiusMeters}
+              onChange={(meters) => {
+                setPrefs({ ...prefs, defaultRadiusMeters: meters });
+                filters.setRadius(meters);
+                setSavedOk(false);
+              }}
+            />
           </View>
 
           <Pressable style={[styles.save, saving && styles.saveBusy]} onPress={() => void save()} disabled={saving}>
@@ -403,6 +420,8 @@ const styles = StyleSheet.create({
   locText: { color: colors.ink, fontWeight: '700', fontSize: 13 },
   meta: { color: colors.muted, marginTop: 10, fontSize: 14 },
   emptySaved: { color: colors.muted, marginHorizontal: 24, marginTop: 18, fontSize: 14 },
+  saveGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  saveCell: { width: '32%', aspectRatio: 1, overflow: 'hidden', backgroundColor: colors.line },
   card: {
     marginHorizontal: 20,
     marginTop: 16,

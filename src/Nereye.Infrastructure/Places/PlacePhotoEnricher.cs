@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Caching.Distributed;
 using Nereye.Application.Places;
 using Nereye.Domain.Places;
@@ -9,13 +10,16 @@ public sealed class PlacePhotoEnricher : IPlacePhotoEnricher
     private static readonly TimeSpan HitTtl = TimeSpan.FromDays(7);
     private static readonly TimeSpan MissTtl = TimeSpan.FromHours(12);
     private readonly WikimediaPhotoClient _wiki;
-    private readonly WebsitePhotoClient _web;
+    private readonly GooglePlacesClient _google;
     private readonly IDistributedCache _cache;
 
-    public PlacePhotoEnricher(WikimediaPhotoClient wiki, WebsitePhotoClient web, IDistributedCache cache)
+    public PlacePhotoEnricher(
+        WikimediaPhotoClient wiki,
+        GooglePlacesClient google,
+        IDistributedCache cache)
     {
         _wiki = wiki;
-        _web = web;
+        _google = google;
         _cache = cache;
     }
 
@@ -29,7 +33,7 @@ public sealed class PlacePhotoEnricher : IPlacePhotoEnricher
             await gate.WaitAsync(cancellationToken);
             try
             {
-                return await LookupAsync(p, includeWebsite: false, cancellationToken);
+                return await LookupAsync(p, cancellationToken);
             }
             finally
             {
@@ -40,37 +44,36 @@ public sealed class PlacePhotoEnricher : IPlacePhotoEnricher
     }
 
     public Task<PlaceSnapshot> EnrichOneAsync(PlaceSnapshot place, CancellationToken cancellationToken = default) =>
-        LookupAsync(place, includeWebsite: true, cancellationToken);
+        LookupAsync(place, cancellationToken);
 
-    private async Task<PlaceSnapshot> LookupAsync(
-        PlaceSnapshot place,
-        bool includeWebsite,
-        CancellationToken cancellationToken)
+    private async Task<PlaceSnapshot> LookupAsync(PlaceSnapshot place, CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(place.PhotoReference))
+        var tagged = PlacePhoto.FirstTrusted([place.PhotoReference]);
+        if (tagged is not null)
         {
-            return place;
+            return place with { PhotoReference = tagged };
         }
 
-        var key = "places:photo:" + place.PlaceId;
+        var key = "places:photo:v2:" + place.PlaceId;
         var cached = await _cache.GetStringAsync(key, cancellationToken);
         if (cached is not null)
         {
-            return string.IsNullOrEmpty(cached) ? place : place with { PhotoReference = cached };
+            return cached.Length == 0 ? place : place with { PhotoReference = cached };
         }
 
-        string? url = null;
+        string? wiki = null;
+        string? google = null;
         try
         {
-            url = await _wiki.FindWikidataAsync(place.Wikidata, cancellationToken)
-                  ?? (includeWebsite ? await _web.FindAsync(place.Website, cancellationToken) : null)
-                  ?? await _wiki.FindNearbyAsync(place.Latitude, place.Longitude, place.Name, cancellationToken);
+            wiki = await _wiki.FindWikidataAsync(place.Wikidata, cancellationToken);
+            google = await _google.FindPhotoAsync(place.Name, place.Latitude, place.Longitude, cancellationToken);
         }
         catch (Exception)
         {
-            /* keep listing without photo */
+            /* listing stays without a guessed photo */
         }
 
+        var url = PlacePhoto.FirstTrusted([wiki, google]);
         await _cache.SetStringAsync(
             key,
             url ?? "",

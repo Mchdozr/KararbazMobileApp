@@ -14,20 +14,17 @@ public sealed class RecommendationService : IRecommendationService
     private static readonly TimeSpan NearbyTtl = TimeSpan.FromMinutes(30);
     private readonly IPlacesClient _places;
     private readonly IPlacesCache _cache;
-    private readonly IPlacePhotoEnricher _photos;
     private readonly NereyeDbContext _db;
     private readonly Application.Common.IClock _clock;
 
     public RecommendationService(
         IPlacesClient places,
         IPlacesCache cache,
-        IPlacePhotoEnricher photos,
         NereyeDbContext db,
         Application.Common.IClock clock)
     {
         _places = places;
         _cache = cache;
-        _photos = photos;
         _db = db;
         _clock = clock;
     }
@@ -41,8 +38,7 @@ public sealed class RecommendationService : IRecommendationService
             NearbyTtl,
             async ct =>
             {
-                var nearby = await _places.NearbyAsync(query.Latitude, query.Longitude, query.Intent, query.RadiusMeters, ct);
-                return await _photos.EnrichAsync(nearby, ct);
+                return await _places.NearbyAsync(query.Latitude, query.Longitude, query.Intent, query.RadiusMeters, ct);
             },
             cancellationToken);
 
@@ -128,8 +124,9 @@ public sealed class RecommendationService : IRecommendationService
 
         var sponsored = await LoadSponsoredAsync(query.Intent, geohash, cancellationToken);
         var assembled = PromotionSlotAssembler.Assemble(rankedOrganic, sponsored);
+        var (page, hasMore) = RecommendationPage.Slice(assembled, query.Skip, query.Take);
 
-        var items = assembled.Select(card =>
+        var items = page.Select(card =>
         {
             if (!scored.TryGetValue(card.PlaceId, out var row))
             {
@@ -158,7 +155,7 @@ public sealed class RecommendationService : IRecommendationService
         }).Where(i => i is not null).Cast<RecommendationItemDto>().ToList();
 
         var attribution = snapshots.FirstOrDefault()?.Attribution ?? "Harita verisi: OpenStreetMap";
-        return new RecommendationResponse(items, geohash, attribution);
+        return new RecommendationResponse(items, geohash, attribution, hasMore);
     }
 
     private async Task<IReadOnlyList<RankedCard>> LoadSponsoredAsync(Intent intent, string geohash, CancellationToken cancellationToken)

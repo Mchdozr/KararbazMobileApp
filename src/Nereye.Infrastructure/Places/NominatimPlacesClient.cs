@@ -52,7 +52,7 @@ public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
             _ => "N"
         };
         var json = await GetJsonAsync($"lookup?osm_ids={prefix}{id}&format=json&addressdetails=1&extratags=1", cancellationToken);
-        return NominatimPlaceMapper.ParseArray(json, 0, 0, 8000).FirstOrDefault();
+        return NominatimPlaceMapper.ParseArray(json, 0, 0, SearchRadius.MaxMeters).FirstOrDefault();
     }
 
     public Task<IReadOnlyList<PlaceSnapshot>> TextSearchAsync(
@@ -79,7 +79,7 @@ public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
         }
 
         var path =
-            $"search?q={Uri.EscapeDataString(q)}&format=json&limit=12&addressdetails=1&countrycodes=tr";
+            $"search?q={Uri.EscapeDataString(q)}&format=json&limit=20&addressdetails=1&dedupe=1&countrycodes=tr";
         var json = await GetJsonAsync(path, cancellationToken);
         return GeoSuggestMapper.Parse(json);
     }
@@ -93,7 +93,7 @@ public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
     {
         var viewbox = NominatimViewBox.Format(latitude, longitude, radiusMeters);
         var path =
-            $"search?q={Uri.EscapeDataString(query)}&format=json&limit=30&bounded=1&addressdetails=1&extratags=1&viewbox={viewbox}";
+            $"search?q={Uri.EscapeDataString(query)}&format=json&limit=50&bounded=1&addressdetails=1&extratags=1&viewbox={viewbox}";
         var json = await GetJsonAsync(path, cancellationToken);
         return NominatimPlaceMapper.ParseArray(json, latitude, longitude, radiusMeters);
     }

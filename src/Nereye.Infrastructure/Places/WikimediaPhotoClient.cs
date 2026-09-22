@@ -73,31 +73,16 @@ public sealed class WikimediaPhotoClient
             return null;
         }
 
-        string? fallback = null;
+        var hits = new List<PlacePhoto.CommonsGeoHit>();
         foreach (var row in rows.EnumerateArray())
         {
             var title = row.TryGetProperty("title", out var t) ? t.GetString() : null;
-            var url = PlacePhoto.CommonsFileUrl(title);
-            if (url is null)
-            {
-                continue;
-            }
-
             var dist = row.TryGetProperty("dist", out var distEl) && distEl.ValueKind == JsonValueKind.Number
                 ? distEl.GetDouble()
                 : 999;
-
-            if (PlacePhoto.TitleFitsVenue(venueName, title))
-            {
-                return url;
-            }
-
-            if (fallback is null && dist <= 25 && !PlacePhoto.LooksLikePersonFile(title))
-            {
-                fallback = url;
-            }
+            hits.Add(new PlacePhoto.CommonsGeoHit(title, dist));
         }
 
-        return fallback;
+        return PlacePhoto.PickCommonsNearby(hits, venueName);
     }
 }

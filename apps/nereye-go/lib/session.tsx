@@ -1,4 +1,4 @@
-import { api, applySession, hydrateAuth, setApiBase, setAuthEvents } from '@/lib/api';
+import { api, applySession, hydrateAuth, pickReachableApiBase, setApiBase, setAuthEvents } from '@/lib/api';
 import { DEFAULT_API } from '@/lib/constants';
 import { applyPreferences } from '@/lib/filters';
 import type { Session } from '@/lib/types';
@@ -53,9 +53,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const savedBase = await SecureStore.getItemAsync('apiBase');
-        const base = savedBase || DEFAULT_API;
+        const base = await pickReachableApiBase(savedBase);
         setApiBase(base);
         setApiBaseState(base);
+        await save('apiBase', base);
         const raw = await SecureStore.getItemAsync('session');
         if (raw) {
           const parsed = JSON.parse(raw) as Session;

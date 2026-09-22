@@ -1,10 +1,12 @@
+import { GeoSuggestGroup } from '@/components/GeoSuggestRow';
 import { api } from '@/lib/api';
 import { QUICK_PLACES } from '@/lib/copy';
+import { geoChip, type GeoHit } from '@/lib/geo-hit';
 import { detectLocation } from '@/lib/geo';
 import { useFilters } from '@/lib/filters';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
@@ -18,14 +20,12 @@ import {
   View,
 } from 'react-native';
 
-type Hit = { label: string; latitude: number; longitude: number };
-
 export function LocationPicker({ onPicked }: { onPicked: () => void }) {
   const filters = useFilters();
   const { session } = useSession();
   const saved = useSavedPlaces();
   const [q, setQ] = useState('');
-  const [hits, setHits] = useState<Hit[]>([]);
+  const [hits, setHits] = useState<GeoHit[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -72,12 +72,12 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-      <Text style={styles.sub}>Mahalle yaz, kayıtlı yerini seç veya GPS aç.</Text>
+      <Text style={styles.sub}>Mahalle, ilçe veya durak yaz. Sonuçlarda semt ayrıntısı görünür.</Text>
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={colors.muted} />
         <TextInput
           style={styles.input}
-          placeholder="Nişantaşı, Halide Edip, Moda…"
+          placeholder="Esenler, Tuna, Moda…"
           placeholderTextColor={colors.muted}
           value={q}
           onChangeText={setQ}
@@ -127,15 +127,14 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
       </View>
 
       {hits.length > 0 ? (
-        <>
-          <Text style={styles.kicker}>Sonuçlar</Text>
-          {hits.map((h) => (
-            <Pressable key={`${h.label}-${h.latitude}`} style={styles.hit} onPress={() => pick(h.latitude, h.longitude, h.label)}>
-              <Ionicons name="location-outline" size={18} color={colors.coral} />
-              <Text style={styles.hitText}>{h.label}</Text>
-            </Pressable>
-          ))}
-        </>
+        <GeoSuggestGroup
+          title="Sonuçlar"
+          hits={hits}
+          from={{ lat: filters.lat, lng: filters.lng }}
+          onPress={(hit) => pick(hit.latitude, hit.longitude, geoChip(hit))}
+        />
+      ) : q.trim().length >= 2 ? (
+        <Text style={styles.empty}>Mahalle, ilçe veya durak yaz — aynı isimli yerler alt satırda ayrılır.</Text>
       ) : null}
 
       {note ? <Text style={styles.note}>{note}</Text> : null}
@@ -216,18 +215,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   quickText: { color: colors.ink, fontWeight: '700', fontSize: 13 },
-  hit: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-  },
-  hitText: { color: colors.ink, fontWeight: '700', fontSize: 15, flex: 1 },
+  empty: { color: colors.muted, marginTop: 8, lineHeight: 20 },
   note: { color: colors.sage, marginTop: 12, fontWeight: '600' },
   saveRow: { flexDirection: 'row', gap: 8 },
   saveBtn: {

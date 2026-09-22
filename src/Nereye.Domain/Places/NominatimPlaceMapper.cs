@@ -19,7 +19,7 @@ public static class NominatimPlaceMapper
             return [];
         }
 
-        var radius = Math.Clamp(radiusMeters, 50, 8000);
+        var radius = SearchRadius.Clamp(radiusMeters);
         var items = new List<PlaceSnapshot>();
         foreach (var el in json.EnumerateArray())
         {
@@ -105,7 +105,10 @@ public static class NominatimPlaceMapper
             PlacePhoto.WebsiteFromNominatim(el),
             PlacePhoto.WikidataFromNominatim(el),
             phone,
-            hoursText);
+            hoursText,
+            PlacePhoto.ExtraFromNominatim(el, "cuisine"),
+            PlacePhoto.ExtraFromNominatim(el, "outdoor_seating"),
+            PlacePhoto.ExtraFromNominatim(el, "internet_access"));
     }
 
     private static string? AddressField(JsonElement el, string key)

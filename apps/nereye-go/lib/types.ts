@@ -58,6 +58,19 @@ export type VenueDetail = {
   openingHours?: string | null;
   isFavorite?: boolean;
   geohash?: string | null;
+  cuisine?: string | null;
+  outdoorSeating?: string | null;
+  internetAccess?: string | null;
+  amenityChips?: string[];
+};
+
+export type RouteMode = 'foot' | 'driving';
+
+export type RouteResult = {
+  mode: string;
+  distanceMeters: number;
+  durationSeconds: number;
+  points: { latitude: number; longitude: number }[];
 };
 
 export type ReviewItem = {

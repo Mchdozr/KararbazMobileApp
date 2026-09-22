@@ -23,10 +23,14 @@ export default function Home() {
   const [items, setItems] = useState<VenueCard[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setShowAll(false);
     try {
       const res = await api.recommend(
         filters.lat,
@@ -35,12 +39,16 @@ export default function Home() {
         filters.openNow,
         filters.vibes,
         filters.radiusMeters,
+        0,
+        20,
       );
       const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems(next);
+      setHasMore(res.hasMore);
     } catch (e) {
       setError(friendlyError(e));
       setItems([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -55,11 +63,41 @@ export default function Home() {
     router.push('/(tabs)/discover');
   }
 
+  async function expand() {
+    setShowAll(true);
+    if (!hasMore || loadingMore) {
+      return;
+    }
+    setLoadingMore(true);
+    try {
+      const res = await api.recommend(
+        filters.lat,
+        filters.lng,
+        filters.intent,
+        filters.openNow,
+        filters.vibes,
+        filters.radiusMeters,
+        items.length,
+        20,
+      );
+      const extra = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
+      setItems((prev) => {
+        const seen = new Set(prev.map((c) => c.placeId));
+        return [...prev, ...extra.filter((c) => !seen.has(c.placeId))];
+      });
+      setHasMore(res.hasMore);
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   const organic = useMemo(() => items.filter((c) => c.kind !== 'Sponsored'), [items]);
   const sponsored = useMemo(() => items.filter((c) => c.kind === 'Sponsored'), [items]);
   const featured = organic[0];
-  const special = organic.slice(0, 8);
-  const open = organic.filter((c) => c.openNow === true).slice(0, 8);
+  const special = organic.slice(0, 12);
+  const open = organic.filter((c) => c.openNow === true).slice(0, 12);
 
   return (
     <View style={styles.bg}>
@@ -98,7 +136,7 @@ export default function Home() {
           title={`${intentLabel(filters.intent)} · ${filters.label}`}
           subtitle="Kısa liste"
           items={special.slice(featured ? 1 : 0)}
-          onSeeAll={() => goDiscover(filters.intent)}
+          onSeeAll={() => void expand()}
           intent={filters.intent}
         />
         <HorizontalVenueRow
@@ -116,14 +154,31 @@ export default function Home() {
             title={emptyNearby(filters.intent, filters.label)}
             action="Yarıçapı büyüt"
             onAction={() => {
-              filters.setRadius(Math.min(8000, filters.radiusMeters * 2));
-              router.push('/(tabs)/discover');
+              filters.setRadius(filters.radiusMeters * 2);
             }}
           />
         ) : null}
-        <Pressable style={styles.more} onPress={() => goDiscover(filters.intent)} accessibilityRole="button">
-          <Text style={styles.moreText}>Daha fazla {intentLabel(filters.intent).toLowerCase()}</Text>
-        </Pressable>
+        {showAll ? (
+          <View style={styles.list}>
+            <Text style={styles.gridTitle}>Yakındakiler</Text>
+            {organic.map((card) => (
+              <View key={`feed-${card.placeId}`} style={styles.listItem}>
+                <VenueProductCard card={card} intent={filters.intent} />
+              </View>
+            ))}
+          </View>
+        ) : null}
+        {organic.length > 0 && (!showAll || hasMore) ? (
+          <Pressable
+            style={styles.more}
+            onPress={() => void expand()}
+            disabled={loadingMore}
+            accessibilityRole="button">
+            <Text style={styles.moreText}>
+              {loadingMore ? 'Yükleniyor…' : `Daha fazla ${intentLabel(filters.intent).toLowerCase()}`}
+            </Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
       <SearchingOverlay visible={loading} intent={filters.intent} />
     </View>
@@ -151,4 +206,6 @@ const styles = StyleSheet.create({
   },
   more: { marginHorizontal: 20, marginTop: 20, alignItems: 'center', padding: 14, minHeight: 44 },
   moreText: { color: colors.coral, fontWeight: '800' },
+  list: { paddingHorizontal: 20, marginTop: 20 },
+  listItem: { marginBottom: 16 },
 });

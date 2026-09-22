@@ -1,5 +1,6 @@
 import { VenueImage } from '@/components/VenueImage';
 import { vibeText } from '@/lib/constants';
+import { mahalleLine } from '@/lib/geo-hit';
 import { colors, fonts, radii } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { useRouter } from 'expo-router';
@@ -28,7 +29,7 @@ export function VenueProductCard({
   card,
   width,
   featured = false,
-  intent,
+  intent: _intent,
 }: {
   card: VenueCard;
   width?: number;
@@ -61,11 +62,11 @@ export function VenueProductCard({
           placeId={card.placeId}
           photoUrl={card.photoUrl}
           photoReference={card.photoReference}
-          intent={intent}
+          name={card.name}
           style={StyleSheet.absoluteFill}
           radius={radii.md}
         />
-        <LinearGradient colors={['transparent', 'rgba(28,20,16,0.72)']} style={styles.fade} />
+        <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={styles.fade} />
         {card.kind === 'Sponsored' ? <Text style={styles.boost}>Öne çıkan</Text> : null}
         <View style={styles.badges}>
           <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text>
@@ -80,7 +81,7 @@ export function VenueProductCard({
         <Text style={styles.star}>{rating ? `★ ${rating}` : 'Yeni'}</Text>
         {card.address ? (
           <Text numberOfLines={1} style={styles.addr}>
-            {card.address}
+            {mahalleLine(card.address) || card.address}
           </Text>
         ) : null}
       </View>
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
   },
   pill: {
     color: colors.white,
-    backgroundColor: 'rgba(28,20,16,0.45)',
+    backgroundColor: 'rgba(6,78,59,0.45)',
     fontSize: 11,
     fontWeight: '700',
     paddingHorizontal: 8,

@@ -1,4 +1,5 @@
 import { BackButton } from '@/components/BackButton';
+import { BrandLogo } from '@/components/BrandLogo';
 import { INTENTS, intentLabel } from '@/lib/constants';
 import { detectLocation } from '@/lib/geo';
 import { INTENT_PHOTOS } from '@/lib/photos';
@@ -62,7 +63,7 @@ export default function Onboarding() {
           <BackButton />
         </View>
       ) : null}
-      <Text style={styles.kicker}>Nereye</Text>
+      <BrandLogo size={40} />
       <Text style={styles.h}>Bugün ne istiyorsun?</Text>
       <Text style={styles.sub}>Bir veya birkaç niyet seç. Konuma göre bakalım.</Text>
       <View style={styles.grid}>
@@ -75,7 +76,7 @@ export default function Onboarding() {
             accessibilityState={{ selected: picked.includes(i) }}
             accessibilityLabel={intentLabel(i)}>
             <Image source={INTENT_PHOTOS[i]} style={StyleSheet.absoluteFill} contentFit="cover" />
-            <LinearGradient colors={['transparent', 'rgba(28,20,16,0.72)']} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['transparent', 'rgba(6,78,59,)0.72)']} style={StyleSheet.absoluteFill} />
             <Text style={styles.tileText}>{intentLabel(i)}</Text>
           </Pressable>
         ))}
@@ -101,7 +102,6 @@ const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   wrap: { paddingHorizontal: 20, paddingBottom: 40 },
   backRow: { marginBottom: 8 },
-  kicker: { color: colors.coral, letterSpacing: 1.6, textTransform: 'uppercase', fontSize: 12, fontWeight: '700' },
   h: { fontFamily: fonts.display, fontSize: 32, color: colors.ink, marginTop: 8 },
   sub: { color: colors.muted, marginBottom: 18, fontSize: 16, marginTop: 6 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

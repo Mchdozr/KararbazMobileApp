@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -30,12 +31,51 @@ public static partial class PlacePhoto
 
     public static string? FromHttpOrCommons(string? image, string? commons)
     {
-        if (IsHttp(image))
+        return FirstTrusted([image, CommonsFileUrl(commons)]);
+    }
+
+    public static string? FirstTrusted(IEnumerable<string?> candidates)
+    {
+        foreach (var raw in candidates)
         {
-            return image;
+            if (string.IsNullOrWhiteSpace(raw) || LooksLikeSelfieOrPortrait(raw))
+            {
+                continue;
+            }
+
+            if (raw.StartsWith("places/", StringComparison.OrdinalIgnoreCase)
+                || raw.StartsWith("/media/", StringComparison.OrdinalIgnoreCase)
+                || raw.StartsWith("/api/media/", StringComparison.OrdinalIgnoreCase))
+            {
+                return raw;
+            }
+
+            if (IsHttp(raw))
+            {
+                return raw;
+            }
+
+            var commons = CommonsFileUrl(raw);
+            if (commons is not null && !LooksLikeSelfieOrPortrait(raw))
+            {
+                return commons;
+            }
         }
 
-        return CommonsFileUrl(commons);
+        return null;
+    }
+
+    public static bool LooksLikeSelfieOrPortrait(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var lower = value.ToLowerInvariant();
+        return lower.Contains("portrait", StringComparison.Ordinal)
+               || lower.Contains("selfie", StringComparison.Ordinal)
+               || lower.Contains("mugshot", StringComparison.Ordinal);
     }
 
     public static string? ExtraFromNominatim(JsonElement el, params string[] keys)
@@ -78,6 +118,40 @@ public static partial class PlacePhoto
 
         id = id.Trim();
         return id.Length > 1 && id[0] is 'Q' or 'q' && id[1..].All(char.IsDigit) ? id.ToUpperInvariant() : null;
+    }
+
+    public readonly record struct CommonsGeoHit(string? Title, double Dist);
+
+    public static string? PickCommonsNearby(IEnumerable<CommonsGeoHit> rows, string venueName)
+    {
+        foreach (var row in rows)
+        {
+            var url = CommonsFileUrl(row.Title);
+            if (url is not null && TitleFitsVenue(venueName, row.Title))
+            {
+                return url;
+            }
+        }
+
+        return null;
+    }
+
+    public static string? FirstUnused(IEnumerable<string?> candidates, ConcurrentDictionary<string, byte> claimed)
+    {
+        foreach (var raw in candidates)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            if (claimed.TryAdd(raw, 0))
+            {
+                return raw;
+            }
+        }
+
+        return null;
     }
 
     public static string? CommonsFileUrl(string? title)
@@ -199,7 +273,13 @@ public static partial class PlacePhoto
                 continue;
             }
 
-            var url = CommonsFileUrl(value.GetString());
+            var title = value.GetString();
+            if (LooksLikeSelfieOrPortrait(title))
+            {
+                continue;
+            }
+
+            var url = CommonsFileUrl(title);
             if (url is not null)
             {
                 return url;

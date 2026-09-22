@@ -19,4 +19,7 @@ public sealed record PlaceSnapshot(
     string? Website = null,
     string? Wikidata = null,
     string? Phone = null,
-    string? OpeningHoursText = null);
+    string? OpeningHoursText = null,
+    string? Cuisine = null,
+    string? OutdoorSeating = null,
+    string? InternetAccess = null);

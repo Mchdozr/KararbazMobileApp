@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nereye.Application.Preferences;
+using Nereye.Domain.Places;
 using Nereye.Infrastructure.Persistence;
 
 namespace Nereye.Infrastructure.Preferences;
@@ -39,7 +40,7 @@ public sealed class PreferenceService : IPreferenceService
             _db.UserPreferences.Add(pref);
         }
 
-        pref.DefaultRadiusMeters = dto.DefaultRadiusMeters <= 0 ? 1500 : dto.DefaultRadiusMeters;
+        pref.DefaultRadiusMeters = SearchRadius.Clamp(dto.DefaultRadiusMeters);
         pref.Intents.Clear();
         foreach (var intent in dto.Intents.Distinct())
         {

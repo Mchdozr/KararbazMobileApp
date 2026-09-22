@@ -32,7 +32,15 @@ export function friendlyError(reason: unknown) {
     return 'Bir şey ters gitti. Tekrar dene.';
   }
   const lower = raw.toLowerCase();
-  if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('timeout')) {
+  if (
+    lower.includes('network')
+    || lower.includes('failed to fetch')
+    || lower.includes('fetch failed')
+    || lower.includes('couldnt connect')
+    || lower.includes("couldn't connect")
+    || lower.includes('unexpectedexception')
+    || lower.includes('timeout')
+  ) {
     return 'Ağa ulaşılamadı. Wi-Fi ve API adresini kontrol et.';
   }
   if (lower.includes('429') || lower.includes('too many')) {

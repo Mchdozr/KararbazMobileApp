@@ -1,4 +1,5 @@
 import { KADIKOY } from '@/lib/constants';
+import { clampRadius } from '@/lib/radius';
 import type { Preferences } from '@/lib/types';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
@@ -71,7 +72,7 @@ export function isLocPinned() {
 export function applyPreferences(p: Preferences) {
   state = {
     ...state,
-    radiusMeters: p.defaultRadiusMeters || state.radiusMeters,
+    radiusMeters: clampRadius(p.defaultRadiusMeters || state.radiusMeters),
     vibes: p.vibes?.length ? p.vibes : state.vibes,
     intent: p.intents[0] || state.intent,
   };
@@ -108,7 +109,7 @@ export function useFilters() {
               ...state,
               intent: saved.intent || state.intent,
               vibes: Array.isArray(saved.vibes) ? saved.vibes : state.vibes,
-              radiusMeters: typeof saved.radiusMeters === 'number' ? saved.radiusMeters : state.radiusMeters,
+              radiusMeters: typeof saved.radiusMeters === 'number' ? clampRadius(saved.radiusMeters) : state.radiusMeters,
               openNow: Boolean(saved.openNow),
               minRating: typeof saved.minRating === 'number' ? saved.minRating : 0,
             };
@@ -155,7 +156,7 @@ export function useFilters() {
       void persistPrefs();
     },
     setRadius: (radiusMeters: number) => {
-      state = { ...state, radiusMeters };
+      state = { ...state, radiusMeters: clampRadius(radiusMeters) };
       emit();
       void persistPrefs();
     },

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Nereye.Application.Places;
 using Nereye.Application.Recommendations;
 using Nereye.Application.Reviews;
+using Nereye.Domain.Entities;
 using Nereye.Domain.Places;
 using Nereye.Domain.Recommendation;
 using Nereye.Infrastructure.Persistence;
@@ -12,12 +13,14 @@ public sealed class ReviewService : IReviewService
 {
     private readonly NereyeDbContext _db;
     private readonly IPlacesClient _places;
+    private readonly IPlacePhotoEnricher _photos;
     private readonly Application.Common.IClock _clock;
 
-    public ReviewService(NereyeDbContext db, IPlacesClient places, Application.Common.IClock clock)
+    public ReviewService(NereyeDbContext db, IPlacesClient places, IPlacePhotoEnricher photos, Application.Common.IClock clock)
     {
         _db = db;
         _places = places;
+        _photos = photos;
         _clock = clock;
     }
 
@@ -128,7 +131,7 @@ public sealed class ReviewService : IReviewService
             .ToListAsync(cancellationToken);
         var byId = venues.ToDictionary(v => v.Id);
 
-        var items = new List<RecommendationItemDto>();
+        var pending = new List<(Venue Venue, PlaceSnapshot Place)>();
         foreach (var fav in favs)
         {
             if (!byId.TryGetValue(fav.VenueId, out var venue))
@@ -137,11 +140,18 @@ public sealed class ReviewService : IReviewService
             }
 
             var place = await _places.DetailsAsync(venue.GooglePlaceId, cancellationToken);
-            if (place is null)
+            if (place is not null)
             {
-                continue;
+                pending.Add((venue, place));
             }
+        }
 
+        var enriched = await _photos.EnrichAsync(pending.Select(p => p.Place).ToList(), cancellationToken);
+        var items = new List<RecommendationItemDto>();
+        for (var i = 0; i < pending.Count; i++)
+        {
+            var venue = pending[i].Venue;
+            var place = enriched[i];
             items.Add(new RecommendationItemDto(
                 place.PlaceId,
                 venue.OwnerDisplayName ?? place.Name,

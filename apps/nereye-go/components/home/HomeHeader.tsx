@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/BrandLogo';
 import { LocationPicker } from '@/components/LocationPicker';
 import { api } from '@/lib/api';
 import { isEvening, timeGreeting } from '@/lib/copy';
@@ -54,7 +55,7 @@ export function HomeHeader() {
     <View style={[styles.wrap, evening && styles.eveWrap, { paddingTop: insets.top + 10 }]}>
       <StatusBar style={evening ? 'light' : 'dark'} />
       <View style={styles.top}>
-        <Text style={[styles.brand, evening && styles.eveText]}>Nereye</Text>
+        <BrandLogo size={40} />
         <View style={styles.locRow}>
           <Pressable
             style={styles.loc}
@@ -145,14 +146,6 @@ const styles = StyleSheet.create({
   },
   eveWrap: { backgroundColor: colors.espresso },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: {
-    fontFamily: fonts.display,
-    fontSize: 34,
-    color: colors.ink,
-    fontWeight: '700',
-    letterSpacing: -0.6,
-  },
-  eveText: { color: colors.white },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '58%' },
   loc: {
     flexDirection: 'row',

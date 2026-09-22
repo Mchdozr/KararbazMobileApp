@@ -1,5 +1,6 @@
 import { DEFAULT_API } from '@/lib/constants';
-import type { Preferences, PromotionItem, ReviewItem, SavedPlace, Session, VenueCard, VenueDetail } from '@/lib/types';
+import type { GeoHit } from '@/lib/geo-hit';
+import type { Preferences, PromotionItem, ReviewItem, RouteMode, RouteResult, SavedPlace, Session, VenueCard, VenueDetail } from '@/lib/types';
 
 let apiBase = DEFAULT_API;
 let accessToken: string | null = null;
@@ -8,9 +9,32 @@ let refreshWait: Promise<boolean> | null = null;
 let authEvents: { onRefreshed?: (session: Session) => void; onCleared?: () => void } = {};
 
 const EMPTY_PREFS: Preferences = { defaultRadiusMeters: 1500, intents: [], vibes: [] };
+const photoWait = new Map<string, Promise<string | null>>();
 
 export function setApiBase(url: string) {
   apiBase = url.replace(/\/$/, '');
+}
+
+export async function pickReachableApiBase(saved?: string | null) {
+  const candidates = [DEFAULT_API, saved, 'http://192.168.1.248:5079']
+    .map((u) => u?.replace(/\/$/, '') ?? '')
+    .filter((u, i, all) => u.startsWith('http') && all.indexOf(u) === i);
+  for (const base of candidates) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      const res = await fetch(`${base}/health`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        apiBase = base;
+        return base;
+      }
+    } catch {
+      /* try next */
+    }
+  }
+  apiBase = DEFAULT_API.replace(/\/$/, '');
+  return apiBase;
 }
 
 export function getApiBase() {
@@ -158,12 +182,39 @@ export const api = {
     openNow: boolean,
     vibes: string[],
     radiusMeters = 1500,
+    skip = 0,
+    take = 20,
   ) => {
-    const res = await request<{ items?: VenueCard[] }>(
-      `/api/recommendations?lat=${lat}&lng=${lng}&intent=${intent}&radiusMeters=${radiusMeters}&openNow=${openNow}${vibes.length ? `&vibes=${vibes.join(',')}` : ''}`,
+    const res = await request<{ items?: VenueCard[]; hasMore?: boolean }>(
+      `/api/recommendations?lat=${lat}&lng=${lng}&intent=${intent}&radiusMeters=${radiusMeters}&openNow=${openNow}&skip=${skip}&take=${take}${vibes.length ? `&vibes=${vibes.join(',')}` : ''}`,
     );
-    return { items: res.items ?? [] };
+    return { items: res.items ?? [], hasMore: Boolean(res.hasMore) };
   },
+  placePhoto: async (placeId: string) => {
+    const hit = photoWait.get(placeId);
+    if (hit) {
+      return hit;
+    }
+    const pending = request<{ photoUrl?: string } | undefined>(
+      `/api/places/${encodeURIComponent(placeId)}/photo`,
+      {},
+      { skipAuth: true, optional: true },
+    ).then((data) => data?.photoUrl ?? null);
+    photoWait.set(placeId, pending);
+    return pending;
+  },
+  route: (
+    fromLat: number,
+    fromLng: number,
+    toLat: number,
+    toLng: number,
+    mode: RouteMode,
+  ) =>
+    request<RouteResult | undefined>(
+      `/api/routes?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}&mode=${mode}`,
+      {},
+      { skipAuth: true, optional: true },
+    ),
   venue: async (placeId: string) =>
     mapVenueDetail(await request<Record<string, unknown>>(`/api/venues/${encodeURIComponent(placeId)}`)),
   reviews: (placeId: string) => request<ReviewItem[]>(`/api/venues/${encodeURIComponent(placeId)}/reviews`),
@@ -238,8 +289,8 @@ export const api = {
     return data ?? [];
   },
   deleteMe: () => request('/api/auth/me', { method: 'DELETE' }),
-  geoSuggest: async (q: string) => {
-    const data = await request<{ label: string; latitude: number; longitude: number; kind: string }[]>(
+  geoSuggest: async (q: string): Promise<GeoHit[]> => {
+    const data = await request<GeoHit[]>(
       `/api/geo/suggest?q=${encodeURIComponent(q)}`,
       {},
       { skipAuth: true, optional: true },
@@ -315,5 +366,9 @@ export function mapVenueDetail(raw: Record<string, unknown>): VenueDetail {
     openingHours: google.openingHours as string | undefined,
     isFavorite: (nereye.isFavorite as boolean) ?? false,
     geohash: nereye.geohash as string | undefined,
+    cuisine: google.cuisine as string | undefined,
+    outdoorSeating: google.outdoorSeating as string | undefined,
+    internetAccess: google.internetAccess as string | undefined,
+    amenityChips: (raw.amenityChips as string[]) ?? [],
   };
 }

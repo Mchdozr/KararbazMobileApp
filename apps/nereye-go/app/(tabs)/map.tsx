@@ -52,6 +52,8 @@ export default function MapScreen() {
         filters.openNow,
         filters.vibes,
         filters.radiusMeters,
+        0,
+        40,
       );
       const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems(next);

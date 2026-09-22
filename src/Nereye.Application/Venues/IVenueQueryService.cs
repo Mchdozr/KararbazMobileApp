@@ -8,4 +8,5 @@ public interface IVenueQueryService
     Task<IReadOnlyList<RecommendationItemDto>> SearchAsync(string query, double latitude, double longitude, CancellationToken cancellationToken = default);
     Task UpdateOwnerAsync(string placeId, Guid userId, string? displayName, string? description, CancellationToken cancellationToken = default);
     Task<string> AddOwnerPhotoAsync(string placeId, Guid userId, byte[] bytes, CancellationToken cancellationToken = default);
+    Task<string?> GetPhotoAsync(string placeId, CancellationToken cancellationToken = default);
 }

@@ -24,6 +24,30 @@ public class PromotionSlotAssemblerTests
     }
 
     [Fact]
+    public void Keeps_more_than_eight_organic()
+    {
+        var organic = Enumerable.Range(1, 24)
+            .Select(i => new RankedCard($"o{i}", 1 - i * 0.01, CardKind.Organic))
+            .ToList();
+
+        var result = PromotionSlotAssembler.Assemble(organic, []);
+
+        Assert.Equal(24, result.Count(c => c.Kind == CardKind.Organic));
+    }
+
+    [Fact]
+    public void Page_slice_exposes_has_more()
+    {
+        var items = Enumerable.Range(1, 25).ToList();
+        var (page, more) = RecommendationPage.Slice(items, 0, 20);
+        Assert.Equal(20, page.Count);
+        Assert.True(more);
+        var (last, lastMore) = RecommendationPage.Slice(items, 20, 20);
+        Assert.Equal(5, last.Count);
+        Assert.False(lastMore);
+    }
+
+    [Fact]
     public void Does_not_duplicate_a_place_already_in_organic()
     {
         var organic = new[] { new RankedCard("same", 0.9, CardKind.Organic) }

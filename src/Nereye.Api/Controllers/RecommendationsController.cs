@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Nereye.Application.Preferences;
 using Nereye.Application.Recommendations;
+using Nereye.Domain.Places;
 
 namespace Nereye.Api.Controllers;
 
@@ -27,6 +28,8 @@ public sealed class RecommendationsController : ControllerBase
         [FromQuery] int radiusMeters = 1500,
         [FromQuery] bool openNow = false,
         [FromQuery] string? vibes = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20,
         CancellationToken ct = default)
     {
         Guid? userId = User.Identity?.IsAuthenticated == true ? User.Id() : null;
@@ -39,6 +42,8 @@ public sealed class RecommendationsController : ControllerBase
             }
         }
 
+        radiusMeters = SearchRadius.Clamp(radiusMeters);
+
         var vibeList = string.IsNullOrWhiteSpace(vibes)
             ? []
             : vibes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -46,7 +51,7 @@ public sealed class RecommendationsController : ControllerBase
                 .ToList();
 
         var result = await _service.RecommendAsync(
-            new RecommendationQuery(lat, lng, intent, radiusMeters, openNow, vibeList, userId),
+            new RecommendationQuery(lat, lng, intent, radiusMeters, openNow, vibeList, userId, skip, take),
             ct);
         return Ok(result);
     }

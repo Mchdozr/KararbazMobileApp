@@ -1,30 +1,50 @@
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { VenueImage } from '@/components/VenueImage';
-import { api } from '@/lib/api';
+import { api, mediaUrl } from '@/lib/api';
 import { vibeText } from '@/lib/constants';
 import { friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
+import { parseOpeningHours } from '@/lib/hours';
 import { openDirections } from '@/lib/maps';
+import { formatRouteLine } from '@/lib/route';
 import { useSession } from '@/lib/session';
 import { colors, fonts, radii } from '@/lib/theme';
-import type { ReviewItem, VenueDetail } from '@/lib/types';
+import type { ReviewItem, RouteMode, RouteResult, VenueDetail } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 export default function Venue() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const filters = useFilters();
   const { session } = useSession();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [detail, setDetail] = useState<VenueDetail | null>(null);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [photoIx, setPhotoIx] = useState(0);
+  const [walk, setWalk] = useState<RouteResult | null>(null);
+  const [drive, setDrive] = useState<RouteResult | null>(null);
+  const [mode, setMode] = useState<RouteMode>('foot');
   const owner = Boolean(session?.roles.includes('VenueOwner'));
 
   useEffect(() => {
@@ -43,6 +63,15 @@ export default function Venue() {
         setDetail(v);
         setSaved(Boolean(v.isFavorite));
         setReviews(await api.reviews(id));
+        const [foot, driving] = await Promise.all([
+          api.route(filters.lat, filters.lng, v.latitude, v.longitude, 'foot'),
+          api.route(filters.lat, filters.lng, v.latitude, v.longitude, 'driving'),
+        ]);
+        if (!alive) {
+          return;
+        }
+        setWalk(foot ?? null);
+        setDrive(driving ?? null);
         if (session && !v.isFavorite) {
           setSaved(await api.isFavorite(id));
         }
@@ -59,7 +88,7 @@ export default function Venue() {
     return () => {
       alive = false;
     };
-  }, [id, session]);
+  }, [id, session, filters.lat, filters.lng]);
 
   async function toggleSave() {
     if (!session) {
@@ -108,18 +137,45 @@ export default function Venue() {
   }
 
   const photos = detail.photoUrls.length ? detail.photoUrls : detail.photoUrl ? [detail.photoUrl] : [];
+  const week = parseOpeningHours(detail.openingHours);
   const osm = `https://www.openstreetmap.org/?mlat=${detail.latitude}&mlon=${detail.longitude}#map=18/${detail.latitude}/${detail.longitude}`;
+
+  function onHeroScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const x = e.nativeEvent.contentOffset.x;
+    setPhotoIx(Math.round(x / Math.max(width, 1)));
+  }
 
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.wrap}>
-      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.hero}>
-        {(photos.length ? photos : [null]).map((url, i) => (
-          <View key={url ?? `ph-${i}`} style={styles.heroPage}>
-            <VenueImage placeId={detail.placeId} photoUrl={url} intent={filters.intent} style={StyleSheet.absoluteFill} radius={0} />
-            <LinearGradient colors={['transparent', 'rgba(28,20,16,0.55)']} style={styles.fade} />
-          </View>
-        ))}
-      </ScrollView>
+      <View style={[styles.hero, { width }]}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={onHeroScroll}
+          style={{ width, height: 320 }}>
+          {(photos.length ? photos : [null]).map((url, i) => (
+            <View key={url ?? `ph-${i}`} style={{ width, height: 320 }}>
+              <VenueImage
+                placeId={detail.placeId}
+                photoUrl={url}
+                name={detail.name}
+                style={StyleSheet.absoluteFill}
+                radius={0}
+              />
+              <LinearGradient colors={['transparent', 'rgba(6,78,59,0.55)']} style={styles.fade} />
+            </View>
+          ))}
+        </ScrollView>
+        <View style={styles.dots} pointerEvents="none">
+          {(photos.length ? photos : [null]).map((_, i) => (
+            <View key={`dot-${i}`} style={[styles.dot, i === photoIx ? styles.dotOn : null]} />
+          ))}
+          <Text style={styles.count}>
+            {photoIx + 1} / {Math.max(photos.length, 1)}
+          </Text>
+        </View>
+      </View>
       <View style={styles.body}>
         <View style={styles.titleRow}>
           <Text style={styles.h}>{detail.name}</Text>
@@ -140,8 +196,13 @@ export default function Venue() {
             <Text style={styles.pill}>Google {detail.googleRating.toFixed(1)}</Text>
           ) : null}
         </View>
-        {detail.vibes.length ? (
+        {detail.vibes.length || (detail.amenityChips?.length ?? 0) ? (
           <View style={styles.pills}>
+            {detail.amenityChips?.map((c) => (
+              <Text key={c} style={styles.vibe}>
+                {c}
+              </Text>
+            ))}
             {detail.vibes.map((v) => (
               <Text key={v} style={styles.vibe}>
                 {vibeText(v)}
@@ -149,7 +210,19 @@ export default function Venue() {
             ))}
           </View>
         ) : null}
-        {detail.openingHours ? <Text style={styles.hours}>{detail.openingHours}</Text> : null}
+        {week.length ? (
+          <View style={styles.hoursBox}>
+            <Text style={styles.hoursTitle}>Çalışma saatleri</Text>
+            {week.map((row) => (
+              <View key={row.day} style={styles.hourRow}>
+                <Text style={styles.hourDay}>{row.day}</Text>
+                <Text style={styles.hourVal}>{row.hours}</Text>
+              </View>
+            ))}
+          </View>
+        ) : detail.openingHours ? (
+          <Text style={styles.hours}>{detail.openingHours}</Text>
+        ) : null}
         {detail.note ? <Text style={styles.note}>{detail.note}</Text> : null}
         {detail.ownerDescription ? <Text style={styles.desc}>{detail.ownerDescription}</Text> : null}
         {detail.events.map((e) => (
@@ -158,15 +231,57 @@ export default function Venue() {
             {e.startsAt ? ` · ${new Date(e.startsAt).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}` : ''}
           </Text>
         ))}
+        <View style={styles.routeRow}>
+          <Pressable
+            style={[styles.routeChip, mode === 'foot' && styles.routeChipOn]}
+            onPress={() => setMode('foot')}
+            accessibilityRole="button"
+            accessibilityState={{ selected: mode === 'foot' }}>
+            <Ionicons name="walk" size={16} color={mode === 'foot' ? colors.white : colors.ink} />
+            <Text style={[styles.routeChipText, mode === 'foot' && styles.routeChipTextOn]}>
+              Yürü{walk ? ` · ${formatRouteLine(walk.distanceMeters, walk.durationSeconds)}` : ''}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.routeChip, mode === 'driving' && styles.routeChipOn]}
+            onPress={() => setMode('driving')}
+            accessibilityRole="button"
+            accessibilityState={{ selected: mode === 'driving' }}>
+            <Ionicons name="car" size={16} color={mode === 'driving' ? colors.white : colors.ink} />
+            <Text style={[styles.routeChipText, mode === 'driving' && styles.routeChipTextOn]}>
+              Araç{drive ? ` · ${formatRouteLine(drive.distanceMeters, drive.durationSeconds)}` : ''}
+            </Text>
+          </Pressable>
+        </View>
+        {(mode === 'foot' ? walk : drive)?.points.length ? (
+          <MapView
+            style={styles.miniMap}
+            pointerEvents="none"
+            initialRegion={{
+              latitude: detail.latitude,
+              longitude: detail.longitude,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            }}>
+            <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
+            <Polyline
+              coordinates={(mode === 'foot' ? walk : drive)!.points}
+              strokeColor={colors.coral}
+              strokeWidth={4}
+            />
+            <Marker coordinate={{ latitude: filters.lat, longitude: filters.lng }} pinColor={colors.coral} />
+            <Marker coordinate={{ latitude: detail.latitude, longitude: detail.longitude }} pinColor={colors.espresso} />
+          </MapView>
+        ) : null}
         <Pressable
           style={styles.btn}
           onPress={() => {
             void openDirections(detail.latitude, detail.longitude, filters.lat, filters.lng);
           }}
           accessibilityRole="button"
-          accessibilityLabel="Yol tarifi">
+          accessibilityLabel="Harici yol tarifi">
           <Ionicons name="navigate" size={18} color={colors.white} />
-          <Text style={styles.btnText}>Yol tarifi</Text>
+          <Text style={styles.btnText}>Harici yol tarifi</Text>
         </Pressable>
         {detail.phone ? (
           <Pressable style={styles.outline} onPress={() => void Linking.openURL(`tel:${detail.phone}`)} accessibilityRole="button">
@@ -210,6 +325,14 @@ export default function Venue() {
             <Text style={styles.meta}>{r.authorName ?? 'Gezgin'}{r.createdAt ? ` · ${new Date(r.createdAt).toLocaleDateString('tr-TR')}` : ''}</Text>
             {r.tags?.length ? <Text style={styles.meta}>{r.tags.map(vibeText).join(' · ')}</Text> : null}
             <Text style={styles.desc}>{r.text ?? ''}</Text>
+            {r.photoUrls?.length ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewPhotos}>
+                {r.photoUrls.map((u) => {
+                  const src = mediaUrl(u);
+                  return src ? <Image key={u} source={{ uri: src }} style={styles.reviewPhoto} /> : null;
+                })}
+              </ScrollView>
+            ) : null}
             {r.ownerReply ? <Text style={styles.reply}>İşletme: {r.ownerReply}</Text> : null}
           </View>
         ))}
@@ -223,9 +346,20 @@ const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   wrap: { paddingBottom: 40 },
   loading: { padding: 24, color: colors.ink },
-  hero: { width: '100%', height: 320, backgroundColor: colors.line },
-  heroPage: { width: 390, height: 320 },
+  hero: { height: 320, backgroundColor: colors.line },
   fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 120 },
+  dots: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.35)' },
+  dotOn: { backgroundColor: colors.white, width: 16 },
+  count: { marginLeft: 'auto', color: colors.white, fontWeight: '700', fontSize: 12 },
   body: {
     backgroundColor: colors.surface,
     marginTop: -28,
@@ -259,11 +393,43 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   hours: { color: colors.ink, marginTop: 12 },
+  hoursBox: {
+    marginTop: 16,
+    backgroundColor: colors.bg,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  hoursTitle: { fontFamily: fonts.sansBold, color: colors.ink, marginBottom: 8 },
+  hourRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
+  hourDay: { color: colors.muted, fontWeight: '700', width: 40 },
+  hourVal: { color: colors.ink, fontWeight: '600' },
+  reviewPhotos: { gap: 8, marginTop: 10 },
+  reviewPhoto: { width: 72, height: 72, borderRadius: 10, backgroundColor: colors.line },
   meta: { color: colors.muted, marginTop: 10 },
   note: { color: colors.ink, marginTop: 14, lineHeight: 24, fontSize: 16 },
   desc: { color: colors.ink, marginTop: 8, lineHeight: 22 },
   reply: { color: colors.muted, marginTop: 8, fontStyle: 'italic' },
   event: { marginTop: 8, color: colors.coral, fontWeight: '700' },
+  routeRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  routeChip: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.bg,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  routeChipOn: { backgroundColor: colors.coral, borderColor: colors.coral },
+  routeChipText: { color: colors.ink, fontWeight: '700', fontSize: 12, flex: 1 },
+  routeChipTextOn: { color: colors.white },
+  miniMap: { height: 180, borderRadius: 16, marginTop: 12, overflow: 'hidden' },
   btn: {
     backgroundColor: colors.coral,
     padding: 16,

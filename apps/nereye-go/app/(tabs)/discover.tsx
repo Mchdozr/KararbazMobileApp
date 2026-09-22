@@ -21,6 +21,8 @@ export default function Discover() {
   const filters = useFilters();
   const [items, setItems] = useState<VenueCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
 
@@ -35,15 +37,48 @@ export default function Discover() {
         filters.openNow,
         filters.vibes,
         filters.radiusMeters,
+        0,
+        20,
       );
       setItems(res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating));
+      setHasMore(res.hasMore);
     } catch (e) {
       setError(friendlyError(e));
       setItems([]);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   }, [filters.lat, filters.lng, filters.intent, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) {
+      return;
+    }
+    setLoadingMore(true);
+    try {
+      const res = await api.recommend(
+        filters.lat,
+        filters.lng,
+        filters.intent,
+        filters.openNow,
+        filters.vibes,
+        filters.radiusMeters,
+        items.length,
+        20,
+      );
+      const extra = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
+      setItems((prev) => {
+        const seen = new Set(prev.map((c) => c.placeId));
+        return [...prev, ...extra.filter((c) => !seen.has(c.placeId))];
+      });
+      setHasMore(res.hasMore);
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -81,7 +116,7 @@ export default function Discover() {
           <EmptyState
             title={emptyDiscover(filters.intent)}
             action="Yarıçapı büyüt"
-            onAction={() => filters.setRadius(Math.min(8000, Math.max(3000, filters.radiusMeters * 2)))}
+            onAction={() => filters.setRadius(Math.max(3000, filters.radiusMeters * 2))}
           />
         ) : null}
         <View style={styles.grid}>
@@ -91,6 +126,11 @@ export default function Discover() {
             </View>
           ))}
         </View>
+        {hasMore ? (
+          <Pressable style={styles.more} onPress={() => void loadMore()} disabled={loadingMore} accessibilityRole="button">
+            <Text style={styles.moreText}>{loadingMore ? 'Yükleniyor…' : 'Daha fazla mekan'}</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
       <FilterSheet visible={sheet} onClose={() => setSheet(false)} />
       <SearchingOverlay visible={loading} intent={filters.intent} />
@@ -133,4 +173,6 @@ const styles = StyleSheet.create({
   chipTextOn: { color: colors.espresso },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 20 },
   cell: { width: '47%' },
+  more: { marginHorizontal: 20, marginTop: 16, alignItems: 'center', padding: 14, minHeight: 44 },
+  moreText: { color: colors.coral, fontWeight: '800' },
 });

@@ -13,8 +13,9 @@ public sealed class OverpassPlacesClient : IPlacesClient
     private const string Attribution = "Harita verisi: OpenStreetMap";
     private static readonly Uri[] Endpoints =
     [
-        new("https://overpass-api.de/api/interpreter"),
-        new("https://overpass.kumi.systems/api/interpreter")
+        new("https://overpass.osm.ch/api/interpreter"),
+        new("https://overpass.kumi.systems/api/interpreter"),
+        new("https://overpass-api.de/api/interpreter")
     ];
     private readonly HttpClient _http;
     private readonly ILogger<OverpassPlacesClient> _log;
@@ -33,14 +34,14 @@ public sealed class OverpassPlacesClient : IPlacesClient
         int radiusMeters,
         CancellationToken cancellationToken = default)
     {
-        var radius = Math.Clamp(radiusMeters, 300, 8000);
+        var radius = SearchRadius.Clamp(radiusMeters);
         var filters = string.Join(
             "",
             IntentPlaceTypes.OsmTags(intent).Select(t =>
                 $"nwr[\"{Escape(t.Key)}\"=\"{Escape(t.Value)}\"](around:{radius.ToString(CultureInfo.InvariantCulture)},{Fmt(latitude)},{Fmt(longitude)});"));
-        var query = $"[out:json][timeout:18];({filters});out center 50;";
+        var query = $"[out:json][timeout:18];({filters});out center 80;";
         var json = await PostAsync(query, cancellationToken);
-        return ParseList(json, latitude, longitude).Take(40).ToList();
+        return ParseList(json, latitude, longitude).Take(60).ToList();
     }
 
     public async Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default)
@@ -72,7 +73,7 @@ public sealed class OverpassPlacesClient : IPlacesClient
         var data =
             $"[out:json][timeout:18];nwr[\"name\"~\"{q}\",i](around:4000,{Fmt(latitude)},{Fmt(longitude)});out center 30;";
         var json = await PostAsync(data, cancellationToken);
-        return ParseList(json, latitude, longitude).Take(20).ToList();
+        return ParseList(json, latitude, longitude).Take(40).ToList();
     }
 
     private async Task<JsonElement> PostAsync(string query, CancellationToken cancellationToken)
@@ -88,7 +89,7 @@ public sealed class OverpassPlacesClient : IPlacesClient
                 };
                 request.Headers.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(5));
+                cts.CancelAfter(TimeSpan.FromSeconds(20));
                 using var response = await _http.SendAsync(request, cts.Token);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -209,7 +210,10 @@ public sealed class OverpassPlacesClient : IPlacesClient
             website,
             Tag(tags, hasTags, "wikidata"),
             Tag(tags, hasTags, "phone") ?? Tag(tags, hasTags, "contact:phone"),
-            hoursText);
+            hoursText,
+            Tag(tags, hasTags, "cuisine"),
+            Tag(tags, hasTags, "outdoor_seating"),
+            Tag(tags, hasTags, "internet_access"));
     }
 
     private static string? Tag(JsonElement tags, bool hasTags, string key) =>

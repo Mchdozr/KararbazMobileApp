@@ -14,6 +14,7 @@ using Nereye.Application.Preferences;
 using Nereye.Application.Promotions;
 using Nereye.Application.Recommendations;
 using Nereye.Application.Reviews;
+using Nereye.Application.Routes;
 using Nereye.Application.Venues;
 using Nereye.Infrastructure.Admin;
 using Nereye.Infrastructure.Auth;
@@ -36,6 +37,14 @@ public static class DependencyInjection
     {
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
         services.Configure<GooglePlacesOptions>(configuration.GetSection(GooglePlacesOptions.Section));
+        services.Configure<MapillaryOptions>(o =>
+        {
+            configuration.GetSection(MapillaryOptions.Section).Bind(o);
+            if (string.IsNullOrWhiteSpace(o.Token))
+            {
+                o.Token = Environment.GetEnvironmentVariable("MAPILLARY_TOKEN");
+            }
+        });
 
         var cs = configuration.GetConnectionString("Default") ?? "Host=localhost;Database=nereye;Username=postgres;Password=postgres";
         var useInMemory = configuration.GetValue("Database:UseInMemory", false);
@@ -91,6 +100,9 @@ public static class DependencyInjection
         services.AddHttpClient<NominatimPlacesClient>();
         services.AddHttpClient<WikimediaPhotoClient>();
         services.AddHttpClient<WebsitePhotoClient>();
+        services.AddHttpClient<MapillaryPhotoClient>();
+        services.AddHttpClient<OsrmRouteClient>();
+        services.AddScoped<IRouteService, RouteService>();
         services.AddScoped<IPlacePhotoEnricher, PlacePhotoEnricher>();
         services.AddScoped<IPlacesClient>(sp =>
         {
@@ -102,25 +114,11 @@ public static class DependencyInjection
                 return fake;
             }
 
-            if (!string.IsNullOrWhiteSpace(options.ApiKey))
-            {
-                return new FallbackPlacesClient(
-                    sp.GetRequiredService<GooglePlacesClient>(),
-                    fake,
-                    fallbackOnEmpty: true,
-                    log);
-            }
-
-            var overpassThenFake = new FallbackPlacesClient(
-                sp.GetRequiredService<OverpassPlacesClient>(),
-                fake,
-                fallbackOnEmpty: false,
-                log);
-            return new FallbackPlacesClient(
-                sp.GetRequiredService<NominatimPlacesClient>(),
-                overpassThenFake,
-                fallbackOnEmpty: true,
-                log);
+            var overpass = sp.GetRequiredService<OverpassPlacesClient>();
+            var nominatim = sp.GetRequiredService<NominatimPlacesClient>();
+            var nearby = new FallbackPlacesClient(overpass, nominatim, fallbackOnEmpty: true, log);
+            var search = new FallbackPlacesClient(nominatim, overpass, fallbackOnEmpty: true, log);
+            return new CompositePlacesClient(nearby, search, nearby);
         });
         services.AddScoped<IGeoSuggest>(sp =>
         {

@@ -6,7 +6,7 @@ public static class PromotionSlotAssembler
 {
     public const int MaxSponsored = 2;
     public const int MinOrganic = 5;
-    public const int MaxOrganic = 8;
+    public const int MaxOrganic = 60;
 
     public static IReadOnlyList<RankedCard> Assemble(
         IReadOnlyList<RankedCard> organic,

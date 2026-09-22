@@ -24,5 +24,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dark: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  light: { backgroundColor: 'rgba(28,20,16,0.45)' },
+  light: { backgroundColor: 'rgba(6,78,59,)0.45)' },
 });

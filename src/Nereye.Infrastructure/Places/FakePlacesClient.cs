@@ -16,9 +16,10 @@ public sealed class FakePlacesClient : IPlacesClient
         CancellationToken cancellationToken = default)
     {
         var types = IntentPlaceTypes.GoogleTypes(intent);
+        var radius = SearchRadius.Clamp(radiusMeters);
         var typed = Istanbul.Where(p => p.Types.Any(t => types.Contains(t))).ToList();
         var nearby = typed
-            .Where(p => GeoMath.HaversineMeters(latitude, longitude, p.Latitude, p.Longitude) <= radiusMeters)
+            .Where(p => GeoMath.HaversineMeters(latitude, longitude, p.Latitude, p.Longitude) <= radius)
             .OrderBy(p => GeoMath.HaversineMeters(latitude, longitude, p.Latitude, p.Longitude))
             .ToList();
         return Task.FromResult<IReadOnlyList<PlaceSnapshot>>(nearby);

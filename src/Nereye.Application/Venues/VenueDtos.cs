@@ -14,7 +14,10 @@ public sealed record GoogleVenueBlock(
     IReadOnlyList<string> Types,
     string? Phone = null,
     string? Website = null,
-    string? OpeningHours = null);
+    string? OpeningHours = null,
+    string? Cuisine = null,
+    string? OutdoorSeating = null,
+    string? InternetAccess = null);
 
 public sealed record NereyeVenueBlock(
     Guid? VenueId,
@@ -33,6 +36,7 @@ public sealed record VenueDetailDto(
     GoogleVenueBlock Google,
     NereyeVenueBlock Nereye,
     IReadOnlyList<CultureEventDto> Events,
-    string? Note);
+    string? Note,
+    IReadOnlyList<string>? AmenityChips = null);
 
 public sealed record CultureEventDto(Guid Id, string Title, DateTime StartsAt, DateTime? EndsAt);

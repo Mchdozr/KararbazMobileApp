@@ -1,4 +1,5 @@
-import { RADIUS_OPTIONS, VIBES, vibeLabel } from '@/lib/constants';
+import { RadiusPicker } from '@/components/RadiusPicker';
+import { VIBES, vibeLabel } from '@/lib/constants';
 import { useFilters } from '@/lib/filters';
 import { colors, fonts, radii } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,22 +25,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
         </View>
         <ScrollView contentContainerStyle={styles.body}>
           <Text style={styles.label}>Mesafe</Text>
-          <View style={styles.row}>
-            {RADIUS_OPTIONS.map((opt) => {
-              const on = filters.radiusMeters === opt.meters;
-              return (
-                <Pressable
-                  key={opt.meters}
-                  style={[styles.chip, on && styles.chipOn]}
-                  onPress={() => filters.setRadius(opt.meters)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${opt.label} ${opt.sub}`}
-                  accessibilityState={{ selected: on }}>
-                  <Text style={[styles.chipText, on && styles.chipTextOn]}>{opt.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <RadiusPicker meters={filters.radiusMeters} onChange={filters.setRadius} />
           <Pressable
             style={[styles.toggle, filters.openNow && styles.toggleOn]}
             onPress={() => filters.setOpenNow(!filters.openNow)}

@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Nereye.Application.Places;
+using Nereye.Domain.Geo;
 using Nereye.Domain.Places;
 
 namespace Nereye.Infrastructure.Places;
@@ -33,6 +34,7 @@ public sealed class GooglePlacesClient : IPlacesClient
         CancellationToken cancellationToken = default)
     {
         var types = IntentPlaceTypes.GoogleTypes(intent);
+        var radius = Math.Min(SearchRadius.Clamp(radiusMeters), 50_000);
         var body = new
         {
             includedTypes = types,
@@ -42,7 +44,7 @@ public sealed class GooglePlacesClient : IPlacesClient
                 circle = new
                 {
                     center = new { latitude, longitude },
-                    radius = (double)radiusMeters
+                    radius = (double)radius
                 }
             }
         };
@@ -100,6 +102,38 @@ public sealed class GooglePlacesClient : IPlacesClient
         response.EnsureSuccessStatusCode();
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
         return ParseList(json);
+    }
+
+    public async Task<string?> FindPhotoAsync(
+        string name,
+        double latitude,
+        double longitude,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        try
+        {
+            var hits = await TextSearchAsync(name, latitude, longitude, cancellationToken);
+            foreach (var hit in hits)
+            {
+                var distance = GeoMath.HaversineMeters(latitude, longitude, hit.Latitude, hit.Longitude);
+                var photo = PlacePhoto.FirstTrusted([hit.PhotoReference]);
+                if (distance <= 120 && photo is not null)
+                {
+                    return photo;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+
+        return null;
     }
 
     private void ApplyHeaders(HttpRequestMessage request, string fieldMask)

@@ -77,7 +77,10 @@ public sealed class VenueQueryService : IVenueQueryService
             place.Types,
             place.Phone,
             place.Website,
-            place.OpeningHoursText);
+            place.OpeningHoursText,
+            place.Cuisine,
+            place.OutdoorSeating,
+            place.InternetAccess);
 
         var nereye = new NereyeVenueBlock(
             overlay?.Id,
@@ -97,7 +100,7 @@ public sealed class VenueQueryService : IVenueQueryService
             .ToList() ?? [];
 
         var note = PlaceBlurb.Compose(place, 0, overlay?.Tags.Select(t => t.Tag).ToList());
-        return new VenueDetailDto(placeId, google, nereye, events, note);
+        return new VenueDetailDto(placeId, google, nereye, events, note, PlaceAmenityChips.From(place));
     }
 
     public async Task UpdateOwnerAsync(
@@ -153,6 +156,30 @@ public sealed class VenueQueryService : IVenueQueryService
         return venue;
     }
 
+    public async Task<string?> GetPhotoAsync(string placeId, CancellationToken cancellationToken = default)
+    {
+        var overlay = await _db.Venues
+            .AsSplitQuery()
+            .Include(v => v.Photos)
+            .FirstOrDefaultAsync(v => v.GooglePlaceId == placeId, cancellationToken);
+        var owner = overlay?.Photos.Select(p => p.Url).FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+        if (!string.IsNullOrWhiteSpace(owner))
+        {
+            return PlaceMedia.Url(owner, null);
+        }
+
+        var place = await _cache.GetOrSetAsync(
+            PlacesCacheKey.Details(placeId),
+            DetailsTtl,
+            async ct =>
+            {
+                var found = await _places.DetailsAsync(placeId, ct);
+                return found is null ? null : await _photos.EnrichOneAsync(found, ct);
+            },
+            cancellationToken);
+        return PlaceMedia.Url(null, place?.PhotoReference);
+    }
+
     public async Task<IReadOnlyList<RecommendationItemDto>> SearchAsync(
         string query,
         double latitude,
@@ -165,8 +192,7 @@ public sealed class VenueQueryService : IVenueQueryService
             TimeSpan.FromMinutes(15),
             async ct =>
             {
-                var found = await _places.TextSearchAsync(query, latitude, longitude, ct);
-                return await _photos.EnrichAsync(found, ct);
+                return await _places.TextSearchAsync(query, latitude, longitude, ct);
             },
             cancellationToken);
 

@@ -8,7 +8,7 @@ export function PromoBanner({ onOpenNow }: { onOpenNow: () => void }) {
   return (
     <Pressable style={styles.wrap} onPress={onOpenNow}>
       <Image source={INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-      <LinearGradient colors={['rgba(28,20,16,0.15)', 'rgba(28,20,16,0.78)']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['rgba(6,78,59,)0.15)', 'rgba(6,78,59,)0.78)']} style={StyleSheet.absoluteFill} />
       <View style={styles.copy}>
         <Text style={styles.kicker}>Şimdi açık</Text>
         <Text style={styles.title}>Sahil, kahve,{'\n'}canlı bir masa.</Text>

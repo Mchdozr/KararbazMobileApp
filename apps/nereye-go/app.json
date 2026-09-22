@@ -20,7 +20,7 @@
     "android": {
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E24C1F",
+        "backgroundColor": "#f4dfbf",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -43,7 +43,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#F4EFE6"
+          "backgroundColor": "#f4dfbf"
         }
       ],
       "expo-secure-store",

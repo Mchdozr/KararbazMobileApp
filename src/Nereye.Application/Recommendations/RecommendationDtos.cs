@@ -9,7 +9,9 @@ public sealed record RecommendationQuery(
     int RadiusMeters,
     bool OpenNowOnly,
     IReadOnlyList<VibeTag> Vibes,
-    Guid? UserId);
+    Guid? UserId,
+    int Skip = 0,
+    int Take = 20);
 
 public sealed record RecommendationItemDto(
     string PlaceId,
@@ -34,4 +36,5 @@ public sealed record CultureEventDto(Guid Id, string Title, DateTime StartsAt, D
 public sealed record RecommendationResponse(
     IReadOnlyList<RecommendationItemDto> Items,
     string Geohash,
-    string Attribution);
+    string Attribution,
+    bool HasMore = false);

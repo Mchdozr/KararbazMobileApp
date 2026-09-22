@@ -21,7 +21,10 @@ public class NominatimPlaceMapperTests
             "extratags": {
               "wikimedia_commons": "File:Osmanbey in July 2024.jpg",
               "website": "https://moc.example/sisli",
-              "wikidata": "Q42"
+              "wikidata": "Q42",
+              "cuisine": "coffee_shop",
+              "outdoor_seating": "yes",
+              "internet_access": "wlan"
             }
           },
           {
@@ -72,6 +75,9 @@ public class NominatimPlaceMapperTests
         Assert.Contains("Osmanbey", items[0].PhotoReference);
         Assert.Equal("https://moc.example/sisli", items[0].Website);
         Assert.Equal("Q42", items[0].Wikidata);
+        Assert.Equal("coffee_shop", items[0].Cuisine);
+        Assert.Equal("yes", items[0].OutdoorSeating);
+        Assert.Equal("wlan", items[0].InternetAccess);
     }
 
     [Fact]

@@ -80,6 +80,15 @@ public sealed class ApiFlowTests
     }
 
     [Fact]
+    public async Task Place_photo_returns_existing_media()
+    {
+        var response = await _client.GetAsync("/api/places/nereye:petra/photo");
+        response.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Contains("/media/venues/petra", doc.RootElement.GetProperty("photoUrl").GetString());
+    }
+
+    [Fact]
     public async Task OpenNow_excludes_closed_opera_kahve()
     {
         var all = await _client.GetAsync("/api/recommendations?lat=40.9885&lng=29.0250&intent=Kahve&radiusMeters=1500");

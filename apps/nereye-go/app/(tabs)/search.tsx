@@ -4,7 +4,9 @@ import { SearchingOverlay } from '@/components/SearchingOverlay';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { emptySearch, friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
+import { GeoSuggestGroup } from '@/components/GeoSuggestRow';
 import { api } from '@/lib/api';
+import { geoChip, type GeoHit } from '@/lib/geo-hit';
 import { loadRecentSearches, pushRecentSearch } from '@/lib/recent-searches';
 import { debounceMs, shouldSearch } from '@/lib/search-query';
 import { colors, fonts } from '@/lib/theme';
@@ -21,7 +23,7 @@ export default function Search() {
   const params = useLocalSearchParams<{ q?: string }>();
   const [q, setQ] = useState(params.q ?? '');
   const [items, setItems] = useState<VenueCard[]>([]);
-  const [suggest, setSuggest] = useState<{ label: string; latitude: number; longitude: number }[]>([]);
+  const [suggest, setSuggest] = useState<GeoHit[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,7 +61,7 @@ export default function Search() {
             return;
           }
           setItems(venues);
-          setSuggest(geo.slice(0, 5));
+          setSuggest(geo.slice(0, 8));
           setEmpty(venues.length === 0 && geo.length === 0);
           setError(null);
           setRecent(await pushRecentSearch(q.trim()));
@@ -109,22 +111,17 @@ export default function Search() {
             ))}
           </View>
         ) : null}
-        {suggest.map((s) => (
-          <Pressable
-            key={`${s.label}-${s.latitude}`}
-            style={styles.recentRow}
-            onPress={() => filters.setLoc(s.latitude, s.longitude, s.label, true)}
-            accessibilityRole="button">
-            <Ionicons name="location-outline" size={16} color={colors.coral} />
-            <Text style={styles.recentText}>{s.label}</Text>
-          </Pressable>
-        ))}
+        <GeoSuggestGroup
+          title="Konumlar"
+          hits={suggest}
+          from={{ lat: filters.lat, lng: filters.lng }}
+          onPress={(hit) => filters.setLoc(hit.latitude, hit.longitude, geoChip(hit), true)}
+        />
         {empty ? <EmptyState title={emptySearch(q.trim())} /> : null}
-        <View style={styles.grid}>
+        {items.length ? <Text style={styles.kicker}>Mekanlar</Text> : null}
+        <View style={styles.list}>
           {items.map((card) => (
-            <View key={card.placeId} style={styles.cell}>
-              <VenueProductCard card={card} intent={filters.intent} />
-            </View>
+            <VenueProductCard key={card.placeId} card={card} intent={filters.intent} />
           ))}
         </View>
       </ScrollView>
@@ -150,9 +147,15 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: 14, color: colors.ink, fontSize: 16, minHeight: 44 },
   wrap: { padding: 20, paddingBottom: 48 },
   recent: { marginBottom: 12, gap: 4 },
-  kicker: { color: colors.muted, fontWeight: '700', marginBottom: 8 },
+  kicker: {
+    color: colors.muted,
+    fontWeight: '700',
+    marginBottom: 10,
+    letterSpacing: 1,
+    fontSize: 12,
+    textTransform: 'uppercase',
+  },
   recentRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, minHeight: 44 },
   recentText: { color: colors.ink, fontWeight: '600' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  cell: { width: '47%' },
+  list: { gap: 16 },
 });

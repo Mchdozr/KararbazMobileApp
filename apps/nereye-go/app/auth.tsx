@@ -1,8 +1,9 @@
+import { BrandLogo } from '@/components/BrandLogo';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { api } from '@/lib/api';
 import { markOnboarded, getOnboardedAt } from '@/lib/onboard';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors } from '@/lib/theme';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -60,8 +61,8 @@ export default function AuthScreen() {
     <View style={styles.bg}>
       <View style={[styles.hero, { paddingTop: insets.top + 24 }]}>
         <Image source={INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <LinearGradient colors={['rgba(28,20,16,0.2)', 'rgba(28,20,16,0.82)']} style={StyleSheet.absoluteFill} />
-        <Text style={styles.brand}>Nereye</Text>
+        <LinearGradient colors={['rgba(6,78,59,)0.2)', 'rgba(6,78,59,)0.82)']} style={StyleSheet.absoluteFill} />
+        <BrandLogo size={72} />
         <Text style={styles.sub}>Karar otuz saniye.</Text>
       </View>
       <View style={styles.card}>
@@ -117,8 +118,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   hero: { height: 280, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 28 },
-  brand: { fontFamily: fonts.display, fontSize: 44, color: colors.white },
-  sub: { marginTop: 6, color: colors.coralSoft, fontSize: 16 },
+  sub: { marginTop: 10, color: colors.coralSoft, fontSize: 16 },
   card: {
     margin: 20,
     marginTop: -20,
