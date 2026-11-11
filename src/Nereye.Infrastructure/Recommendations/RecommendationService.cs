@@ -151,7 +151,8 @@ public sealed class RecommendationService : IRecommendationService
                 PlaceMedia.Url(overlay?.Photos.FirstOrDefault()?.Url, place.PhotoReference),
                 overlay?.Tags.Select(t => t.Tag).ToList() ?? [],
                 events,
-                PlaceBlurb.Compose(place, distance, overlay?.Tags.Select(t => t.Tag).ToList()));
+                PlaceBlurb.Compose(place, distance, overlay?.Tags.Select(t => t.Tag).ToList()),
+                place.Cuisine);
         }).Where(i => i is not null).Cast<RecommendationItemDto>().ToList();
 
         var attribution = snapshots.FirstOrDefault()?.Attribution ?? "Harita verisi: OpenStreetMap";

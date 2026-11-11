@@ -1,6 +1,6 @@
 export const RADIUS_MIN_M = 200;
 export const RADIUS_MAX_M = 100_000;
-export const RADIUS_DEFAULT_M = 1500;
+export const RADIUS_DEFAULT_M = 5000;
 
 export function clampRadius(meters: number) {
   if (!Number.isFinite(meters) || meters <= 0) {

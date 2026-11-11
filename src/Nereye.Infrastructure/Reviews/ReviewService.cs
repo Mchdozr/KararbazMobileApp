@@ -168,7 +168,8 @@ public sealed class ReviewService : IReviewService
                 PlaceMedia.Url(venue.Photos.FirstOrDefault()?.Url, place.PhotoReference),
                 venue.Tags.Select(t => t.Tag).ToList(),
                 [],
-                PlaceBlurb.Compose(place, 0, venue.Tags.Select(t => t.Tag).ToList())));
+                PlaceBlurb.Compose(place, 0, venue.Tags.Select(t => t.Tag).ToList()),
+                place.Cuisine));
         }
 
         return items;

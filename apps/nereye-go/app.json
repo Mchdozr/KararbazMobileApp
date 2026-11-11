@@ -18,6 +18,8 @@
       }
     },
     "android": {
+      "package": "com.mchdozr.nereye",
+      "versionCode": 2,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#f4dfbf",
@@ -56,12 +58,19 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Profil fotoğrafın için galeriye bakarız."
+          "photosPermission": "Profil fotoğrafın için galeriye bakarız.",
+          "microphonePermission": false
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "95d89009-88a8-47b6-95f9-32bc87fd83cd"
+      }
     }
   }
 }

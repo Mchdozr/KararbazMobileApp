@@ -76,7 +76,7 @@ export default function Onboarding() {
             accessibilityState={{ selected: picked.includes(i) }}
             accessibilityLabel={intentLabel(i)}>
             <Image source={INTENT_PHOTOS[i]} style={StyleSheet.absoluteFill} contentFit="cover" />
-            <LinearGradient colors={['transparent', 'rgba(6,78,59,)0.72)']} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['transparent', 'rgba(15,20,25,0.78)']} style={StyleSheet.absoluteFill} />
             <Text style={styles.tileText}>{intentLabel(i)}</Text>
           </Pressable>
         ))}

@@ -16,7 +16,7 @@ export function setApiBase(url: string) {
 }
 
 export async function pickReachableApiBase(saved?: string | null) {
-  const candidates = [DEFAULT_API, saved, 'http://192.168.1.248:5079']
+  const candidates = [DEFAULT_API, saved, 'http://192.168.110.84:5079', 'http://127.0.0.1:5079']
     .map((u) => u?.replace(/\/$/, '') ?? '')
     .filter((u, i, all) => u.startsWith('http') && all.indexOf(u) === i);
   for (const base of candidates) {

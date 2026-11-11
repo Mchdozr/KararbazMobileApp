@@ -18,7 +18,19 @@ export async function detectLocation(): Promise<GeoFix | null> {
   if (perm.status !== 'granted') {
     return null;
   }
-  const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+  let pos: Location.LocationObject | null = null;
+  try {
+    pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+  } catch {
+    try {
+      pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    } catch {
+      pos = null;
+    }
+  }
+  if (!pos) {
+    return null;
+  }
   const lat = pos.coords.latitude;
   const lng = pos.coords.longitude;
   return { lat, lng, label: await reverseLabel(lat, lng) };

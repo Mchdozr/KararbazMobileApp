@@ -39,9 +39,9 @@ public sealed class OverpassPlacesClient : IPlacesClient
             "",
             IntentPlaceTypes.OsmTags(intent).Select(t =>
                 $"nwr[\"{Escape(t.Key)}\"=\"{Escape(t.Value)}\"](around:{radius.ToString(CultureInfo.InvariantCulture)},{Fmt(latitude)},{Fmt(longitude)});"));
-        var query = $"[out:json][timeout:18];({filters});out center 80;";
+        var query = $"[out:json][timeout:25];({filters});out center 150;";
         var json = await PostAsync(query, cancellationToken);
-        return ParseList(json, latitude, longitude).Take(60).ToList();
+        return ParseList(json, latitude, longitude).Take(120).ToList();
     }
 
     public async Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default)
@@ -100,7 +100,7 @@ public sealed class OverpassPlacesClient : IPlacesClient
 
                 return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
             {
                 last = ex;
                 _log.LogWarning(ex, "Overpass endpoint failed {Uri}", uri);

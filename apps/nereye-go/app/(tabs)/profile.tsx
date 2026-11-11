@@ -158,7 +158,7 @@ export default function Profile() {
       <StatusBar style="light" />
       <View style={styles.hero}>
         <Image source={INTENT_PHOTOS[heroIntent] ?? INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <LinearGradient colors={['rgba(6,78,59,0.15)', 'rgba(6,78,59,0.78)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(15,20,25,0.15)', 'rgba(15,20,25,0.78)']} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroCopy, { paddingTop: insets.top + 12 }]}>
           <Text style={styles.kicker}>Profil</Text>
           <Text style={styles.heroLine}>Karar tarzın.</Text>
@@ -260,7 +260,7 @@ export default function Profile() {
                 return (
                   <Pressable key={intent} onPress={() => toggleIntent(intent)} style={[styles.tile, on && styles.tileOn]}>
                     <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />
-                    <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={StyleSheet.absoluteFill} />
+                    <LinearGradient colors={['transparent', 'rgba(15,20,25,0.78)']} style={StyleSheet.absoluteFill} />
                     {on ? (
                       <View style={styles.check}>
                         <Ionicons name="checkmark" size={14} color={colors.white} />
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   hero: { height: 196, backgroundColor: colors.espresso },
   heroCopy: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 20, paddingBottom: 36 },
   kicker: {
-    color: colors.coralSoft,
+    color: colors.sage,
     fontWeight: '700',
     letterSpacing: 1.4,
     fontSize: 11,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 999,
   },
-  badgeText: { color: colors.espresso, fontWeight: '800', fontSize: 12 },
+  badgeText: { color: colors.ink, fontWeight: '800', fontSize: 12 },
   loc: {
     flexDirection: 'row',
     alignItems: 'center',

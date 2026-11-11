@@ -32,7 +32,7 @@ builder.Services.AddRateLimiter(o =>
     o.AddFixedWindowLimiter("osm", opt =>
     {
         opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 90;
+        opt.PermitLimit = 400;
         opt.QueueLimit = 0;
     });
 });

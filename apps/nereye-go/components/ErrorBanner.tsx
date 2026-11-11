@@ -23,6 +23,6 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
-  text: { color: colors.espresso, fontFamily: fonts.sans },
+  text: { color: colors.ink, fontFamily: fonts.sans },
   retry: { color: colors.coral, fontWeight: '800' },
 });

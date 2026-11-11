@@ -3,7 +3,9 @@ import test from 'node:test';
 import { emptyDiscover, emptyMap, emptyNearby, emptySearch, friendlyError } from './empty.ts';
 import { geoChip, geoKindIcon, geoKindLabel, geoSubtitle, mahalleLine } from './geo-hit.ts';
 import { parseOpeningHours } from './hours.ts';
+import { appleDirectionsUrl, directionsUrl } from './maps-url.ts';
 import { formatDuration, formatRouteLine } from './route.ts';
+import { dishKind, fallbackPool, pickIndex } from './dish-kind.ts';
 import { hashSeed, placeholderInitials, placeholderPalette } from './placeholder.ts';
 import { clampRadius, kmToMeters } from './radius.ts';
 import { debounceMs, shouldSearch } from './search-query.ts';
@@ -78,9 +80,34 @@ test('radius accepts values above 8 km', () => {
   assert.equal(clampRadius(250_000), 100_000);
 });
 
+test('external map uses the selected car or walk mode', () => {
+  assert.match(directionsUrl(41, 29, 41.01, 28.97, 'driving'), /travelmode=driving/);
+  assert.match(directionsUrl(41, 29, 41.01, 28.97, 'foot'), /travelmode=walking/);
+  assert.match(appleDirectionsUrl(41, 29, 41.01, 28.97, 'driving'), /dirflg=d/);
+  assert.match(appleDirectionsUrl(41, 29, 41.01, 28.97, 'foot'), /dirflg=w/);
+  assert.match(appleDirectionsUrl(41, 29, 41.01, 28.97, 'driving'), /saddr=41\.01,28\.97/);
+});
+
 test('route duration formats minutes', () => {
   assert.equal(formatDuration(90), '2 dk');
   assert.equal(formatRouteLine(850, 720), '12 dk · 850 m');
+});
+
+test('dish image follows the service', () => {
+  assert.equal(dishKind('Beyoğlu Halk Doner'), 'doner');
+  assert.equal(dishKind('Udonya Japanese Restaurant'), 'noodles');
+  assert.equal(dishKind('Zübeyir Ocakbaşı'), 'kebab');
+  assert.equal(dishKind('Çıtır Pub'), 'pub');
+  assert.equal(dishKind('Lobby Lounge'), 'lounge');
+  assert.equal(dishKind('Mario', 'pizza'), 'pizza');
+  assert.equal(dishKind('HD İskender', 'kebab'), 'kebab');
+  assert.equal(dishKind('Koço', 'turkish;seafood'), 'seafood');
+  assert.equal(dishKind('Miniatürk Müzesi', 'turkish'), 'museum');
+  assert.equal(dishKind('Miniatürk'), 'museum');
+  assert.equal(dishKind('Şişli Parkı'), 'park');
+  assert.equal(fallbackPool(null, 'Gece'), 'night');
+  const picks = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => pickIndex(id, 6));
+  assert.ok(new Set(picks).size > 1);
 });
 
 test('placeholder seed is unique per place', () => {

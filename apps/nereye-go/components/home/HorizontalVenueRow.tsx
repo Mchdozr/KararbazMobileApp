@@ -35,7 +35,7 @@ export function HorizontalVenueRow({
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {items.slice(0, 8).map((card, i) => (
-          <VenueProductCard key={card.placeId} card={card} width={i === 0 ? 220 : 176} featured={i === 0} intent={intent} />
+          <VenueProductCard key={card.placeId} card={card} width={i === 0 ? 220 : 176} featured={i === 0} intent={card.intent ?? intent} />
         ))}
       </ScrollView>
     </View>
@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: fonts.display, fontSize: 24, color: colors.ink },
   sub: { color: colors.muted, marginTop: 2, fontSize: 13 },
-  all: { color: colors.coral, fontWeight: '700', fontSize: 14 },
+  all: { color: colors.sage, fontWeight: '700', fontSize: 14 },
   row: { paddingHorizontal: 20, gap: 12, paddingBottom: 4 },
 });

@@ -61,7 +61,7 @@ export default function AuthScreen() {
     <View style={styles.bg}>
       <View style={[styles.hero, { paddingTop: insets.top + 24 }]}>
         <Image source={INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <LinearGradient colors={['rgba(6,78,59,)0.2)', 'rgba(6,78,59,)0.82)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(15,20,25,0.2)', 'rgba(15,20,25,0.82)']} style={StyleSheet.absoluteFill} />
         <BrandLogo size={72} />
         <Text style={styles.sub}>Karar otuz saniye.</Text>
       </View>
@@ -118,7 +118,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   hero: { height: 280, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 28 },
-  sub: { marginTop: 10, color: colors.coralSoft, fontSize: 16 },
+  sub: { marginTop: 10, color: colors.muted, fontSize: 16 },
   card: {
     margin: 20,
     marginTop: -20,

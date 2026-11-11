@@ -224,7 +224,8 @@ public sealed class VenueQueryService : IVenueQueryService
                 PlaceMedia.Url(overlay?.Photos.FirstOrDefault()?.Url, p.PhotoReference),
                 overlay?.Tags.Select(t => t.Tag).ToList() ?? [],
                 [],
-                PlaceBlurb.Compose(p, distance, overlay?.Tags.Select(t => t.Tag).ToList()));
+                PlaceBlurb.Compose(p, distance, overlay?.Tags.Select(t => t.Tag).ToList()),
+                p.Cuisine);
         }).ToList();
     }
 }

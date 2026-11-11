@@ -7,20 +7,18 @@ import {
   DMSans_500Medium,
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
-import { Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 
 const navTheme = {
-  ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, primary: colors.coral, background: colors.bg, card: colors.surface },
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, primary: colors.coral, background: colors.bg, card: colors.surface, text: colors.ink, border: colors.line },
 };
 
 export default function RootLayout() {
   const [loaded] = useFonts({
-    Fraunces_700Bold,
     DMSans_400Regular,
     DMSans_500Medium,
     DMSans_700Bold,
@@ -38,7 +36,7 @@ export default function RootLayout() {
     <AppErrorBoundary>
       <SessionProvider>
         <ThemeProvider value={navTheme}>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
           <Stack
             screenOptions={{
               headerTintColor: colors.ink,

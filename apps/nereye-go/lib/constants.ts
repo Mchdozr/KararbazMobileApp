@@ -1,4 +1,4 @@
-export const ACCENT = '#064e3b';
+export const ACCENT = '#FF6B4A';
 export const KADIKOY = { lat: 40.9885, lng: 29.025 };
 
 export const INTENTS = ['Kahve', 'Yemek', 'Eglence', 'Kultur', 'AcikHava', 'Gece'] as const;
@@ -52,10 +52,11 @@ export const RADIUS_OPTIONS = [
   { meters: 800, label: '0.8 km', sub: 'Yürüme' },
   { meters: 1500, label: '1.5 km', sub: 'Mahalle' },
   { meters: 3000, label: '3 km', sub: 'İlçe' },
+  { meters: 5000, label: '5 km', sub: 'Çevre' },
   { meters: 8000, label: '8 km', sub: 'Şehir' },
   { meters: 15000, label: '15 km', sub: 'Geniş' },
   { meters: 25000, label: '25 km', sub: 'Metropol' },
   { meters: 50000, label: '50 km', sub: 'Bölge' },
 ] as const;
 
-export const DEFAULT_API = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.248:5079';
+export const DEFAULT_API = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.110.84:5079';

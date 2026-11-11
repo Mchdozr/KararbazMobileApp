@@ -1,4 +1,5 @@
 import { VenueImage } from '@/components/VenueImage';
+import { rememberOpenedVenue } from '@/lib/opened-venue';
 import { vibeText } from '@/lib/constants';
 import { mahalleLine } from '@/lib/geo-hit';
 import { colors, fonts, radii } from '@/lib/theme';
@@ -29,7 +30,7 @@ export function VenueProductCard({
   card,
   width,
   featured = false,
-  intent: _intent,
+  intent,
 }: {
   card: VenueCard;
   width?: number;
@@ -53,7 +54,10 @@ export function VenueProductCard({
       onPressOut={() => {
         scale.value = withTiming(1, { duration: 220 });
       }}
-      onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId } })}
+      onPress={() => {
+        rememberOpenedVenue(card);
+        router.push({ pathname: '/venue/[id]', params: { id: card.placeId } });
+      }}
       style={[styles.card, width ? { width } : { width: '100%' }, style]}
       accessibilityRole="button"
       accessibilityLabel={`${card.name}${rating ? `, puan ${rating}` : ''}`}>
@@ -63,10 +67,12 @@ export function VenueProductCard({
           photoUrl={card.photoUrl}
           photoReference={card.photoReference}
           name={card.name}
+          cuisine={card.cuisine}
+          intent={intent}
           style={StyleSheet.absoluteFill}
           radius={radii.md}
         />
-        <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={styles.fade} />
+        <LinearGradient colors={['transparent', 'rgba(15,20,25,0.78)']} style={styles.fade} />
         {card.kind === 'Sponsored' ? <Text style={styles.boost}>Öne çıkan</Text> : null}
         <View style={styles.badges}>
           <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text>
@@ -140,7 +146,7 @@ const styles = StyleSheet.create({
   },
   pill: {
     color: colors.white,
-    backgroundColor: 'rgba(6,78,59,0.45)',
+    backgroundColor: 'rgba(15,20,25,0.55)',
     fontSize: 11,
     fontWeight: '700',
     paddingHorizontal: 8,
@@ -148,8 +154,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     overflow: 'hidden',
   },
-  open: { backgroundColor: colors.sage },
-  closed: { backgroundColor: colors.coral },
+  open: { backgroundColor: colors.coral },
+  closed: { backgroundColor: colors.espresso },
   onPhoto: {
     position: 'absolute',
     left: 12,
@@ -161,7 +167,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingHorizontal: 2 },
-  star: { color: colors.gold, fontWeight: '800', fontSize: 13 },
+  star: { color: colors.sage, fontWeight: '800', fontSize: 13 },
   addr: { flex: 1, color: colors.muted, fontSize: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6, paddingHorizontal: 2 },
   chip: {

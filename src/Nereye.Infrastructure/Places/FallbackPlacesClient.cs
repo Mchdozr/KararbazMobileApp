@@ -43,7 +43,15 @@ public sealed class FallbackPlacesClient : IPlacesClient
             _log?.LogWarning(ex, "Places primary failed, using fallback");
         }
 
-        return await _fallback.NearbyAsync(latitude, longitude, intent, radiusMeters, cancellationToken);
+        try
+        {
+            return await _fallback.NearbyAsync(latitude, longitude, intent, radiusMeters, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _log?.LogWarning(ex, "Places fallback failed");
+            return [];
+        }
     }
 
     public async Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default)
@@ -61,7 +69,15 @@ public sealed class FallbackPlacesClient : IPlacesClient
             /* ignore */
         }
 
-        return await _fallback.DetailsAsync(placeId, cancellationToken);
+        try
+        {
+            return await _fallback.DetailsAsync(placeId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _log?.LogWarning(ex, "Place details fallback failed for {PlaceId}", placeId);
+            return null;
+        }
     }
 
     public async Task<IReadOnlyList<PlaceSnapshot>> TextSearchAsync(

@@ -38,7 +38,7 @@ export default function Discover() {
         filters.vibes,
         filters.radiusMeters,
         0,
-        20,
+        40,
       );
       setItems(res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating));
       setHasMore(res.hasMore);
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   chipOn: { borderColor: colors.coral, backgroundColor: colors.coralSoft },
   chipImg: { width: 32, height: 32, borderRadius: 16 },
   chipText: { fontWeight: '700', color: colors.ink },
-  chipTextOn: { color: colors.espresso },
+  chipTextOn: { color: colors.ink },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 20 },
   cell: { width: '47%' },
   more: { marginHorizontal: 20, marginTop: 16, alignItems: 'center', padding: 14, minHeight: 44 },

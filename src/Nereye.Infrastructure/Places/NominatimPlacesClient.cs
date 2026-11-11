@@ -101,7 +101,11 @@ public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
     private async Task<JsonElement> GetJsonAsync(string path, CancellationToken cancellationToken)
     {
         using var response = await _http.GetAsync(path, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            return JsonSerializer.Deserialize<JsonElement>("[]");
+        }
+
         return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
     }
 

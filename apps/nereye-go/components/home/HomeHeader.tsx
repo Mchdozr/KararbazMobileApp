@@ -53,7 +53,7 @@ export function HomeHeader() {
 
   return (
     <View style={[styles.wrap, evening && styles.eveWrap, { paddingTop: insets.top + 10 }]}>
-      <StatusBar style={evening ? 'light' : 'dark'} />
+      <StatusBar style="light" />
       <View style={styles.top}>
         <BrandLogo size={40} />
         <View style={styles.locRow}>
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 8,
   },
-  eveWrap: { backgroundColor: colors.espresso },
+  eveWrap: { backgroundColor: colors.bg },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '58%' },
   loc: {
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   line: { color: colors.muted, marginTop: 4, marginBottom: 10, fontSize: 15 },
-  eveMuted: { color: colors.gold },
+  eveMuted: { color: colors.muted },
   savedRow: { gap: 8, paddingBottom: 12 },
   saved: {
     flexDirection: 'row',
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 999,
   },
-  savedOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
+  savedOn: { backgroundColor: colors.coral, borderColor: colors.coral },
   savedText: { color: colors.ink, fontWeight: '700', fontSize: 12 },
   savedTextOn: { color: colors.white },
   search: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 18,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: colors.line,

@@ -48,9 +48,4 @@ public static class OsrmRoute
 
         return new RouteResult(mode, dist.GetDouble(), dur.GetDouble(), points);
     }
-
-    public static string Profile(string mode) =>
-        mode.Equals("foot", StringComparison.OrdinalIgnoreCase) || mode.Equals("walking", StringComparison.OrdinalIgnoreCase)
-            ? "walking"
-            : "driving";
 }

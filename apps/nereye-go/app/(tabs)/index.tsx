@@ -7,14 +7,14 @@ import { HorizontalVenueRow } from '@/components/home/HorizontalVenueRow';
 import { PromoBanner } from '@/components/home/PromoBanner';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { isEvening } from '@/lib/copy';
-import { intentLabel } from '@/lib/constants';
+import { INTENTS } from '@/lib/constants';
 import { emptyNearby, friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
 import { api } from '@/lib/api';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function Home() {
@@ -25,26 +25,60 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
+  const skipRef = useRef(0);
+
+  const fetchMerged = useCallback(async (skip: number) => {
+    let firstError: unknown = null;
+    const pages = await Promise.all(
+      INTENTS.map(async (intent) => {
+        try {
+          const res = await api.recommend(
+            filters.lat,
+            filters.lng,
+            intent,
+            filters.openNow,
+            filters.vibes,
+            filters.radiusMeters,
+            skip,
+            40,
+          );
+          return { intent, items: res.items, hasMore: res.hasMore, ok: true };
+        } catch (error) {
+          firstError = firstError ?? error;
+          return { intent, items: [] as VenueCard[], hasMore: false, ok: false };
+        }
+      }),
+    );
+    if (pages.every((page) => !page.ok)) {
+      throw firstError ?? new Error('network');
+    }
+    const seen = new Set<string>();
+    const next: VenueCard[] = [];
+    for (const page of pages) {
+      for (const card of page.items) {
+        if (seen.has(card.placeId)) {
+          continue;
+        }
+        if (filters.minRating && (card.nereyeRating ?? 0) < filters.minRating) {
+          continue;
+        }
+        seen.add(card.placeId);
+        next.push({ ...card, intent: page.intent });
+      }
+    }
+    next.sort((a, b) => a.distanceMeters - b.distanceMeters);
+    return { items: next, hasMore: pages.some((page) => page.hasMore) };
+  }, [filters.lat, filters.lng, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setShowAll(false);
     try {
-      const res = await api.recommend(
-        filters.lat,
-        filters.lng,
-        filters.intent,
-        filters.openNow,
-        filters.vibes,
-        filters.radiusMeters,
-        0,
-        20,
-      );
-      const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
-      setItems(next);
-      setHasMore(res.hasMore);
+      const merged = await fetchMerged(0);
+      skipRef.current = 40;
+      setItems(merged.items);
+      setHasMore(merged.hasMore);
     } catch (e) {
       setError(friendlyError(e));
       setItems([]);
@@ -52,7 +86,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [filters.lat, filters.lng, filters.intent, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
+  }, [fetchMerged]);
 
   useEffect(() => {
     void load();
@@ -70,22 +104,13 @@ export default function Home() {
     }
     setLoadingMore(true);
     try {
-      const res = await api.recommend(
-        filters.lat,
-        filters.lng,
-        filters.intent,
-        filters.openNow,
-        filters.vibes,
-        filters.radiusMeters,
-        items.length,
-        20,
-      );
-      const extra = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
+      const merged = await fetchMerged(skipRef.current);
+      skipRef.current += 40;
       setItems((prev) => {
         const seen = new Set(prev.map((c) => c.placeId));
-        return [...prev, ...extra.filter((c) => !seen.has(c.placeId))];
+        return [...prev, ...merged.items.filter((c) => !seen.has(c.placeId))];
       });
-      setHasMore(res.hasMore);
+      setHasMore(merged.hasMore);
     } catch (e) {
       setError(friendlyError(e));
     } finally {
@@ -129,12 +154,12 @@ export default function Home() {
         {featured ? (
           <View style={styles.feat}>
             <Text style={styles.gridTitle}>Sana özel</Text>
-            <VenueProductCard card={featured} featured intent={filters.intent} />
+            <VenueProductCard card={featured} featured intent={featured.intent ?? filters.intent} />
           </View>
         ) : null}
         <HorizontalVenueRow
-          title={`${intentLabel(filters.intent)} · ${filters.label}`}
-          subtitle="Kısa liste"
+          title="Yakınındaki mekanlar"
+          subtitle={`${filters.label} · kahve, yemek, gece`}
           items={special.slice(featured ? 1 : 0)}
           onSeeAll={() => void expand()}
           intent={filters.intent}
@@ -163,7 +188,7 @@ export default function Home() {
             <Text style={styles.gridTitle}>Yakındakiler</Text>
             {organic.map((card) => (
               <View key={`feed-${card.placeId}`} style={styles.listItem}>
-                <VenueProductCard card={card} intent={filters.intent} />
+                <VenueProductCard card={card} intent={card.intent ?? filters.intent} />
               </View>
             ))}
           </View>
@@ -175,7 +200,7 @@ export default function Home() {
             disabled={loadingMore}
             accessibilityRole="button">
             <Text style={styles.moreText}>
-              {loadingMore ? 'Yükleniyor…' : `Daha fazla ${intentLabel(filters.intent).toLowerCase()}`}
+              {loadingMore ? 'Yükleniyor…' : 'Daha fazla mekan'}
             </Text>
           </Pressable>
         ) : null}

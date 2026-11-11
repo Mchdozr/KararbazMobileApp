@@ -22,7 +22,7 @@ export default function TabLayout() {
           title: 'Keşfet',
           tabBarAccessibilityLabel: 'Keşfet',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'compass' : 'compass-outline'} color={color} size={size} />
+            <Ionicons name={focused ? 'compass' : 'compass-outline'} color={typeof color === 'string' ? color : colors.muted} size={size} />
           ),
         }}
       />
@@ -32,7 +32,7 @@ export default function TabLayout() {
           title: 'Harita',
           tabBarAccessibilityLabel: 'Harita',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} color={color} size={size} />
+            <Ionicons name={focused ? 'map' : 'map-outline'} color={typeof color === 'string' ? color : colors.muted} size={size} />
           ),
         }}
       />
@@ -42,7 +42,7 @@ export default function TabLayout() {
           title: 'Ara',
           tabBarAccessibilityLabel: 'Ara',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} color={color} size={size} />
+            <Ionicons name={focused ? 'search' : 'search-outline'} color={typeof color === 'string' ? color : colors.muted} size={size} />
           ),
         }}
       />
@@ -52,7 +52,7 @@ export default function TabLayout() {
           title: 'Niyetler',
           tabBarAccessibilityLabel: 'Niyetler',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'grid' : 'grid-outline'} color={color} size={size} />
+            <Ionicons name={focused ? 'grid' : 'grid-outline'} color={typeof color === 'string' ? color : colors.muted} size={size} />
           ),
         }}
       />
@@ -62,7 +62,7 @@ export default function TabLayout() {
           title: 'Profil',
           tabBarAccessibilityLabel: 'Profil',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} color={color} size={size} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} color={typeof color === 'string' ? color : colors.muted} size={size} />
           ),
         }}
       />

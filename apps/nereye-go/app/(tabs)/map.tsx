@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Region, UrlTile } from 'react-native-maps';
@@ -69,6 +70,30 @@ export default function MapScreen() {
     void load();
   }, [load]);
 
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      void detectLocation().then((fix) => {
+        if (!alive || !fix) {
+          return;
+        }
+        setPicked(null);
+        filters.setLoc(fix.lat, fix.lng, fix.label, false);
+        const next = {
+          latitude: fix.lat,
+          longitude: fix.lng,
+          latitudeDelta: 0.035,
+          longitudeDelta: 0.035,
+        };
+        setRegion(next);
+        mapRef.current?.animateToRegion(next);
+      });
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
+
   const visible = useMemo(() => items.filter((c) => inRegion(c, region)), [items, region]);
   const sheetCards = picked ? [picked] : visible;
 
@@ -96,10 +121,10 @@ export default function MapScreen() {
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
+        showsUserLocation
         onRegionChangeComplete={setRegion}
         onPress={() => setPicked(null)}>
         <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
-        <Marker coordinate={{ latitude: filters.lat, longitude: filters.lng }} title="Sen" pinColor={colors.coral} />
         {visible.map((card) => (
           <Marker
             key={card.placeId}

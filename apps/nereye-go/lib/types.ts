@@ -31,6 +31,8 @@ export type VenueCard = {
   latitude: number;
   longitude: number;
   note?: string | null;
+  intent?: string;
+  cuisine?: string | null;
 };
 
 export type VenueDetail = {

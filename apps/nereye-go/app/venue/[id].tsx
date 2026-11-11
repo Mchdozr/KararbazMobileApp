@@ -5,8 +5,10 @@ import { api, mediaUrl } from '@/lib/api';
 import { vibeText } from '@/lib/constants';
 import { friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
+import { detectLocation } from '@/lib/geo';
 import { parseOpeningHours } from '@/lib/hours';
 import { openDirections } from '@/lib/maps';
+import { openedVenue } from '@/lib/opened-venue';
 import { formatRouteLine } from '@/lib/route';
 import { useSession } from '@/lib/session';
 import { colors, fonts, radii } from '@/lib/theme';
@@ -31,7 +33,8 @@ import {
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 export default function Venue() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const filters = useFilters();
   const { session } = useSession();
   const router = useRouter();
@@ -45,15 +48,42 @@ export default function Venue() {
   const [walk, setWalk] = useState<RouteResult | null>(null);
   const [drive, setDrive] = useState<RouteResult | null>(null);
   const [mode, setMode] = useState<RouteMode>('foot');
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [routeFrom, setRouteFrom] = useState<{ lat: number; lng: number } | null>(null);
   const owner = Boolean(session?.roles.includes('VenueOwner'));
 
   useEffect(() => {
     if (!id) {
       return;
     }
+    const known = openedVenue(id);
+    if (known) {
+      setDetail({
+        placeId: known.placeId,
+        name: known.name,
+        address: known.address,
+        openNow: known.openNow,
+        nereyeRating: known.nereyeRating,
+        nereyeRatingCount: known.nereyeRatingCount,
+        claimed: false,
+        attribution: 'Harita verisi: OpenStreetMap',
+        vibes: known.vibes ?? [],
+        events: [],
+        latitude: known.latitude,
+        longitude: known.longitude,
+        photoUrl: known.photoUrl,
+        photoUrls: known.photoUrl ? [known.photoUrl] : [],
+        note: known.note,
+        cuisine: known.cuisine,
+        amenityChips: [],
+      });
+      setLoading(false);
+    }
     let alive = true;
     (async () => {
-      setLoading(true);
+      if (!known) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const v = await api.venue(id);
@@ -62,10 +92,25 @@ export default function Venue() {
         }
         setDetail(v);
         setSaved(Boolean(v.isFavorite));
-        setReviews(await api.reviews(id));
+        try {
+          setReviews(await api.reviews(id));
+        } catch {
+          if (alive) {
+            setReviews([]);
+          }
+        }
+        const fix = await detectLocation();
+        const originLat = fix?.lat ?? filters.lat;
+        const originLng = fix?.lng ?? filters.lng;
+        if (alive) {
+          setRouteFrom({ lat: originLat, lng: originLng });
+          if (fix) {
+            setMe({ lat: fix.lat, lng: fix.lng });
+          }
+        }
         const [foot, driving] = await Promise.all([
-          api.route(filters.lat, filters.lng, v.latitude, v.longitude, 'foot'),
-          api.route(filters.lat, filters.lng, v.latitude, v.longitude, 'driving'),
+          api.route(originLat, originLng, v.latitude, v.longitude, 'foot'),
+          api.route(originLat, originLng, v.latitude, v.longitude, 'driving'),
         ]);
         if (!alive) {
           return;
@@ -76,7 +121,7 @@ export default function Venue() {
           setSaved(await api.isFavorite(id));
         }
       } catch (e) {
-        if (alive) {
+        if (alive && !known) {
           setError(friendlyError(e));
         }
       } finally {
@@ -160,10 +205,12 @@ export default function Venue() {
                 placeId={detail.placeId}
                 photoUrl={url}
                 name={detail.name}
+                cuisine={detail.cuisine}
+                intent={filters.intent}
                 style={StyleSheet.absoluteFill}
                 radius={0}
               />
-              <LinearGradient colors={['transparent', 'rgba(6,78,59,0.55)']} style={styles.fade} />
+              <LinearGradient colors={['transparent', 'rgba(15,20,25,0.7)']} style={styles.fade} />
             </View>
           ))}
         </ScrollView>
@@ -269,14 +316,15 @@ export default function Venue() {
               strokeColor={colors.coral}
               strokeWidth={4}
             />
-            <Marker coordinate={{ latitude: filters.lat, longitude: filters.lng }} pinColor={colors.coral} />
-            <Marker coordinate={{ latitude: detail.latitude, longitude: detail.longitude }} pinColor={colors.espresso} />
+            {me ? <Marker coordinate={{ latitude: me.lat, longitude: me.lng }} title="Sen" pinColor={colors.coral} /> : null}
+            <Marker coordinate={{ latitude: detail.latitude, longitude: detail.longitude }} title={detail.name} pinColor={colors.sage} />
           </MapView>
         ) : null}
         <Pressable
           style={styles.btn}
           onPress={() => {
-            void openDirections(detail.latitude, detail.longitude, filters.lat, filters.lng);
+            const origin = routeFrom ?? me;
+            void openDirections(detail.latitude, detail.longitude, origin?.lat, origin?.lng, mode);
           }}
           accessibilityRole="button"
           accessibilityLabel="Harici yol tarifi">
@@ -381,11 +429,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     overflow: 'hidden',
   },
-  open: { backgroundColor: colors.sage, color: colors.white },
-  closed: { backgroundColor: colors.coral, color: colors.white },
+  open: { backgroundColor: colors.coral, color: colors.white },
+  closed: { backgroundColor: colors.espresso, color: colors.ink },
   vibe: {
     backgroundColor: colors.coralSoft,
-    color: colors.espresso,
+    color: colors.ink,
     fontWeight: '700',
     paddingHorizontal: 10,
     paddingVertical: 6,

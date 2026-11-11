@@ -1,5 +1,5 @@
 import { KADIKOY } from '@/lib/constants';
-import { clampRadius } from '@/lib/radius';
+import { clampRadius, RADIUS_DEFAULT_M } from '@/lib/radius';
 import type { Preferences } from '@/lib/types';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
@@ -27,7 +27,7 @@ let state: State = {
   intent: 'Kahve',
   openNow: false,
   vibes: [],
-  radiusMeters: 1500,
+  radiusMeters: RADIUS_DEFAULT_M,
   minRating: 0,
 };
 
@@ -72,7 +72,9 @@ export function isLocPinned() {
 export function applyPreferences(p: Preferences) {
   state = {
     ...state,
-    radiusMeters: clampRadius(p.defaultRadiusMeters || state.radiusMeters),
+    radiusMeters: clampRadius(
+      !p.defaultRadiusMeters || p.defaultRadiusMeters === 1500 ? RADIUS_DEFAULT_M : p.defaultRadiusMeters,
+    ),
     vibes: p.vibes?.length ? p.vibes : state.vibes,
     intent: p.intents[0] || state.intent,
   };
@@ -109,7 +111,9 @@ export function useFilters() {
               ...state,
               intent: saved.intent || state.intent,
               vibes: Array.isArray(saved.vibes) ? saved.vibes : state.vibes,
-              radiusMeters: typeof saved.radiusMeters === 'number' ? clampRadius(saved.radiusMeters) : state.radiusMeters,
+              radiusMeters: typeof saved.radiusMeters === 'number'
+                ? clampRadius(saved.radiusMeters === 1500 ? RADIUS_DEFAULT_M : saved.radiusMeters)
+                : state.radiusMeters,
               openNow: Boolean(saved.openNow),
               minRating: typeof saved.minRating === 'number' ? saved.minRating : 0,
             };
@@ -128,7 +132,12 @@ export function useFilters() {
   return {
     ...state,
     setLoc: (lat: number, lng: number, label?: string, pinned = true) => {
-      state = { ...state, lat, lng, label: label || state.label, pinned };
+      const nextLabel = label || state.label;
+      const moved = Math.abs(state.lat - lat) > 0.0008 || Math.abs(state.lng - lng) > 0.0008;
+      if (!moved && nextLabel === state.label && state.pinned === pinned) {
+        return;
+      }
+      state = { ...state, lat, lng, label: nextLabel, pinned };
       emit();
       void persistLoc();
     },
