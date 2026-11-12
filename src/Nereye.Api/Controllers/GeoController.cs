@@ -24,6 +24,14 @@ public sealed class GeoController : ControllerBase{
             return Ok(Array.Empty<GeoHit>());
         }
 
-        return Ok(await _geo.SuggestAsync(query, ct));
+        try
+        {
+            return Ok(await _geo.SuggestAsync(query.Length > 80 ? query[..80] : query, ct));
+        }
+        catch (Exception ex) when (ex is HttpRequestException || (ex is OperationCanceledException && !ct.IsCancellationRequested))
+        {
+            // Öneri servisi yanıt vermiyorsa arama kutusu boş öneriyle çalışmaya devam eder.
+            return Ok(Array.Empty<GeoHit>());
+        }
     }
 }

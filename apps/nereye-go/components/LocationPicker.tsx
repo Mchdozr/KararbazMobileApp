@@ -39,10 +39,19 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
       setHits([]);
       return;
     }
+    let alive = true;
     const id = setTimeout(() => {
-      void api.geoSuggest(t).then(setHits);
+      void api.geoSuggest(t).then((next) => {
+        // Yavaş gelen eski sorgu, yeni yazılanın sonucunu ezmesin.
+        if (alive) {
+          setHits(next);
+        }
+      });
     }, 280);
-    return () => clearTimeout(id);
+    return () => {
+      alive = false;
+      clearTimeout(id);
+    };
   }, [q]);
 
   function pick(lat: number, lng: number, label: string, pinned = true) {
@@ -59,6 +68,8 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
       } else {
         setNote('Konum izni yok. Mahalle yaz veya listeden seç.');
       }
+    } catch {
+      setNote('Konum alınamadı. Mahalle yaz veya listeden seç.');
     } finally {
       setBusy(false);
     }
@@ -85,7 +96,13 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
           returnKeyType="search"
         />
       </View>
-      <Pressable style={styles.gps} onPress={() => void here()} disabled={busy}>
+      <Pressable
+        style={styles.gps}
+        onPress={() => void here()}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Konumumu kullan"
+        accessibilityState={{ busy }}>
         {busy ? <ActivityIndicator color={colors.white} /> : <Ionicons name="navigate" size={16} color={colors.white} />}
         <Text style={styles.gpsText}>Konumum</Text>
       </Pressable>
@@ -98,6 +115,9 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
               <Pressable
                 key={p.id}
                 style={styles.chip}
+                accessibilityRole="button"
+                accessibilityLabel={p.label}
+                accessibilityHint="Silmek için basılı tut"
                 onPress={() => pick(p.latitude, p.longitude, p.label)}
                 onLongPress={() =>
                   Alert.alert(p.label, 'Kayıttan silinsin mi?', [
@@ -120,7 +140,12 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
       <Text style={styles.kicker}>İstanbul’dan seç</Text>
       <View style={styles.grid}>
         {QUICK_PLACES.map((p) => (
-          <Pressable key={p.label} style={styles.quick} onPress={() => pick(p.lat, p.lng, p.label)}>
+          <Pressable
+            key={p.label}
+            style={styles.quick}
+            onPress={() => pick(p.lat, p.lng, p.label)}
+            accessibilityRole="button"
+            accessibilityLabel={p.label}>
             <Text style={styles.quickText}>{p.label}</Text>
           </Pressable>
         ))}
@@ -141,17 +166,19 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
 
       <Text style={styles.kicker}>Şu anki konumu kaydet</Text>
       <View style={styles.saveRow}>
-        <Pressable style={styles.saveBtn} onPress={() => saveHere('home')}>
+        <Pressable style={styles.saveBtn} onPress={() => saveHere('home')} accessibilityRole="button" accessibilityLabel="Ev olarak kaydet">
           <Ionicons name="home-outline" size={16} color={colors.ink} />
           <Text style={styles.saveText}>Ev</Text>
         </Pressable>
-        <Pressable style={styles.saveBtn} onPress={() => saveHere('work')}>
+        <Pressable style={styles.saveBtn} onPress={() => saveHere('work')} accessibilityRole="button" accessibilityLabel="İş olarak kaydet">
           <Ionicons name="briefcase-outline" size={16} color={colors.ink} />
           <Text style={styles.saveText}>İş</Text>
         </Pressable>
-        <Pressable style={styles.saveBtn} onPress={() => saveHere('custom')}>
+        <Pressable style={styles.saveBtn} onPress={() => saveHere('custom')} accessibilityRole="button" accessibilityLabel="Bu konumu kaydet">
           <Ionicons name="bookmark-outline" size={16} color={colors.ink} />
-          <Text style={styles.saveText}>{filters.label}</Text>
+          <Text style={styles.saveText} numberOfLines={1}>
+            {filters.label}
+          </Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -202,6 +229,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    minHeight: 44,
     borderRadius: 999,
   },
   chipText: { color: colors.ink, fontWeight: '700', fontSize: 13 },
@@ -212,6 +240,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 14,
   },
   quickText: { color: colors.ink, fontWeight: '700', fontSize: 13 },
@@ -228,7 +258,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     paddingVertical: 12,
+    paddingHorizontal: 8,
+    minHeight: 44,
     borderRadius: 14,
   },
-  saveText: { color: colors.ink, fontWeight: '700', fontSize: 12 },
+  saveText: { color: colors.ink, fontWeight: '700', fontSize: 12, flexShrink: 1 },
 });

@@ -1,10 +1,10 @@
-import * as SecureStore from 'expo-secure-store';
+import { getItem, removeItem, setItem } from '@/lib/storage';
 
 const KEY = 'nereye.onboardedAt';
 
 export async function getOnboardedAt() {
   try {
-    return await SecureStore.getItemAsync(KEY);
+    return await getItem(KEY);
   } catch {
     return null;
   }
@@ -12,7 +12,7 @@ export async function getOnboardedAt() {
 
 export async function markOnboarded() {
   try {
-    await SecureStore.setItemAsync(KEY, new Date().toISOString());
+    await setItem(KEY, new Date().toISOString());
   } catch {
     /* web */
   }

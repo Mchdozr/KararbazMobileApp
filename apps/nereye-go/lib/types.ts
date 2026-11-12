@@ -75,6 +75,8 @@ export type RouteResult = {
 
 export type ReviewItem = {
   id: string;
+  userId?: string;
+  authorAvatarUrl?: string | null;
   stars: number;
   text?: string | null;
   ownerReply?: string | null;
@@ -99,4 +101,28 @@ export type PromotionItem = {
   endAt: string;
   status: string;
   dailyBudget: number;
+};
+
+export type MyReview = {
+  id: string;
+  placeId: string;
+  venueName: string;
+  stars: number;
+  text?: string | null;
+  tags: string[];
+  photoUrls: string[];
+  ownerReply?: string | null;
+  createdAt: string;
+};
+
+export type Profile = {
+  userId: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  roles: string[];
+  createdAt: string;
+  reviewCount: number;
+  favoriteCount: number;
+  savedPlaceCount: number;
 };

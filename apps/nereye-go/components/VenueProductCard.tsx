@@ -1,7 +1,9 @@
+import { FavoriteButton } from '@/components/FavoriteButton';
 import { VenueImage } from '@/components/VenueImage';
 import { vibeText } from '@/lib/constants';
 import { mahalleLine } from '@/lib/geo-hit';
 import { colors, fonts, radii } from '@/lib/theme';
+import { Ionicons } from '@expo/vector-icons';
 import type { VenueCard } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,7 +58,15 @@ export function VenueProductCard({
       onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId } })}
       style={[styles.card, width ? { width } : { width: '100%' }, style]}
       accessibilityRole="button"
-      accessibilityLabel={`${card.name}${rating ? `, puan ${rating}` : ''}`}>
+      accessibilityHint="Mekan detayını açar"
+      accessibilityLabel={[
+        card.name,
+        rating ? `puan ${rating}` : null,
+        card.distanceMeters >= 0 ? formatDistance(card.distanceMeters) : null,
+        card.openNow === true ? 'açık' : card.openNow === false ? 'kapalı' : null,
+      ]
+        .filter(Boolean)
+        .join(', ')}>
       <View style={[styles.photo, { height: photoH }]}>
         <VenueImage
           placeId={card.placeId}
@@ -67,18 +77,27 @@ export function VenueProductCard({
           radius={radii.md}
         />
         <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={styles.fade} />
-        {card.kind === 'Sponsored' ? <Text style={styles.boost}>Öne çıkan</Text> : null}
         <View style={styles.badges}>
-          <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text>
+          {card.kind === 'Sponsored' ? <Text style={[styles.pill, styles.boost]}>Öne çıkan</Text> : null}
+          {card.distanceMeters >= 0 ? <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text> : null}
           {card.openNow === true ? <Text style={[styles.pill, styles.open]}>Açık</Text> : null}
           {card.openNow === false ? <Text style={[styles.pill, styles.closed]}>Kapalı</Text> : null}
         </View>
+        <FavoriteButton venue={card} style={styles.heart} />
         <Text numberOfLines={2} style={styles.onPhoto}>
           {card.name}
         </Text>
       </View>
       <View style={styles.metaRow}>
-        <Text style={styles.star}>{rating ? `★ ${rating}` : 'Yeni'}</Text>
+        {rating ? (
+          <View style={styles.rating}>
+            <Ionicons name="star" size={12} color={colors.gold} />
+            <Text style={styles.star}>{rating}</Text>
+            {card.nereyeRatingCount > 0 ? <Text style={styles.count}>({card.nereyeRatingCount})</Text> : null}
+          </View>
+        ) : (
+          <Text style={styles.fresh}>Yeni</Text>
+        )}
         {card.address ? (
           <Text numberOfLines={1} style={styles.addr}>
             {mahalleLine(card.address) || card.address}
@@ -118,26 +137,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 88,
   },
-  boost: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: colors.coral,
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radii.pill,
-    overflow: 'hidden',
-  },
+  boost: { backgroundColor: colors.gold, color: colors.espresso },
   badges: {
     position: 'absolute',
     top: 10,
-    right: 10,
+    left: 10,
+    right: 52,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
   },
+  heart: { position: 'absolute', top: 8, right: 8 },
   pill: {
     color: colors.white,
     backgroundColor: 'rgba(6,78,59,0.45)',
@@ -149,7 +159,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   open: { backgroundColor: colors.sage },
-  closed: { backgroundColor: colors.coral },
+  closed: { backgroundColor: 'rgba(40,30,25,0.72)' },
   onPhoto: {
     position: 'absolute',
     left: 12,
@@ -161,7 +171,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingHorizontal: 2 },
-  star: { color: colors.gold, fontWeight: '800', fontSize: 13 },
+  rating: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  star: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 13 },
+  count: { color: colors.muted, fontSize: 12 },
+  fresh: { color: colors.sage, fontFamily: fonts.sansBold, fontSize: 12 },
   addr: { flex: 1, color: colors.muted, fontSize: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6, paddingHorizontal: 2 },
   chip: {

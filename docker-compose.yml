@@ -8,6 +8,13 @@ services:
       POSTGRES_DB: nereye
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nereye"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
   redis:
     image: redis:7
     ports:
@@ -26,9 +33,14 @@ services:
       Database__UseInMemory: "false"
       Redis__UseMemory: "false"
       Places__UseFake: "false"
+    volumes:
+      - media:/app/wwwroot/media/uploads
+      - avatars:/app/wwwroot/media/avatars
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
   admin:
     build:
       context: .
@@ -46,3 +58,9 @@ services:
     depends_on:
       - postgres
       - redis
+
+# Veritabanı ve kullanıcı yüklemeleri `docker compose down` sonrası da kalsın.
+volumes:
+  pgdata:
+  media:
+  avatars:

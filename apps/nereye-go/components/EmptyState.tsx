@@ -1,43 +1,51 @@
-import { colors, fonts, radii } from '@/lib/theme';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button } from '@/components/Button';
+import { colors, fonts } from '@/lib/theme';
+import { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 export function EmptyState({
   title,
+  body,
+  icon = 'compass-outline',
   action,
   onAction,
+  secondary,
+  onSecondary,
 }: {
   title: string;
+  body?: string;
+  icon?: ComponentProps<typeof Ionicons>['name'];
   action?: string;
   onAction?: () => void;
+  secondary?: string;
+  onSecondary?: () => void;
 }) {
   return (
     <View style={styles.wrap}>
+      <View style={styles.icon}>
+        <Ionicons name={icon} size={26} color={colors.sage} />
+      </View>
       <Text style={styles.title}>{title}</Text>
-      {action && onAction ? (
-        <Pressable
-          style={styles.btn}
-          onPress={onAction}
-          accessibilityRole="button"
-          accessibilityLabel={action}
-          hitSlop={8}>
-          <Text style={styles.btnText}>{action}</Text>
-        </Pressable>
-      ) : null}
+      {body ? <Text style={styles.body}>{body}</Text> : null}
+      {action && onAction ? <Button label={action} onPress={onAction} compact style={styles.btn} /> : null}
+      {secondary && onSecondary ? <Button label={secondary} onPress={onSecondary} variant="ghost" compact /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 20, paddingVertical: 16, gap: 10 },
-  title: { color: colors.muted, fontSize: 15, lineHeight: 22, fontFamily: fonts.sans },
-  btn: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.coral,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minHeight: 44,
-    borderRadius: radii.sm,
+  wrap: { paddingHorizontal: 32, paddingVertical: 28, alignItems: 'center', gap: 8 },
+  icon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.coralSoft,
+    alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 6,
   },
-  btnText: { color: colors.white, fontWeight: '800' },
+  title: { color: colors.ink, fontSize: 16, lineHeight: 23, fontFamily: fonts.sansMed, textAlign: 'center' },
+  body: { color: colors.muted, fontSize: 14, lineHeight: 20, fontFamily: fonts.sans, textAlign: 'center' },
+  btn: { marginTop: 8, alignSelf: 'center' },
 });

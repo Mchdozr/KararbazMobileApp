@@ -17,7 +17,19 @@ public sealed class RouteService : IRouteService
         CancellationToken cancellationToken = default)
     {
         var normalized = mode.Equals("driving", StringComparison.OrdinalIgnoreCase) ? "driving" : "foot";
-        var found = await _osrm.FindAsync(fromLat, fromLng, toLat, toLng, normalized, cancellationToken);
+        Domain.Routes.RouteResult? found;
+        try
+        {
+            found = await _osrm.FindAsync(fromLat, fromLng, toLat, toLng, normalized, cancellationToken);
+        }
+        catch (Exception ex) when (
+            ex is HttpRequestException or System.Text.Json.JsonException
+            || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            // Rota bir ek bilgi: dış servis kapalı ya da yavaşsa mekan sayfası rotasız açılır, 500 dönmez.
+            return null;
+        }
+
         if (found is null)
         {
             return null;

@@ -7,11 +7,12 @@ import { isLocPinned, useFilters } from '@/lib/filters';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
 import { useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
+import { toast } from '@/lib/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function HomeHeader() {
@@ -22,6 +23,7 @@ export function HomeHeader() {
   const saved = useSavedPlaces();
   const [sheet, setSheet] = useState(false);
   const [q, setQ] = useState('');
+  const [locating, setLocating] = useState(false);
   const evening = isEvening();
 
   useEffect(() => {
@@ -33,14 +35,16 @@ export function HomeHeader() {
       return;
     }
     let alive = true;
-    void detectLocation().then((fix) => {
-      if (alive && fix && !isLocPinned()) {
-        filters.setLoc(fix.lat, fix.lng, fix.label, false);
-        if (session) {
-          void api.consent('location', true);
+    void detectLocation()
+      .then((fix) => {
+        if (alive && fix && !isLocPinned()) {
+          filters.setLoc(fix.lat, fix.lng, fix.label, false);
+          if (session) {
+            void api.consent('location', true);
+          }
         }
-      }
-    });
+      })
+      .catch(() => {});
     return () => {
       alive = false;
     };
@@ -71,21 +75,30 @@ export function HomeHeader() {
           <Pressable
             style={styles.gps}
             onPress={() => {
-              void detectLocation().then((fix) => {
-                if (fix) {
-                  filters.setLoc(fix.lat, fix.lng, fix.label, false);
-                  if (session) {
-                    void api.consent('location', true);
+              if (locating) {
+                return;
+              }
+              setLocating(true);
+              void detectLocation()
+                .then((fix) => {
+                  if (fix) {
+                    filters.setLoc(fix.lat, fix.lng, fix.label, false);
+                    toast.success(`Konum: ${fix.label}`);
+                    if (session) {
+                      void api.consent('location', true);
+                    }
+                  } else {
+                    toast.info('Konum izni kapalı. Semtini listeden seçebilirsin.');
+                    setSheet(true);
                   }
-                } else {
-                  setSheet(true);
-                }
-              });
+                })
+                .catch(() => toast.error('Konum alınamadı. Tekrar dene.'))
+                .finally(() => setLocating(false));
             }}
             accessibilityRole="button"
             accessibilityLabel="Konumumu kullan"
             hitSlop={8}>
-            <Ionicons name="navigate" size={16} color={colors.coral} />
+            {locating ? <ActivityIndicator size="small" color={colors.coral} /> : <Ionicons name="navigate" size={16} color={colors.coral} />}
           </Pressable>
         </View>
       </View>
@@ -121,6 +134,11 @@ export function HomeHeader() {
           returnKeyType="search"
           accessibilityLabel="Mekan ara"
         />
+        {q ? (
+          <Pressable onPress={() => setQ('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Aramayı temizle">
+            <Ionicons name="close-circle" size={18} color={colors.muted} />
+          </Pressable>
+        ) : null}
       </View>
 
       <Modal visible={sheet} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSheet(false)}>

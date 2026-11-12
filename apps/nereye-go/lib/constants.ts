@@ -59,3 +59,6 @@ export const RADIUS_OPTIONS = [
 ] as const;
 
 export const DEFAULT_API = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.248:5079';
+
+/** Geliştirme sırasında denenecek diğer adresler (Android emülatörü, aynı makine). */
+export const FALLBACK_APIS = ['http://10.0.2.2:5079', 'http://localhost:5079'];

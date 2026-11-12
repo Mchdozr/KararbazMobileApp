@@ -26,7 +26,33 @@ export function emptyDiscover(intent: string) {
   return `Bu mesafede ${name} yok. Filtreyi gevşet.`;
 }
 
+const NETWORK = 'Ağa ulaşılamadı. Bağlantını kontrol edip tekrar dene.';
+
 export function friendlyError(reason: unknown) {
+  // ApiError'a yapısal bakıyoruz (instanceof değil): bu dosya saf kalsın, test edilebilsin.
+  const api = reason as { name?: string; status?: number; kind?: string; message?: string } | null;
+  if (api && api.name === 'ApiError') {
+    if (api.kind === 'timeout') {
+      return 'Sunucu geç yanıt veriyor. Tekrar dene.';
+    }
+    if (api.kind === 'network') {
+      return NETWORK;
+    }
+    if (api.status === 429) {
+      return api.message || 'Çok sık istek. Bir dakika sonra tekrar dene.';
+    }
+    if (api.status === 401) {
+      return api.message || 'Oturum doldu. Giriş yapman yeterli.';
+    }
+    if ((api.status ?? 0) >= 500) {
+      return 'Sunucuda bir sorun var. Biraz sonra tekrar dene.';
+    }
+    if (api.message && api.message.length <= 160) {
+      return api.message;
+    }
+    return 'İstek tamamlanamadı. Tekrar dene.';
+  }
+
   const raw = reason instanceof Error ? reason.message : typeof reason === 'string' ? reason : '';
   if (!raw.trim()) {
     return 'Bir şey ters gitti. Tekrar dene.';
@@ -40,8 +66,9 @@ export function friendlyError(reason: unknown) {
     || lower.includes("couldn't connect")
     || lower.includes('unexpectedexception')
     || lower.includes('timeout')
+    || lower.includes('aborted')
   ) {
-    return 'Ağa ulaşılamadı. Wi-Fi ve API adresini kontrol et.';
+    return NETWORK;
   }
   if (lower.includes('429') || lower.includes('too many')) {
     return 'Çok sık arama. Bir dakika sonra tekrar dene.';

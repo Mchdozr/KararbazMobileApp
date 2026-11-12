@@ -1,6 +1,7 @@
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { SearchingOverlay } from '@/components/SearchingOverlay';
+import { VenueCardSkeleton, VenueRowSkeleton } from '@/components/Skeleton';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HorizontalVenueRow } from '@/components/home/HorizontalVenueRow';
@@ -9,10 +10,13 @@ import { VenueProductCard } from '@/components/VenueProductCard';
 import { isEvening } from '@/lib/copy';
 import { intentLabel } from '@/lib/constants';
 import { emptyNearby, friendlyError } from '@/lib/empty';
+import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
+import { recentAsCard, useRecentVenues } from '@/lib/recent-venues';
 import { api } from '@/lib/api';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -26,6 +30,8 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const recents = useRecentVenues();
+  const favorites = useFavorites();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -98,13 +104,18 @@ export default function Home() {
   const featured = organic[0];
   const special = organic.slice(0, 12);
   const open = organic.filter((c) => c.openNow === true).slice(0, 12);
+  const first = loading && items.length === 0;
+  const recentCards = useMemo(() => recents.map(recentAsCard), [recents]);
 
   return (
     <View style={styles.bg}>
       <HomeHeader />
       <ScrollView
         contentContainerStyle={styles.wrap}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor={colors.coral} />}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading && !first} onRefresh={() => void load()} tintColor={colors.coral} colors={[colors.coral]} />
+        }>
         {isEvening() ? (
           <Pressable
             style={styles.eve}
@@ -113,7 +124,9 @@ export default function Home() {
               goDiscover(filters.intent);
             }}
             accessibilityRole="button">
+            <Ionicons name="moon" size={16} color={colors.gold} />
             <Text style={styles.eveText}>Akşam oldu — şu an açık yerlere bak</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.white} />
           </Pressable>
         ) : null}
         <CategoryGrid selected={filters.intent} onSelect={goDiscover} />
@@ -126,6 +139,17 @@ export default function Home() {
           />
         ) : null}
         {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
+        {first ? (
+          <View accessibilityLabel="Öneriler yükleniyor">
+            <View style={styles.feat}>
+              <Text style={styles.gridTitle}>Sana özel</Text>
+              <VenueCardSkeleton photoHeight={210} />
+            </View>
+            <View style={styles.skelRow}>
+              <VenueRowSkeleton />
+            </View>
+          </View>
+        ) : null}
         {featured ? (
           <View style={styles.feat}>
             <Text style={styles.gridTitle}>Sana özel</Text>
@@ -151,13 +175,23 @@ export default function Home() {
         />
         {!loading && organic.length === 0 && !error ? (
           <EmptyState
+            icon="map-outline"
             title={emptyNearby(filters.intent, filters.label)}
             action="Yarıçapı büyüt"
             onAction={() => {
               filters.setRadius(filters.radiusMeters * 2);
             }}
+            secondary="Konumu değiştir"
+            onSecondary={() => router.push('/places')}
           />
         ) : null}
+        <HorizontalVenueRow
+          title="Kaydettiklerin"
+          items={favorites.cards}
+          onSeeAll={() => router.push('/favorites')}
+          compact
+        />
+        <HorizontalVenueRow title="Son baktıkların" items={recentCards} compact />
         {showAll ? (
           <View style={styles.list}>
             <Text style={styles.gridTitle}>Yakındakiler</Text>
@@ -180,7 +214,7 @@ export default function Home() {
           </Pressable>
         ) : null}
       </ScrollView>
-      <SearchingOverlay visible={loading} intent={filters.intent} />
+      <SearchingOverlay visible={loading && !first} intent={filters.intent} />
     </View>
   );
 }
@@ -195,8 +229,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  eveText: { color: colors.white, fontWeight: '700', fontSize: 13 },
+  eveText: { flex: 1, color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
+  skelRow: { marginTop: 26 },
   feat: { paddingHorizontal: 20, marginTop: 20 },
   gridTitle: {
     marginBottom: 12,
@@ -205,7 +244,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   more: { marginHorizontal: 20, marginTop: 20, alignItems: 'center', padding: 14, minHeight: 44 },
-  moreText: { color: colors.coral, fontWeight: '800' },
+  moreText: { color: colors.coral, fontFamily: fonts.sansBold, fontSize: 15 },
   list: { paddingHorizontal: 20, marginTop: 20 },
   listItem: { marginBottom: 16 },
 });

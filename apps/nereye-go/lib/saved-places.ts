@@ -1,6 +1,6 @@
 import { api } from '@/lib/api';
 import type { SavedPlace } from '@/lib/types';
-import * as SecureStore from 'expo-secure-store';
+import { getItem, removeItem, setItem } from '@/lib/storage';
 import { useEffect, useState } from 'react';
 
 const KEY = 'nereye.savedPlaces';
@@ -15,33 +15,42 @@ function emit() {
 
 async function persist() {
   try {
-    await SecureStore.setItemAsync(KEY, JSON.stringify(items));
+    await setItem(KEY, JSON.stringify(items));
   } catch {
     /* ignore */
   }
 }
 
 function localId() {
-  return `local:${Date.now().toString(36)}`;
+  return `local:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
 export async function hydrateSavedPlaces(authed: boolean) {
   if (!hydrated) {
     hydrated = true;
     try {
-      const raw = await SecureStore.getItemAsync(KEY);
+      const raw = await getItem(KEY);
       if (raw) {
-        items = JSON.parse(raw) as SavedPlace[];
+        const parsed = JSON.parse(raw) as unknown;
+        items = Array.isArray(parsed) ? (parsed as SavedPlace[]) : [];
       }
     } catch {
       items = [];
     }
   }
   if (authed) {
-    const remote = await api.savedPlaces();
-    if (remote.length) {
-      items = remote;
-      await persist();
+    try {
+      const remote = await api.savedPlaces();
+      if (remote.length) {
+        // Misafirken kaydedilenler (local:) sunucudakilerle birlikte kalsın.
+        const localOnly = items.filter(
+          (p) => p.id.startsWith('local:') && !remote.some((r) => r.kind === p.kind && r.label === p.label),
+        );
+        items = [...remote, ...localOnly];
+        await persist();
+      }
+    } catch {
+      /* çevrimdışı: yerel listeyle devam */
     }
   }
   emit();

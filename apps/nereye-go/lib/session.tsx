@@ -1,8 +1,9 @@
 import { api, applySession, hydrateAuth, pickReachableApiBase, setApiBase, setAuthEvents } from '@/lib/api';
 import { DEFAULT_API } from '@/lib/constants';
+import { loadFavorites } from '@/lib/favorites';
 import { applyPreferences } from '@/lib/filters';
 import type { Session } from '@/lib/types';
-import * as SecureStore from 'expo-secure-store';
+import { getItem, removeItem, setItem } from '@/lib/storage';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 type Ctx = {
@@ -19,7 +20,7 @@ const SessionContext = createContext<Ctx | null>(null);
 
 async function save(key: string, value: string) {
   try {
-    await SecureStore.setItemAsync(key, value);
+    await setItem(key, value);
   } catch {
     /* web */
   }
@@ -27,7 +28,7 @@ async function save(key: string, value: string) {
 
 async function remove(key: string) {
   try {
-    await SecureStore.deleteItemAsync(key);
+    await removeItem(key);
   } catch {
     /* web */
   }
@@ -52,22 +53,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const savedBase = await SecureStore.getItemAsync('apiBase');
+        const savedBase = await getItem('apiBase');
         const base = await pickReachableApiBase(savedBase);
         setApiBase(base);
         setApiBaseState(base);
         await save('apiBase', base);
-        const raw = await SecureStore.getItemAsync('session');
+        const raw = await getItem('session');
         if (raw) {
           const parsed = JSON.parse(raw) as Session;
           applySession(parsed);
           setSession(parsed);
-          await hydrateAuth();
-          try {
-            applyPreferences(await api.preferences());
-          } catch {
-            /* guest prefs */
-          }
+          // Açılışı ağ beklemesin: token yenileme ve tercihler arka planda gelir.
+          void hydrateAuth()
+            .then(() => api.preferences())
+            .then(applyPreferences)
+            .catch(() => {});
         }
       } catch {
         setApiBase(DEFAULT_API);
@@ -77,6 +77,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     return () => setAuthEvents({});
   }, []);
+
+  const userId = session?.userId ?? null;
+  useEffect(() => {
+    if (ready) {
+      void loadFavorites(userId).catch(() => {});
+    }
+  }, [ready, userId]);
 
   const value = useMemo<Ctx>(
     () => ({

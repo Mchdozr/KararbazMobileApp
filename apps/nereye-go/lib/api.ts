@@ -1,6 +1,21 @@
-import { DEFAULT_API } from '@/lib/constants';
+import { ApiError, serverMessage } from '@/lib/api-error';
+import { DEFAULT_API, FALLBACK_APIS } from '@/lib/constants';
 import type { GeoHit } from '@/lib/geo-hit';
-import type { Preferences, PromotionItem, ReviewItem, RouteMode, RouteResult, SavedPlace, Session, VenueCard, VenueDetail } from '@/lib/types';
+import type {
+  MyReview,
+  Preferences,
+  Profile,
+  PromotionItem,
+  ReviewItem,
+  RouteMode,
+  RouteResult,
+  SavedPlace,
+  Session,
+  VenueCard,
+  VenueDetail,
+} from '@/lib/types';
+
+export { ApiError };
 
 let apiBase = DEFAULT_API;
 let accessToken: string | null = null;
@@ -15,25 +30,34 @@ export function setApiBase(url: string) {
   apiBase = url.replace(/\/$/, '');
 }
 
+async function probe(base: string): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const res = await fetch(`${base}/health`, { signal: ctrl.signal });
+    if (!res.ok) {
+      throw new Error(String(res.status));
+    }
+    return base;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Yanıt veren ilk API adresini seçer. Adaylar aynı anda yoklanır: sunucu kapalıyken
+ * açılış ekranı adayların toplam zaman aşımı kadar değil, en fazla tek bir zaman aşımı kadar bekler.
+ */
 export async function pickReachableApiBase(saved?: string | null) {
-  const candidates = [DEFAULT_API, saved, 'http://192.168.1.248:5079']
+  const pool = __DEV__ ? [saved, DEFAULT_API, ...FALLBACK_APIS] : [DEFAULT_API];
+  const candidates = pool
     .map((u) => u?.replace(/\/$/, '') ?? '')
     .filter((u, i, all) => u.startsWith('http') && all.indexOf(u) === i);
-  for (const base of candidates) {
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 4000);
-      const res = await fetch(`${base}/health`, { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (res.ok) {
-        apiBase = base;
-        return base;
-      }
-    } catch {
-      /* try next */
-    }
+  try {
+    apiBase = await Promise.any(candidates.map(probe));
+  } catch {
+    apiBase = (candidates[0] ?? DEFAULT_API).replace(/\/$/, '');
   }
-  apiBase = DEFAULT_API.replace(/\/$/, '');
   return apiBase;
 }
 
@@ -123,6 +147,8 @@ async function ensureFreshAccess() {
   }
 }
 
+const TIMEOUT_MS = 20_000;
+
 async function raw(path: string, init: RequestInit = {}, skipAuth = false) {
   if (!skipAuth) {
     await ensureFreshAccess();
@@ -135,8 +161,19 @@ async function raw(path: string, init: RequestInit = {}, skipAuth = false) {
   if (!skipAuth && accessToken && !jwtExpired(accessToken, 0)) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
-  const res = await fetch(`${apiBase}${path}`, { ...init, headers });
-  return { ok: res.ok, status: res.status, text: await res.text() };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${apiBase}${path}`, { ...init, headers, signal: ctrl.signal });
+    return { ok: res.ok, status: res.status, text: await res.text() };
+  } catch (e) {
+    if (ctrl.signal.aborted) {
+      throw new ApiError(0, 'timeout', 'timeout');
+    }
+    throw new ApiError(0, e instanceof Error ? e.message : 'network', 'network');
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function request<T>(
@@ -144,18 +181,26 @@ async function request<T>(
   init: RequestInit = {},
   opts: { skipAuth?: boolean; optional?: boolean } = {},
 ): Promise<T> {
-  let result = await raw(path, init, opts.skipAuth);
-  if (result.status === 401 && !opts.skipAuth && refreshToken) {
-    const refreshed = await refreshAccess();
-    if (refreshed) {
-      result = await raw(path, init, false);
+  let result: Awaited<ReturnType<typeof raw>>;
+  try {
+    result = await raw(path, init, opts.skipAuth);
+    if (result.status === 401 && !opts.skipAuth && refreshToken) {
+      const refreshed = await refreshAccess();
+      if (refreshed) {
+        result = await raw(path, init, false);
+      }
     }
+  } catch (e) {
+    if (opts.optional) {
+      return undefined as T;
+    }
+    throw e;
   }
   if (!result.ok) {
     if (opts.optional) {
       return undefined as T;
     }
-    throw new Error(result.text || `${result.status}`);
+    throw new ApiError(result.status, serverMessage(result.text));
   }
   return result.text ? (JSON.parse(result.text) as T) : (undefined as T);
 }
@@ -219,14 +264,31 @@ export const api = {
     mapVenueDetail(await request<Record<string, unknown>>(`/api/venues/${encodeURIComponent(placeId)}`)),
   reviews: (placeId: string) => request<ReviewItem[]>(`/api/venues/${encodeURIComponent(placeId)}/reviews`),
   writeReview: (placeId: string, stars: number, text: string, tags: string[], photoUrls: string[] = []) =>
-    request(`/api/venues/${encodeURIComponent(placeId)}/reviews`, {
+    request<ReviewItem>(`/api/venues/${encodeURIComponent(placeId)}/reviews`, {
       method: 'POST',
       body: JSON.stringify({ stars, text, tags, photoUrls }),
     }),
+  deleteReview: (reviewId: string) => request(`/api/venues/reviews/${reviewId}`, { method: 'DELETE' }),
+  myReviews: async () => {
+    const data = await request<MyReview[] | undefined>('/api/me/reviews', {}, { optional: true });
+    return data ?? [];
+  },
+  profile: () => request<Profile | undefined>('/api/me', {}, { optional: true }),
+  updateProfile: (displayName: string) =>
+    request<Profile>('/api/me', { method: 'PUT', body: JSON.stringify({ displayName }) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<Session>('/api/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  consents: async () => {
+    const data = await request<Record<string, boolean> | undefined>('/api/me/consents', {}, { optional: true });
+    return data ?? {};
+  },
   favorite: (placeId: string) =>
-    request(`/api/venues/${encodeURIComponent(placeId)}/favorite`, { method: 'POST' }, { optional: true }),
+    request(`/api/venues/${encodeURIComponent(placeId)}/favorite`, { method: 'POST' }),
   unfavorite: (placeId: string) =>
-    request(`/api/venues/${encodeURIComponent(placeId)}/favorite`, { method: 'DELETE' }, { optional: true }),
+    request(`/api/venues/${encodeURIComponent(placeId)}/favorite`, { method: 'DELETE' }),
   isFavorite: async (placeId: string) => {
     const data = await request<{ saved?: boolean } | undefined>(
       `/api/venues/${encodeURIComponent(placeId)}/favorite`,
@@ -236,17 +298,16 @@ export const api = {
     return Boolean(data?.saved);
   },
   report: (placeId: string, reason: string, reviewId?: string) =>
-    request(
-      `/api/venues/${encodeURIComponent(placeId)}/reports`,
-      { method: 'POST', body: JSON.stringify({ reason, reviewId: reviewId ?? null }) },
-      { optional: true },
-    ),
+    request(`/api/venues/${encodeURIComponent(placeId)}/reports`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, reviewId: reviewId ?? null }),
+    }),
   favorites: async () => {
     const data = await request<VenueCard[] | undefined>('/api/me/favorites', {}, { optional: true });
     return data ?? [];
   },
   search: (q: string, lat: number, lng: number) =>
-    request<VenueCard[]>(`/api/search?q=${encodeURIComponent(q)}&lat=${lat}&lng=${lng}`),
+    request<VenueCard[]>(`/api/search?q=${encodeURIComponent(q)}&lat=${lat}&lng=${lng}`).then((r) => r ?? []),
   preferences: async () => {
     await ensureFreshAccess();
     if (!accessToken) {

@@ -26,9 +26,28 @@ Android emülatör: `EXPO_PUBLIC_API_URL=http://10.0.2.2:5079`
 dotnet test Nereye.slnx
 cd apps/nereye-go
 npm test
+npm run typecheck
 ```
 
+## Claude Code
+
+Proje ayarları `.claude/settings.json`, `.mcp.json` ve `CLAUDE.md` içinde. Aynı kurulumu makinedeki tüm projelere uygulamak için: `tools/claude-global/install.ps1` (Windows) veya `install.sh`.
+
+## Postgres olmadan hızlı deneme
+
+```bash
+ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5079 Database__UseInMemory=true Redis__UseMemory=true Places__UseFake=true dotnet run --project src/Nereye.Api --no-launch-profile
+```
+
+Bellek içi veritabanı ve örnek Kadıköy mekanlarıyla açılır. Expo istemcisi `--web` ile de çalışır (harita yer tutucu olur).
+
 ## Prod notları
+
+- `JWT_SIGNING_KEY` (en az 32 karakter) zorunlu; varsayılan anahtarla Production açılmaz
+- `ADMIN_PASSWORD` verilmezse Production'da admin hesabı oluşturulmaz
+- Ters vekil arkasındaysa `Proxy__TrustForwardedHeaders=true` (hız sınırı gerçek IP'yi görsün)
+- Hız sınırı istemci başına: arama/öneri 90/dk, giriş uçları 12/dk, yazma 30/dk; 5 hatalı girişte hesap 5 dk kilitlenir
+- `apps/nereye-go/app/legal.tsx` içindeki KVKK metni ve iletişim adresi yayın öncesi hukukçuya gösterilmeli
 
 - `Database:UseInMemory=false` + PostgreSQL
 - Redis

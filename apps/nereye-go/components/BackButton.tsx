@@ -9,20 +9,17 @@ export function BackButton({ light = false }: { light?: boolean }) {
     <Pressable
       onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
       hitSlop={12}
-      style={[styles.btn, light ? styles.light : styles.dark]}>
+      style={({ pressed }) => [styles.btn, light ? styles.light : styles.dark, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel="Geri">
       <Ionicons name="chevron-back" size={22} color={light ? colors.white : colors.ink} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  btn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  btn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   dark: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  light: { backgroundColor: 'rgba(6,78,59,)0.45)' },
+  light: { backgroundColor: colors.glass },
+  pressed: { opacity: 0.7 },
 });

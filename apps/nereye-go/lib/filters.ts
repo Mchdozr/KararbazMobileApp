@@ -1,7 +1,7 @@
 import { KADIKOY } from '@/lib/constants';
 import { clampRadius } from '@/lib/radius';
 import type { Preferences } from '@/lib/types';
-import * as SecureStore from 'expo-secure-store';
+import { getItem, removeItem, setItem } from '@/lib/storage';
 import { useEffect, useState } from 'react';
 
 type State = {
@@ -39,7 +39,7 @@ function emit() {
 
 async function persistLoc() {
   try {
-    await SecureStore.setItemAsync(
+    await setItem(
       KEY,
       JSON.stringify({ lat: state.lat, lng: state.lng, label: state.label, pinned: state.pinned }),
     );
@@ -50,7 +50,7 @@ async function persistLoc() {
 
 async function persistPrefs() {
   try {
-    await SecureStore.setItemAsync(
+    await setItem(
       PREF_KEY,
       JSON.stringify({
         intent: state.intent,
@@ -89,7 +89,7 @@ export function useFilters() {
       hydrated = true;
       void (async () => {
         try {
-          const raw = await SecureStore.getItemAsync(KEY);
+          const raw = await getItem(KEY);
           if (raw) {
             const saved = JSON.parse(raw) as { lat: number; lng: number; label?: string; pinned?: boolean };
             if (typeof saved.lat === 'number' && typeof saved.lng === 'number') {
@@ -102,7 +102,7 @@ export function useFilters() {
               };
             }
           }
-          const prefRaw = await SecureStore.getItemAsync(PREF_KEY);
+          const prefRaw = await getItem(PREF_KEY);
           if (prefRaw) {
             const saved = JSON.parse(prefRaw) as Partial<State>;
             state = {
@@ -157,6 +157,12 @@ export function useFilters() {
     },
     setRadius: (radiusMeters: number) => {
       state = { ...state, radiusMeters: clampRadius(radiusMeters) };
+      emit();
+      void persistPrefs();
+    },
+    /** Konum ve niyet kalır; daraltıcı filtreler sıfırlanır. */
+    resetFilters: () => {
+      state = { ...state, openNow: false, vibes: [], minRating: 0 };
       emit();
       void persistPrefs();
     },

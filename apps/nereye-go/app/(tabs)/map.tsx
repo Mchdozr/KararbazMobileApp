@@ -1,18 +1,21 @@
-import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { FilterSheet } from '@/components/FilterSheet';
 import { SearchingOverlay } from '@/components/SearchingOverlay';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { emptyMap, friendlyError } from '@/lib/empty';
-import { detectLocation } from '@/lib/geo';
+import { detectLocation, reverseLabel } from '@/lib/geo';
+import { geoDistanceMeters } from '@/lib/geo-hit';
+import { activeFilterCount } from '@/lib/sort';
+import { toast } from '@/lib/toast';
 import { useFilters } from '@/lib/filters';
 import { api } from '@/lib/api';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Region, UrlTile } from 'react-native-maps';
+import MapView, { Marker, UrlTile, type Region } from '@/components/Map';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function inRegion(card: VenueCard, region: Region) {
@@ -27,6 +30,7 @@ function inRegion(card: VenueCard, region: Region) {
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const filters = useFilters();
+  const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const [items, setItems] = useState<VenueCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,22 +76,41 @@ export default function MapScreen() {
   const visible = useMemo(() => items.filter((c) => inRegion(c, region)), [items, region]);
   const sheetCards = picked ? [picked] : visible;
 
+  // Harita merkezi arama noktasından belirgin uzaklaştıysa "bu bölgede ara" öner.
+  const moved = geoDistanceMeters(filters.lat, filters.lng, region.latitude, region.longitude);
+  const canSearchHere = !loading && moved > Math.max(400, filters.radiusMeters * 0.5);
+  const badge = activeFilterCount(filters);
+
+  // Konum başka ekrandan değişince haritayı oraya taşı.
+  useEffect(() => {
+    mapRef.current?.animateToRegion({
+      latitude: filters.lat,
+      longitude: filters.lng,
+      latitudeDelta: 0.035,
+      longitudeDelta: 0.035,
+    });
+  }, [filters.lat, filters.lng]);
+
   async function here() {
     setBusy(true);
     try {
       const fix = await detectLocation();
       if (fix) {
         filters.setLoc(fix.lat, fix.lng, fix.label, false);
-        mapRef.current?.animateToRegion({
-          latitude: fix.lat,
-          longitude: fix.lng,
-          latitudeDelta: 0.035,
-          longitudeDelta: 0.035,
-        });
+      } else {
+        toast.info('Konum izni kapalı. Semtini listeden seçebilirsin.');
       }
+    } catch {
+      toast.error('Konum alınamadı. Tekrar dene.');
     } finally {
       setBusy(false);
     }
+  }
+
+  async function searchHere() {
+    setPicked(null);
+    const label = await reverseLabel(region.latitude, region.longitude);
+    filters.setLoc(region.latitude, region.longitude, label === 'Konumun' ? 'Harita merkezi' : label, true);
   }
 
   return (
@@ -112,28 +135,46 @@ export default function MapScreen() {
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
         <Pressable
           style={styles.chip}
-          onPress={() => setSheet(true)}
+          onPress={() => router.push('/places')}
           accessibilityRole="button"
-          accessibilityLabel={`Konum ${filters.label}`}>
+          accessibilityLabel={`Konum ${filters.label}, değiştir`}>
           <Ionicons name="location" size={14} color={colors.coral} />
           <Text style={styles.chipText} numberOfLines={1}>
             {filters.label}
           </Text>
+          <Ionicons name="chevron-down" size={14} color={colors.ink} style={{ marginLeft: 'auto' }} />
         </Pressable>
         <Pressable style={styles.here} onPress={() => void here()} disabled={busy} accessibilityRole="button" accessibilityLabel="Konumumu kullan">
           <Ionicons name="navigate" size={16} color={colors.white} />
           <Text style={styles.hereText}>{busy ? 'Alınıyor…' : 'GPS'}</Text>
         </Pressable>
-        <Pressable style={styles.filter} onPress={() => setSheet(true)} accessibilityRole="button" accessibilityLabel="Filtre">
-          <Ionicons name="options" size={16} color={colors.ink} />
+        <Pressable
+          style={[styles.filter, badge > 0 && styles.filterOn]}
+          onPress={() => setSheet(true)}
+          accessibilityRole="button"
+          accessibilityLabel={badge > 0 ? `Filtre, ${badge} etkin` : 'Filtre'}>
+          <Ionicons name="options" size={16} color={badge > 0 ? colors.white : colors.ink} />
         </Pressable>
       </View>
+      {canSearchHere ? (
+        <Pressable
+          style={[styles.searchHere, { top: insets.top + 64 }]}
+          onPress={() => void searchHere()}
+          accessibilityRole="button"
+          accessibilityLabel="Bu bölgede ara">
+          <Ionicons name="refresh" size={14} color={colors.white} />
+          <Text style={styles.searchHereText}>Bu bölgede ara</Text>
+        </Pressable>
+      ) : null}
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
         {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
+        <View style={styles.grab} />
         <Text style={styles.sub}>
-          {filters.label} · {visible.length} yer
+          {picked ? picked.name : `${filters.label} · ${visible.length} yer`}
         </Text>
-        {!loading && visible.length === 0 && !error ? <EmptyState title={emptyMap(filters.intent)} /> : null}
+        {!loading && visible.length === 0 && !error ? (
+          <Text style={styles.none}>{emptyMap(filters.intent)}</Text>
+        ) : null}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {sheetCards.map((card) => (
             <View key={card.placeId} style={styles.card}>
@@ -200,13 +241,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 14,
+    paddingTop: 10,
     paddingHorizontal: 16,
-    maxHeight: 320,
+    maxHeight: 340,
     borderWidth: 1,
     borderColor: colors.line,
   },
-  sub: { color: colors.muted, fontWeight: '700', marginBottom: 10 },
+  filterOn: { backgroundColor: colors.coral, borderColor: colors.coral },
+  searchHere: {
+    position: 'absolute',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.espresso,
+    paddingHorizontal: 14,
+    minHeight: 40,
+    borderRadius: 20,
+    shadowColor: '#04382b',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  searchHereText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
+  grab: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 10 },
+  none: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20, paddingBottom: 8 },
+  sub: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 14, marginBottom: 10 },
   row: { gap: 12, paddingBottom: 4 },
   card: { width: 168 },
   attr: { marginTop: 8, fontSize: 11, color: colors.muted },

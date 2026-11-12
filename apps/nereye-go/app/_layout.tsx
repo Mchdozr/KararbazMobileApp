@@ -1,7 +1,8 @@
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { BackButton } from '@/components/BackButton';
 import { SessionProvider } from '@/lib/session';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
+import { ToastHost } from '@/lib/toast';
 import {
   DMSans_400Regular,
   DMSans_500Medium,
@@ -45,10 +46,12 @@ export default function RootLayout() {
               headerStyle: { backgroundColor: colors.surface },
               headerShadowVisible: false,
               headerBackTitle: '',
+              headerTitleStyle: { fontFamily: fonts.sansBold, fontSize: 17, color: colors.ink },
+              headerTitleAlign: 'center',
               contentStyle: { backgroundColor: colors.bg },
             }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen name="auth" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="places" options={{ title: '', headerShown: false }} />
@@ -65,7 +68,8 @@ export default function RootLayout() {
             <Stack.Screen
               name="review/[id]"
               options={{
-                title: 'Yorum',
+                title: 'Yorumun',
+                presentation: 'modal',
                 headerBackVisible: false,
                 headerLeft: () => <BackButton />,
               }}
@@ -78,7 +82,20 @@ export default function RootLayout() {
                 headerLeft: () => <BackButton />,
               }}
             />
+            {[
+              ['favorites', 'Kaydedilenler'],
+              ['my-reviews', 'Yorumlarım'],
+              ['account', 'Hesap'],
+              ['legal', 'Gizlilik ve KVKK'],
+            ].map(([name, title]) => (
+              <Stack.Screen
+                key={name}
+                name={name}
+                options={{ title, headerBackVisible: false, headerLeft: () => <BackButton /> }}
+              />
+            ))}
           </Stack>
+          <ToastHost />
         </ThemeProvider>
       </SessionProvider>
     </AppErrorBoundary>

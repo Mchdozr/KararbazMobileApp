@@ -11,6 +11,13 @@ export const colors = {
   espresso: '#04382b',
   white: '#FFFFFF',
   overlay: 'rgba(6,78,59,0.35)',
+  /** Hata ve yıkıcı eylemler. Marka yeşiliyle karışmasın diye ayrı bir ton. */
+  danger: '#a8402b',
+  dangerSoft: '#f6e1da',
+  /** Fotoğraf üstü yazı okunurluğu için koyu perde. */
+  scrim: 'rgba(4,56,43,0.72)',
+  scrimSoft: 'rgba(4,56,43,0.18)',
+  glass: 'rgba(4,56,43,0.45)',
 };
 
 export const ACCENT = colors.coral;

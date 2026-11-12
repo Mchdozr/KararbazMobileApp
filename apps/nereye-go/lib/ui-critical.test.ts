@@ -7,6 +7,10 @@ import { formatDuration, formatRouteLine } from './route.ts';
 import { hashSeed, placeholderInitials, placeholderPalette } from './placeholder.ts';
 import { clampRadius, kmToMeters } from './radius.ts';
 import { debounceMs, shouldSearch } from './search-query.ts';
+import { ApiError, serverMessage } from './api-error.ts';
+import { relativeDate, summarizeRatings } from './reviews.ts';
+import { activeFilterCount, sortCards } from './sort.ts';
+import { emailProblem, nameProblem, passwordProblem, passwordStrength } from './validation.ts';
 
 test('onboarding skip is a one-shot gate', () => {
   assert.equal(typeof emptyNearby('Kahve', 'Kadıköy'), 'string');
@@ -87,4 +91,63 @@ test('placeholder seed is unique per place', () => {
   assert.notEqual(hashSeed('osm:node:1'), hashSeed('osm:node:2'));
   assert.notDeepEqual(placeholderPalette('osm:node:1'), placeholderPalette('cafe-only'));
   assert.equal(placeholderInitials('Petra Roasting', 'x'), 'PR');
+});
+
+test('server error text reaches the user, internals do not', () => {
+  assert.equal(serverMessage('{"error":"Bu e-posta zaten kayıtlı."}'), 'Bu e-posta zaten kayıtlı.');
+  assert.equal(serverMessage('<html>502</html>'), '');
+  assert.equal(friendlyError(new ApiError(400, 'Bu e-posta zaten kayıtlı.')), 'Bu e-posta zaten kayıtlı.');
+  assert.match(friendlyError(new ApiError(500, 'NullReferenceException at Foo.Bar')), /sunucuda/i);
+  assert.doesNotMatch(friendlyError(new ApiError(500, 'NullReferenceException')), /Null/);
+  assert.match(friendlyError(new ApiError(0, 'x', 'network')), /ağ/i);
+  assert.match(friendlyError(new ApiError(0, 'x', 'timeout')), /geç/i);
+  assert.match(friendlyError(new ApiError(429, '')), /dakika/i);
+});
+
+test('sign-up validation mirrors the server rules', () => {
+  assert.ok(emailProblem('ada'));
+  assert.ok(emailProblem('ada@x'));
+  assert.equal(emailProblem(' ada@nereye.app '), null);
+  assert.ok(passwordProblem('kisa1'));
+  assert.ok(passwordProblem('sadeceharfler'));
+  assert.ok(passwordProblem('1234567890'));
+  assert.equal(passwordProblem('kahve1234'), null);
+  assert.equal(passwordProblem('şifreçok1'), null);
+  assert.ok(nameProblem('  '));
+  assert.equal(nameProblem('Ada'), null);
+  assert.equal(passwordStrength('kisa'), 0);
+  assert.equal(passwordStrength('kahve1234'), 1);
+  assert.equal(passwordStrength('Kahve-1234-Moda'), 3);
+});
+
+test('rating summary counts each star bucket', () => {
+  const s = summarizeRatings([{ stars: 5 }, { stars: 5 }, { stars: 3 }, { stars: 0 }]);
+  assert.equal(s.count, 3);
+  assert.deepEqual(s.buckets, [0, 0, 1, 0, 2]);
+  assert.ok(Math.abs((s.average ?? 0) - 13 / 3) < 1e-9);
+  assert.equal(summarizeRatings([]).average, null);
+});
+
+test('relative dates read naturally in Turkish', () => {
+  const now = new Date('2026-11-12T12:00:00Z');
+  assert.equal(relativeDate('2026-11-12T11:59:40Z', now), 'az önce');
+  assert.equal(relativeDate('2026-11-12T09:00:00Z', now), '3 saat önce');
+  assert.equal(relativeDate('2026-11-11T10:00:00Z', now), 'dün');
+  assert.equal(relativeDate('2026-10-01T10:00:00Z', now), '1 ay önce');
+  assert.equal(relativeDate('bozuk', now), '');
+  assert.equal(relativeDate(null, now), '');
+});
+
+test('sorting keeps server order for smart and never mutates input', () => {
+  const cards = [
+    { id: 'a', distanceMeters: 900, nereyeRating: 4.2, nereyeRatingCount: 3 },
+    { id: 'b', distanceMeters: 100, nereyeRating: null, nereyeRatingCount: 0 },
+    { id: 'c', distanceMeters: 500, nereyeRating: 4.8, nereyeRatingCount: 1 },
+  ];
+  assert.equal(sortCards(cards, 'smart'), cards);
+  assert.deepEqual(sortCards(cards, 'distance').map((c) => c.id), ['b', 'c', 'a']);
+  assert.deepEqual(sortCards(cards, 'rating').map((c) => c.id), ['c', 'a', 'b']);
+  assert.deepEqual(cards.map((c) => c.id), ['a', 'b', 'c']);
+  assert.equal(activeFilterCount({ openNow: true, vibes: ['Sessiz', 'Laptop'], minRating: 4 }), 4);
+  assert.equal(activeFilterCount({ openNow: false, vibes: [], minRating: 0 }), 0);
 });

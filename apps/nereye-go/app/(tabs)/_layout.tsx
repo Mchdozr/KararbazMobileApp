@@ -1,10 +1,16 @@
-import { colors } from '@/lib/theme';
+import { haptic } from '@/lib/haptics';
+import { colors, fonts } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  // Alt güvenli alan (ana ekran çubuğu / hareket çubuğu) etiketlerin üstüne binmesin.
+  const pad = Math.max(insets.bottom, 8);
   return (
     <Tabs
+      screenListeners={{ tabPress: () => haptic.tap() }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.coral,
@@ -12,9 +18,12 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.line,
-          height: 64,
+          height: 56 + pad,
+          paddingBottom: pad,
+          paddingTop: 6,
         },
-        tabBarLabelStyle: { fontWeight: '700', fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: fonts.sansBold, fontSize: 11 },
+        tabBarHideOnKeyboard: true,
       }}>
       <Tabs.Screen
         name="index"
@@ -49,10 +58,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="discover"
         options={{
-          title: 'Niyetler',
-          tabBarAccessibilityLabel: 'Niyetler',
+          title: 'Liste',
+          tabBarAccessibilityLabel: 'Liste',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'grid' : 'grid-outline'} color={color} size={size} />
+            <Ionicons name={focused ? 'list' : 'list-outline'} color={color} size={size} />
           ),
         }}
       />

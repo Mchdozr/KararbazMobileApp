@@ -1,31 +1,58 @@
-import { VenueImage } from '@/components/VenueImage';
+import { initialsOf } from '@/components/Avatar';
+import { Button } from '@/components/Button';
 import { RadiusPicker } from '@/components/RadiusPicker';
 import { INTENTS, VIBES, intentLabel, vibeLabel } from '@/lib/constants';
 import { clampRadius, radiusLabel as formatRadius } from '@/lib/radius';
 import { api, mediaUrl } from '@/lib/api';
+import { friendlyError } from '@/lib/empty';
+import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
+import { haptic } from '@/lib/haptics';
+import { toast } from '@/lib/toast';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
-import type { Preferences, VenueCard } from '@/lib/types';
+import type { Preferences, Profile as ProfileInfo } from '@/lib/types';
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EMPTY: Preferences = { defaultRadiusMeters: 1500, intents: [], vibes: [] };
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const a = parts[0]?.[0] ?? 'N';
-  const b = parts.length > 1 ? parts[1][0] : '';
-  return (a + b).toUpperCase();
+function Row({
+  icon,
+  label,
+  value,
+  onPress,
+  tone = 'ink',
+}: {
+  icon: ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value?: string;
+  onPress: () => void;
+  tone?: 'ink' | 'danger';
+}) {
+  const color = tone === 'danger' ? colors.danger : colors.ink;
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.bg }]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${label}, ${value}` : label}>
+      <Ionicons name={icon} size={20} color={color} />
+      <Text style={[styles.rowText, { color }]}>{label}</Text>
+      {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+    </Pressable>
+  );
 }
 
 export default function Profile() {
@@ -37,24 +64,36 @@ export default function Profile() {
   const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
-  const [saved, setSaved] = useState<VenueCard[]>([]);
+  const [info, setInfo] = useState<ProfileInfo | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const favorites = useFavorites();
 
   useEffect(() => {
     if (!session) {
       setPrefs(EMPTY);
-      setSaved([]);
       return;
     }
-    void api.preferences().then((p) =>
-      setPrefs({ ...p, defaultRadiusMeters: clampRadius(p.defaultRadiusMeters) }),
-    );
-    void api.favorites().then(setSaved);
+    void api
+      .preferences()
+      .then((p) => setPrefs({ ...p, defaultRadiusMeters: clampRadius(p.defaultRadiusMeters) }))
+      .catch(() => setPrefs(EMPTY));
     void hydrateSavedPlaces(true);
   }, [session]);
 
+  // Sekmeye her dönüşte sayaçlar güncel olsun (yeni yorum, yeni kayıt).
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) {
+        setInfo(null);
+        return;
+      }
+      void api.profile().then((p) => setInfo(p ?? null));
+    }, [session]),
+  );
+
   const heroIntent = prefs?.intents[0] ?? 'AcikHava';
   const name = session?.displayName ?? 'Gezgin';
-  const role = session?.roles.includes('Admin') ? 'Admin' : 'Gezgin';
+  const role = session?.roles.includes('Admin') ? 'Admin' : session?.roles.includes('VenueOwner') ? 'İşletme' : 'Gezgin';
   const selectedCount = (prefs?.intents.length ?? 0) + (prefs?.vibes.length ?? 0);
 
   const radiusLabel = useMemo(
@@ -86,9 +125,21 @@ export default function Profile() {
     if (!prefs) return;
     setSaving(true);
     try {
+      if (!session) {
+        // Misafir: tercihler cihazda kalır, öneriler yine kişiselleşir.
+        filters.setRadius(prefs.defaultRadiusMeters);
+        filters.setVibes(prefs.vibes);
+        if (prefs.intents[0]) {
+          filters.setIntent(prefs.intents[0]);
+        }
+        setSavedOk(true);
+        haptic.success();
+        toast.success('Tercihlerin bu cihazda kaydedildi');
+        return;
+      }
       const saved = await api.savePreferences(prefs);
       if (!saved) {
-        Alert.alert('Oturum', 'Tercih için tekrar giriş yap.');
+        toast.error('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.');
         return;
       }
       setPrefs(saved);
@@ -98,6 +149,8 @@ export default function Profile() {
         filters.setIntent(saved.intents[0]);
       }
       setSavedOk(true);
+      haptic.success();
+      toast.success('Tercihlerin kaydedildi');
     } finally {
       setSaving(false);
     }
@@ -124,30 +177,31 @@ export default function Profile() {
     if (picked.canceled || !asset?.base64) {
       return;
     }
-    const res = await api.uploadAvatar(asset.base64);
-    if (res?.avatarUrl) {
-      await patchSession({ avatarUrl: res.avatarUrl });
-    } else {
-      Alert.alert('Fotoğraf', 'Yüklenemedi, tekrar dene.');
+    setUploading(true);
+    try {
+      const res = await api.uploadAvatar(asset.base64);
+      if (res?.avatarUrl) {
+        // Dosya adı aynı kalır; önbelleği aşmak için sürüm ekle.
+        await patchSession({ avatarUrl: `${res.avatarUrl.split('?')[0]}?v=${Date.now()}` });
+        toast.success('Profil fotoğrafın güncellendi');
+      } else {
+        toast.error('Fotoğraf yüklenemedi. Daha küçük bir fotoğraf dene.');
+      }
+    } catch (e) {
+      toast.error(friendlyError(e));
+    } finally {
+      setUploading(false);
     }
   }
 
-  function confirmDelete() {
-    Alert.alert('Hesabı sil', 'Yorumların ve kayıtların silinir. Geri alınmaz.', [
+  function confirmSignOut() {
+    Alert.alert('Çıkış yap', 'Bu cihazdaki oturumun kapatılacak.', [
       { text: 'Vazgeç', style: 'cancel' },
       {
-        text: 'Sil',
+        text: 'Çıkış yap',
         style: 'destructive',
         onPress: () => {
-          void (async () => {
-            try {
-              await api.deleteMe();
-            } catch {
-              /* oturum yoksa da çık */
-            }
-            await signOut();
-            router.replace('/auth');
-          })();
+          void signOut().then(() => toast.info('Çıkış yapıldı'));
         },
       },
     ]);
@@ -166,30 +220,61 @@ export default function Profile() {
       </View>
 
       <View style={styles.identity}>
-        <Pressable style={styles.avatar} onPress={() => void pickAvatar()}>
+        <Pressable
+          style={styles.avatar}
+          onPress={() => void pickAvatar()}
+          disabled={uploading}
+          accessibilityRole="button"
+          accessibilityLabel={session ? 'Profil fotoğrafını değiştir' : 'Giriş yap'}>
           {session?.avatarUrl ? (
             <Image source={{ uri: mediaUrl(session.avatarUrl) ?? undefined }} style={styles.avatarImg} contentFit="cover" />
           ) : (
-            <Text style={styles.avatarText}>{initials(name)}</Text>
+            <Text style={styles.avatarText}>{session ? initialsOf(name) : '?'}</Text>
           )}
           <View style={styles.cam}>
-            <Ionicons name="camera" size={12} color={colors.white} />
+            {uploading ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="camera" size={12} color={colors.white} />}
           </View>
         </Pressable>
-        <Text style={styles.name}>{name}</Text>
-        <View style={styles.badgeRow}>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{role}</Text>
-          </View>
-          <Pressable style={styles.loc} onPress={() => router.push('/places')}>
-            <Ionicons name="location" size={13} color={colors.coral} />
-            <Text style={styles.locText}>{filters.label}</Text>
-            <Ionicons name="chevron-down" size={13} color={colors.ink} />
-          </Pressable>
-        </View>
-        <Text style={styles.meta}>
-          {selectedCount > 0 ? `${prefs?.intents.length ?? 0} niyet · ${radiusLabel}` : 'Niyetlerini seç, öneriler kişiselleşir.'}
-        </Text>
+        {session ? (
+          <>
+            <Text style={styles.name}>{name}</Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{role}</Text>
+              </View>
+              <Pressable style={styles.loc} onPress={() => router.push('/places')} accessibilityRole="button" accessibilityLabel={`Konum ${filters.label}, değiştir`}>
+                <Ionicons name="location" size={13} color={colors.coral} />
+                <Text style={styles.locText}>{filters.label}</Text>
+                <Ionicons name="chevron-down" size={13} color={colors.ink} />
+              </Pressable>
+            </View>
+            <View style={styles.stats}>
+              {(
+                [
+                  ['Kayıt', info?.favoriteCount ?? favorites.cards.length, '/favorites'],
+                  ['Yorum', info?.reviewCount ?? 0, '/my-reviews'],
+                  ['Konum', savedPlaces.items.length, '/places'],
+                ] as const
+              ).map(([label, value, href]) => (
+                <Pressable
+                  key={label}
+                  style={styles.stat}
+                  onPress={() => router.push(href)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${value} ${label}`}>
+                  <Text style={styles.statValue}>{value}</Text>
+                  <Text style={styles.statLabel}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.name}>Merhaba, gezgin</Text>
+            <Text style={styles.guest}>Giriş yap; kaydettiklerin, yorumların ve tercihlerin her cihazında seninle olsun.</Text>
+            <Button label="Giriş yap ya da kayıt ol" onPress={() => router.push('/auth')} style={styles.guestBtn} />
+          </>
+        )}
       </View>
 
       {savedPlaces.items.length > 0 ? (
@@ -221,34 +306,6 @@ export default function Profile() {
         </Pressable>
       )}
 
-      {saved.length > 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.sectionKicker}>Kayıtlı</Text>
-          <Text style={styles.sectionTitle}>Kaydettiklerin</Text>
-          <View style={styles.saveGrid}>
-            {saved.map((card) => (
-              <Pressable
-                key={card.placeId}
-                style={styles.saveCell}
-                onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId } })}
-                accessibilityRole="button"
-                accessibilityLabel={card.name}>
-                <VenueImage
-                  placeId={card.placeId}
-                  photoUrl={card.photoUrl}
-                  photoReference={card.photoReference}
-                  name={card.name}
-                  style={StyleSheet.absoluteFill}
-                  radius={0}
-                />
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      ) : session ? (
-        <Text style={styles.emptySaved}>Henüz kayıt yok. Mekanda kalp bırak.</Text>
-      ) : null}
-
       {prefs ? (
         <>
           <View style={styles.card}>
@@ -258,7 +315,13 @@ export default function Profile() {
               {INTENTS.map((intent) => {
                 const on = prefs.intents.includes(intent);
                 return (
-                  <Pressable key={intent} onPress={() => toggleIntent(intent)} style={[styles.tile, on && styles.tileOn]}>
+                  <Pressable
+                    key={intent}
+                    onPress={() => toggleIntent(intent)}
+                    style={[styles.tile, on && styles.tileOn]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={intentLabel(intent)}>
                     <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />
                     <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={StyleSheet.absoluteFill} />
                     {on ? (
@@ -280,7 +343,13 @@ export default function Profile() {
               {VIBES.map((vibe) => {
                 const on = prefs.vibes.includes(vibe);
                 return (
-                  <Pressable key={vibe} onPress={() => toggleVibe(vibe)} style={[styles.chip, on && styles.chipOn]}>
+                  <Pressable
+                    key={vibe}
+                    onPress={() => toggleVibe(vibe)}
+                    style={[styles.chip, on && styles.chipOn]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={vibeLabel(vibe)}>
                     <Text style={on ? styles.chipOnText : styles.chipOffText}>{vibeLabel(vibe)}</Text>
                   </Pressable>
                 );
@@ -301,49 +370,38 @@ export default function Profile() {
             />
           </View>
 
-          <Pressable style={[styles.save, saving && styles.saveBusy]} onPress={() => void save()} disabled={saving}>
-            <Text style={styles.saveText}>{savedOk ? 'Kaydedildi' : saving ? 'Kaydediliyor…' : 'Tercihleri kaydet'}</Text>
-          </Pressable>
+          <Button
+            label={savedOk ? 'Kaydedildi' : 'Tercihleri kaydet'}
+            icon={savedOk ? 'checkmark' : undefined}
+            loading={saving}
+            onPress={() => void save()}
+            style={styles.save}
+          />
         </>
       ) : null}
 
       <View style={styles.account}>
-        <Pressable style={styles.row} onPress={() => router.push('/places')}>
-          <Ionicons name="navigate-outline" size={20} color={colors.ink} />
-          <Text style={styles.rowText}>Konumu değiştir</Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-        </Pressable>
+        {session ? (
+          <>
+            <Row icon="heart-outline" label="Kaydedilenler" value={String(info?.favoriteCount ?? favorites.cards.length)} onPress={() => router.push('/favorites')} />
+            <View style={styles.divider} />
+            <Row icon="chatbubble-ellipses-outline" label="Yorumlarım" value={String(info?.reviewCount ?? 0)} onPress={() => router.push('/my-reviews')} />
+            <View style={styles.divider} />
+            <Row icon="person-circle-outline" label="Hesap ve güvenlik" onPress={() => router.push('/account')} />
+            <View style={styles.divider} />
+          </>
+        ) : null}
+        <Row icon="navigate-outline" label="Konumu değiştir" value={filters.label} onPress={() => router.push('/places')} />
         <View style={styles.divider} />
-        <Pressable
-          style={styles.row}
-          onPress={async () => {
-            if (session) {
-              await api.consent('kvkk', true);
-            }
-          }}>
-          <Ionicons name="shield-checkmark-outline" size={20} color={colors.ink} />
-          <Text style={styles.rowText}>KVKK onayı</Text>
-        </Pressable>
-        <View style={styles.divider} />
-        <Pressable
-          style={styles.row}
-          onPress={async () => {
-            if (session) {
-              await signOut();
-              router.replace('/(tabs)');
-              return;
-            }
-            router.push('/auth');
-          }}>
-          <Ionicons name="log-out-outline" size={20} color={colors.coral} />
-          <Text style={[styles.rowText, styles.danger]}>{session ? 'Çıkış' : 'Giriş'}</Text>
-        </Pressable>
-        <View style={styles.divider} />
-        <Pressable style={styles.row} onPress={confirmDelete}>
-          <Ionicons name="trash-outline" size={20} color={colors.muted} />
-          <Text style={[styles.rowText, styles.muted]}>Hesabı sil</Text>
-        </Pressable>
+        <Row icon="shield-checkmark-outline" label="Gizlilik ve KVKK" onPress={() => router.push('/legal')} />
+        {session ? (
+          <>
+            <View style={styles.divider} />
+            <Row icon="log-out-outline" label="Çıkış yap" tone="danger" onPress={confirmSignOut} />
+          </>
+        ) : null}
       </View>
+      <Text style={styles.version}>Nereye · sürüm {Constants.expoConfig?.version ?? '1.0.0'}</Text>
     </ScrollView>
   );
 }
@@ -351,8 +409,8 @@ export default function Profile() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   wrap: { paddingBottom: 56 },
-  hero: { height: 196, backgroundColor: colors.espresso },
-  heroCopy: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 20, paddingBottom: 36 },
+  hero: { height: 228, backgroundColor: colors.espresso },
+  heroCopy: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 20, paddingBottom: 84 },
   kicker: {
     color: colors.coralSoft,
     fontWeight: '700',
@@ -466,6 +524,8 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 999,
     backgroundColor: colors.bg,
     borderWidth: 1,
@@ -488,14 +548,15 @@ const styles = StyleSheet.create({
   radiusLabel: { fontWeight: '800', color: colors.ink, fontSize: 13 },
   radiusSub: { color: colors.muted, fontSize: 10, marginTop: 2, fontWeight: '600' },
   radiusOnText: { color: colors.white },
-  save: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    backgroundColor: colors.coral,
-    paddingVertical: 16,
-    borderRadius: 18,
-    alignItems: 'center',
-  },
+  save: { marginHorizontal: 20, marginTop: 16 },
+  stats: { flexDirection: 'row', alignSelf: 'stretch', marginTop: 16, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 12 },
+  stat: { flex: 1, alignItems: 'center', minHeight: 48, justifyContent: 'center' },
+  statValue: { fontFamily: fonts.display, fontSize: 22, color: colors.ink },
+  statLabel: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 2 },
+  guest: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20, textAlign: 'center', marginTop: 8 },
+  guestBtn: { alignSelf: 'stretch', marginTop: 16 },
+  rowValue: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, maxWidth: 140 },
+  version: { textAlign: 'center', color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 20 },
   saveBusy: { opacity: 0.7 },
   saveText: { color: colors.white, fontWeight: '800', fontSize: 16 },
   account: {
@@ -507,8 +568,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     overflow: 'hidden',
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 16 },
-  rowText: { flex: 1, color: colors.ink, fontWeight: '700', fontSize: 15 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56 },
+  rowText: { flex: 1, fontFamily: fonts.sansMed, fontSize: 15 },
   danger: { color: colors.coral },
   muted: { color: colors.muted },
   divider: { height: 1, backgroundColor: colors.line, marginLeft: 48 },
