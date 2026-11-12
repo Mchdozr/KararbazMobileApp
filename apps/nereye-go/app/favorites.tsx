@@ -42,6 +42,10 @@ export default function Favorites() {
       data={favorites.cards}
       keyExtractor={(c) => c.placeId}
       numColumns={2}
+      initialNumToRender={6}
+      maxToRenderPerBatch={6}
+      windowSize={7}
+      removeClippedSubviews
       columnWrapperStyle={styles.column}
       contentContainerStyle={styles.wrap}
       renderItem={({ item }) => (

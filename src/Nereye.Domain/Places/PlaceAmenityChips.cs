@@ -51,21 +51,25 @@ public static class PlaceAmenityChips
             chips.Add("Wi-Fi");
         }
 
-        if (hasPhone)
-        {
-            chips.Add("Telefon");
-        }
+        // Telefon ve web sitesi zaten eylem düğmesi olarak görünür; rozet olarak tekrarlamıyoruz.
+        return chips;
+    }
 
-        if (hasWebsite)
+    public static IReadOnlyList<string> From(PlaceSnapshot place)
+    {
+        var chips = From(place.Cuisine, place.OutdoorSeating, place.InternetAccess, false, false).ToList();
+        foreach (var feature in place.Features ?? [])
         {
-            chips.Add("Web");
+            // OSM "Açık oturma" ile Google "Açık alan" aynı şey.
+            var twin = feature == "Açık alan" && chips.Contains("Açık oturma");
+            if (!twin && !chips.Contains(feature, StringComparer.OrdinalIgnoreCase))
+            {
+                chips.Add(feature);
+            }
         }
 
         return chips;
     }
-
-    public static IReadOnlyList<string> From(PlaceSnapshot place) =>
-        From(place.Cuisine, place.OutdoorSeating, place.InternetAccess, !string.IsNullOrWhiteSpace(place.Phone), !string.IsNullOrWhiteSpace(place.Website));
 
     private static IEnumerable<string> Split(string? raw) =>
         string.IsNullOrWhiteSpace(raw)

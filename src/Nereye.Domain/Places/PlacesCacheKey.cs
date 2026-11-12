@@ -8,10 +8,16 @@ public static class PlacesCacheKey
     public static string Nearby(string geohash, Intent intent, int radiusMeters)
     {
         var cell = geohash.Length <= 6 ? geohash : geohash[..6];
-        return $"places:nearby:v4:{cell}:{intent.ToString().ToLowerInvariant()}:{BucketMeters(radiusMeters)}";
+        return $"places:nearby:v5:{cell}:{intent.ToString().ToLowerInvariant()}:{BucketMeters(radiusMeters)}";
     }
 
-    public static string Details(string placeId) => $"places:details:v2:{placeId}";
+    /// <summary>Liste aramasından gelen, kart için yeten kayıt.</summary>
+    public static string Details(string placeId) => $"places:details:v3:{placeId}";
+
+    /// <summary>Detay sayfası için zenginleştirilmiş kayıt (özet, yorum, olanak, galeri).</summary>
+    public static string Rich(string placeId) => $"places:rich:v1:{placeId}";
+
+    public static string PhotoUri(string name, int width) => $"places:photouri:v1:{width}:{name}";
 
     public static string TextSearch(string geohash, string query) =>
         $"places:text:v2:{geohash}:{query.Trim().ToLowerInvariant()}";

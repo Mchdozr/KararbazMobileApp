@@ -6,7 +6,10 @@ namespace Nereye.Infrastructure.Places;
 
 public sealed class FakePlacesClient : IPlacesClient
 {
-    public static readonly IReadOnlyList<PlaceSnapshot> Istanbul = CreateIstanbul();
+    // Lazy: aşağıdaki statik sözlükler hazır olduktan sonra kurulur (alan başlatma sırasına bağlı kalmasın).
+    private static readonly Lazy<IReadOnlyList<PlaceSnapshot>> Catalog = new(CreateIstanbul);
+
+    public static IReadOnlyList<PlaceSnapshot> Istanbul => Catalog.Value;
 
     public Task<IReadOnlyList<PlaceSnapshot>> NearbyAsync(
         double latitude,
@@ -98,6 +101,53 @@ public sealed class FakePlacesClient : IPlacesClient
                     new PlaceHour(DayOfWeek.Saturday, new TimeOnly(10, 0), new TimeOnly(23, 0)),
                     new PlaceHour(DayOfWeek.Sunday, new TimeOnly(11, 0), new TimeOnly(21, 0))
                 ],
-                attribution);
+                attribution,
+                Phone: "0216 555 00 " + (10 + id.Sum(c => c) % 89),
+                OpeningHoursText: "Mo-Th 10:00-22:00; Fr-Sa 10:00-23:00; Su 11:00-21:00",
+                Summary: Summaries.GetValueOrDefault(id),
+                PriceLevel: types.Contains("park") ? 0 : types.Contains("restaurant") || types.Contains("performing_arts_theater") ? 3 : 2,
+                Category: CategoryOf(types),
+                Photos: [photo],
+                Features: FeaturesOf(types),
+                Reviews: ReviewsOf(name));
     }
+
+    // Geliştirme ve testlerde detay sayfası gerçek veriyle aynı dolulukta görünsün.
+    private static readonly Dictionary<string, string> Summaries = new()
+    {
+        ["nereye:petra"] = "Kendi kavurduğu çekirdeklerle bilinen, yüksek tavanlı ve aydınlık üçüncü dalga kahve dükkanı.",
+        ["nereye:fazil"] = "1923'ten beri közde Türk kahvesi pişiren, Kadıköy Çarşı'nın simge kahvecisi.",
+        ["nereye:walter"] = "Laboratuvar temalı dekoruyla tanınan, kavurma ve demleme odaklı kahve dükkanı.",
+        ["nereye:ciya"] = "Anadolu'nun unutulmaya yüz tutmuş yöresel yemeklerini sunan, ödüllü esnaf lokantası.",
+        ["nereye:sureyya"] = "1927 yapımı tarihi binada opera, bale ve klasik müzik konserlerine ev sahipliği yapan sahne.",
+        ["nereye:modern"] = "Türkiye'nin ilk modern ve çağdaş sanat müzesi; Boğaz manzaralı sergi salonları.",
+        ["nereye:moda"] = "Deniz kenarında yürüyüş yolu, çimenlik alanlar ve gün batımı manzarası sunan sahil parkı.",
+    };
+
+    private static string CategoryOf(string[] types) => types[0] switch
+    {
+        "cafe" or "coffee_shop" => "Kahve dükkanı",
+        "restaurant" => "Restoran",
+        "performing_arts_theater" => "Sahne sanatları",
+        "museum" => "Müze",
+        "night_club" or "bar" => "Gece kulübü",
+        "park" => "Park",
+        _ => "Mekan"
+    };
+
+    private static string[] FeaturesOf(string[] types) => types[0] switch
+    {
+        "cafe" or "coffee_shop" => ["Açık alan", "Kahve", "Tatlı", "Paket servis", "Kart geçerli", "Tuvalet"],
+        "restaurant" => ["Rezervasyon", "Vejetaryen seçenek", "Gruplara uygun", "Mekanda servis", "Kart geçerli"],
+        "park" => ["Açık alan", "Çocuk dostu", "Evcil hayvan dostu"],
+        "night_club" or "bar" => ["Canlı müzik", "Alkollü içecek", "Gruplara uygun"],
+        _ => ["Gruplara uygun", "Tekerlekli sandalyeye uygun", "Tuvalet"]
+    };
+
+    private static PlaceReview[] ReviewsOf(string name) =>
+    [
+        new("Elif K.", 5, $"{name} beklediğimden de iyiydi. Personel ilgili, ortam ferah; hafta içi öğleden sonra çok sakin.", "2 hafta önce"),
+        new("Mert A.", 4, "Genel olarak memnun kaldım. Hafta sonu kalabalık oluyor, erken gitmekte fayda var.", "1 ay önce"),
+        new("Zeynep D.", 5, "Semtin en sevdiğim yerlerinden. Tekrar geleceğim.", "3 ay önce"),
+    ];
 }

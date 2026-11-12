@@ -1,7 +1,7 @@
 import { colors, fonts } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { forwardRef, useState, type ComponentProps } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 
 type Props = TextInputProps & {
   label: string;
@@ -13,7 +13,7 @@ type Props = TextInputProps & {
   counter?: number;
 };
 
-export const TextField = forwardRef<TextInput, Props>(function TextField(
+export const TextField = forwardRef<TextInputInstance, Props>(function TextField(
   { label, error, hint, icon, secret = false, counter, style, onFocus, onBlur, multiline, value, ...rest },
   ref,
 ) {

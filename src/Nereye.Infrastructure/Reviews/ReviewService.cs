@@ -17,9 +17,11 @@ public sealed class ReviewService : IReviewService
     private readonly IPlacesClient _places;
     private readonly IPlacePhotoEnricher _photos;
     private readonly Application.Common.IClock _clock;
+    private readonly IPlacesCache _cache;
 
-    public ReviewService(NereyeDbContext db, IPlacesClient places, IPlacePhotoEnricher photos, Application.Common.IClock clock)
+    public ReviewService(NereyeDbContext db, IPlacesClient places, IPlacePhotoEnricher photos, Application.Common.IClock clock, IPlacesCache cache)
     {
+        _cache = cache;
         _db = db;
         _places = places;
         _photos = photos;
@@ -35,6 +37,8 @@ public sealed class ReviewService : IReviewService
         }
 
         var reviews = await _db.Reviews
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(r => r.Tags)
             .Include(r => r.Photos)
             .Include(r => r.Reply)
@@ -234,11 +238,13 @@ public sealed class ReviewService : IReviewService
         CancellationToken cancellationToken = default)
     {
         var favs = await _db.Favorites
+            .AsNoTracking()
             .Where(f => f.UserId == userId)
             .OrderByDescending(f => f.CreatedAt)
             .ToListAsync(cancellationToken);
         var venueIds = favs.Select(f => f.VenueId).ToList();
         var venues = await _db.Venues
+            .AsNoTracking()
             .AsSplitQuery()
             .Include(v => v.Tags)
             .Include(v => v.Photos)
@@ -246,18 +252,19 @@ public sealed class ReviewService : IReviewService
             .ToListAsync(cancellationToken);
         var byId = venues.ToDictionary(v => v.Id);
 
+        // Favori başına sırayla ve önbelleksiz dış çağrı yerine: önbellekten, hepsi aynı anda.
+        var ordered = favs.Where(f => byId.ContainsKey(f.VenueId)).Select(f => byId[f.VenueId]).ToList();
+        var places = await Task.WhenAll(ordered.Select(v => _cache.GetOrSetAsync(
+            PlacesCacheKey.Details(v.GooglePlaceId),
+            PlacesCacheTtl.Nearby,
+            ct => _places.DetailsAsync(v.GooglePlaceId, ct),
+            cancellationToken)));
         var pending = new List<(Venue Venue, PlaceSnapshot Place)>();
-        foreach (var fav in favs)
+        for (var i = 0; i < ordered.Count; i++)
         {
-            if (!byId.TryGetValue(fav.VenueId, out var venue))
+            if (places[i] is { } place)
             {
-                continue;
-            }
-
-            var place = await _places.DetailsAsync(venue.GooglePlaceId, cancellationToken);
-            if (place is not null)
-            {
-                pending.Add((venue, place));
+                pending.Add((ordered[i], place));
             }
         }
 
@@ -283,7 +290,11 @@ public sealed class ReviewService : IReviewService
                 PlaceMedia.Url(venue.Photos.FirstOrDefault()?.Url, place.PhotoReference),
                 venue.Tags.Select(t => t.Tag).ToList(),
                 [],
-                PlaceBlurb.Compose(place, 0, venue.Tags.Select(t => t.Tag).ToList())));
+                PlaceBlurb.Compose(place, 0, venue.Tags.Select(t => t.Tag).ToList()),
+                place.GoogleRating,
+                place.GoogleUserRatingCount,
+                place.PriceLevel,
+                place.Category));
         }
 
         return items;

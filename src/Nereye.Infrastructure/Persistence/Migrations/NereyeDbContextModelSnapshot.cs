@@ -173,6 +173,8 @@ namespace Nereye.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("ConsentLogs");
                 });
 
@@ -214,6 +216,8 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("UserId", "VenueId");
+
+                    b.HasIndex("VenueId", "CreatedAt");
 
                     b.ToTable("Favorites");
                 });
@@ -285,6 +289,8 @@ namespace Nereye.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Status", "TargetIntent", "EndAt");
+
                     b.ToTable("PromotionCampaigns");
                 });
 
@@ -337,6 +343,8 @@ namespace Nereye.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("TokenHash");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("RefreshTokens");
                 });
 
@@ -367,6 +375,8 @@ namespace Nereye.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ReporterUserId", "IsResolved");
+
                     b.ToTable("Reports");
                 });
 
@@ -395,6 +405,8 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.HasIndex("VenueId");
 

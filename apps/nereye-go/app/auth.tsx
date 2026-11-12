@@ -22,8 +22,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
+  type TextInputInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -43,8 +43,8 @@ export default function AuthScreen() {
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const passRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
+  const passRef = useRef<TextInputInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
   const taps = useRef(0);
 
   const register = mode === 'register';

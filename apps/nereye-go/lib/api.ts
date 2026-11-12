@@ -1,4 +1,5 @@
 import { ApiError, serverMessage } from '@/lib/api-error';
+import { isFresh, shareVenueRequest } from '@/lib/venue-cache';
 import { DEFAULT_API, FALLBACK_APIS } from '@/lib/constants';
 import { photoBatchIds } from '@/lib/photo-batch';
 import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
@@ -318,8 +319,17 @@ export const api = {
       {},
       { skipAuth: true, optional: true },
     ),
-  venue: async (placeId: string) =>
-    mapVenueDetail(await request<Record<string, unknown>>(`/api/venues/${encodeURIComponent(placeId)}`)),
+  /** Her zaman sunucudan tazeler; eşzamanlı çağrılar tek isteği paylaşır ve sonuç önbelleğe yazılır. */
+  venue: (placeId: string) =>
+    shareVenueRequest(placeId, async () =>
+      mapVenueDetail(await request<Record<string, unknown>>(`/api/venues/${encodeURIComponent(placeId)}`)),
+    ),
+  /** Kart dokunulurken çağrılır: sayfa açılana kadar veri yolda olur. Hata sessizdir. */
+  prefetchVenue: (placeId: string) => {
+    if (!isFresh(placeId)) {
+      void api.venue(placeId).catch(() => {});
+    }
+  },
   reviews: (placeId: string) => request<ReviewItem[]>(`/api/venues/${encodeURIComponent(placeId)}/reviews`),
   writeReview: (placeId: string, stars: number, text: string, tags: string[], photoUrls: string[] = []) =>
     request<ReviewItem>(`/api/venues/${encodeURIComponent(placeId)}/reviews`, {
@@ -459,7 +469,9 @@ export function mapVenueDetail(raw: Record<string, unknown>): VenueDetail {
       || google.photoReference.startsWith('places/'))
       ? google.photoReference
       : undefined;
-  const photoUrls = [...ownerPhotos, osmPhoto].filter((u): u is string => Boolean(u));
+  const gallery = Array.isArray(google.photoUrls) ? (google.photoUrls as string[]) : [];
+  // İşletmenin kendi fotoğrafları önce; sonra galeri. Aynı görsel iki kez girmesin.
+  const photoUrls = [...new Set([...ownerPhotos, ...gallery, osmPhoto].filter((u): u is string => Boolean(u)))];
   return {
     placeId: raw.placeId as string,
     name: (nereye.ownerDisplayName as string) || (google.name as string),
@@ -489,5 +501,9 @@ export function mapVenueDetail(raw: Record<string, unknown>): VenueDetail {
     outdoorSeating: google.outdoorSeating as string | undefined,
     internetAccess: google.internetAccess as string | undefined,
     amenityChips: (raw.amenityChips as string[]) ?? [],
+    summary: google.summary as string | undefined,
+    priceLevel: google.priceLevel as number | undefined,
+    category: google.category as string | undefined,
+    externalReviews: Array.isArray(raw.externalReviews) ? (raw.externalReviews as VenueDetail['externalReviews']) : [],
   };
 }

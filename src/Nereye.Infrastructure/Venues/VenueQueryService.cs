@@ -36,17 +36,10 @@ public sealed class VenueQueryService : IVenueQueryService
 
     public async Task<VenueDetailDto?> GetAsync(string placeId, Guid? userId = null, CancellationToken cancellationToken = default)
     {
-        var place = await _cache.GetOrSetAsync(
-            PlacesCacheKey.Details(placeId),
-            DetailsTtl,
-            ct => _places.DetailsAsync(placeId, ct),
-            cancellationToken);
-        if (place is null)
-        {
-            return null;
-        }
-
+        // Dış servis (yavaş olabilir) ile veritabanı sorgusu birbirini beklemesin.
+        var placeTask = LoadRichAsync(placeId, cancellationToken);
         var overlay = await _db.Venues
+            .AsNoTracking()
             .AsSplitQuery()
             .Include(v => v.Tags)
             .Include(v => v.Photos)
@@ -58,6 +51,20 @@ public sealed class VenueQueryService : IVenueQueryService
         {
             saved = await _db.Favorites.AnyAsync(f => f.UserId == uid && f.VenueId == overlay.Id, cancellationToken);
         }
+
+        var place = await placeTask;
+        if (place is null)
+        {
+            return null;
+        }
+
+        var gallery = (place.Photos ?? [])
+            .Select(p => PlaceMedia.Url(null, p))
+            .Append(PlaceMedia.Url(null, place.PhotoReference))
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
         var google = new GoogleVenueBlock(
             place.Name,
@@ -76,7 +83,12 @@ public sealed class VenueQueryService : IVenueQueryService
             place.OpeningHoursText,
             place.Cuisine,
             place.OutdoorSeating,
-            place.InternetAccess);
+            place.InternetAccess,
+            place.Summary,
+            place.PriceLevel,
+            place.Category,
+            gallery,
+            place.Features);
 
         var nereye = new NereyeVenueBlock(
             overlay?.Id,
@@ -96,7 +108,36 @@ public sealed class VenueQueryService : IVenueQueryService
             .ToList() ?? [];
 
         var note = PlaceBlurb.Compose(place, 0, overlay?.Tags.Select(t => t.Tag).ToList());
-        return new VenueDetailDto(placeId, google, nereye, events, note, PlaceAmenityChips.From(place));
+        var external = place.Reviews?
+            .Select(r => new ExternalReviewDto(r.Author, r.Rating, r.Text, r.When, r.AuthorPhotoUrl))
+            .ToList();
+        return new VenueDetailDto(placeId, google, nereye, events, note, PlaceAmenityChips.From(place), external);
+    }
+
+    /// <summary>
+    /// Detay sayfası için zengin kayıt. Sağlayıcı yanıt vermezse listeden gelen sade kayda düşer:
+    /// sayfa eksik içerikle de olsa açılır.
+    /// </summary>
+    private async Task<PlaceSnapshot?> LoadRichAsync(string placeId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rich = await _cache.GetOrSetAsync(
+                PlacesCacheKey.Rich(placeId),
+                PlacesCacheTtl.Rich,
+                ct => _places.DetailsAsync(placeId, ct),
+                cancellationToken);
+            if (rich is not null)
+            {
+                return rich;
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            /* aşağıda sade kayda düş */
+        }
+
+        return await _cache.TryGetAsync<PlaceSnapshot>(PlacesCacheKey.Details(placeId), cancellationToken);
     }
 
     public async Task UpdateOwnerAsync(
@@ -155,6 +196,7 @@ public sealed class VenueQueryService : IVenueQueryService
     public async Task<string?> GetPhotoAsync(string placeId, CancellationToken cancellationToken = default)
     {
         var overlay = await _db.Venues
+            .AsNoTracking()
             .AsSplitQuery()
             .Include(v => v.Photos)
             .FirstOrDefaultAsync(v => v.GooglePlaceId == placeId, cancellationToken);
@@ -189,13 +231,14 @@ public sealed class VenueQueryService : IVenueQueryService
         }
 
         var overlays = await _db.Venues
+            .AsNoTracking()
             .AsSplitQuery()
             .Include(v => v.Photos)
             .Where(v => ids.Contains(v.GooglePlaceId))
             .ToListAsync(cancellationToken);
         var overlayById = overlays.ToDictionary(v => v.GooglePlaceId);
         var found = new Dictionary<string, string>(StringComparer.Ordinal);
-        var missing = new List<PlaceSnapshot>();
+        var lookups = new List<Task<PlaceSnapshot?>>();
         foreach (var id in ids)
         {
             overlayById.TryGetValue(id, out var overlay);
@@ -207,11 +250,17 @@ public sealed class VenueQueryService : IVenueQueryService
                 continue;
             }
 
-            var place = await _cache.GetOrSetAsync(
+            lookups.Add(_cache.GetOrSetAsync(
                 PlacesCacheKey.Details(id),
                 DetailsTtl,
                 ct => _places.DetailsAsync(id, ct),
-                cancellationToken);
+                cancellationToken));
+        }
+
+        // Sekiz mekanı sırayla değil aynı anda sor.
+        var missing = new List<PlaceSnapshot>();
+        foreach (var place in await Task.WhenAll(lookups))
+        {
             if (place is null)
             {
                 continue;
@@ -220,7 +269,7 @@ public sealed class VenueQueryService : IVenueQueryService
             var tagged = PlaceMedia.Url(null, place.PhotoReference);
             if (!string.IsNullOrWhiteSpace(tagged))
             {
-                found[id] = tagged;
+                found[place.PlaceId] = tagged;
                 continue;
             }
 
@@ -261,11 +310,13 @@ public sealed class VenueQueryService : IVenueQueryService
             },
             cancellationToken);
 
+        var searchIds = snapshots.Select(s => s.PlaceId).ToList();
         var overlays = await _db.Venues
+            .AsNoTracking()
             .AsSplitQuery()
             .Include(v => v.Tags)
             .Include(v => v.Photos)
-            .Where(v => snapshots.Select(s => s.PlaceId).Contains(v.GooglePlaceId))
+            .Where(v => searchIds.Contains(v.GooglePlaceId))
             .ToListAsync(cancellationToken);
         var map = overlays.ToDictionary(v => v.GooglePlaceId);
 
@@ -289,7 +340,11 @@ public sealed class VenueQueryService : IVenueQueryService
                 PlaceMedia.Url(overlay?.Photos.FirstOrDefault()?.Url, p.PhotoReference),
                 overlay?.Tags.Select(t => t.Tag).ToList() ?? [],
                 [],
-                PlaceBlurb.Compose(p, distance, overlay?.Tags.Select(t => t.Tag).ToList()));
+                PlaceBlurb.Compose(p, distance, overlay?.Tags.Select(t => t.Tag).ToList()),
+                p.GoogleRating,
+                p.GoogleUserRatingCount,
+                p.PriceLevel,
+                p.Category);
         }).ToList();
     }
 }

@@ -29,6 +29,12 @@ public static class PlaceBlurb
             return known;
         }
 
+        // Gerçek bir tanıtım varsa uydurma cümle yerine onu göster.
+        if (!string.IsNullOrWhiteSpace(place.Summary))
+        {
+            return place.Summary.Trim();
+        }
+
         var where = Neighborhood(place.Address);
         var walk = Walk(distanceMeters);
         var open = place.OpenNow switch

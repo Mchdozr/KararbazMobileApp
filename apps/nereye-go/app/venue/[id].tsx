@@ -22,7 +22,9 @@ import { useSession } from '@/lib/session';
 import { shareVenue } from '@/lib/share';
 import { colors, fonts, radii } from '@/lib/theme';
 import { toast } from '@/lib/toast';
-import type { ReviewItem, RouteMode, RouteResult, VenueDetail } from '@/lib/types';
+import { peekVenue } from '@/lib/venue-cache';
+import { clip, compactCount, featureIcon, metaLine, priceWord } from '@/lib/venue-format';
+import type { ExternalReview, ReviewItem, RouteMode, RouteResult, VenueDetail } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -100,6 +102,7 @@ export default function Venue() {
   const [drive, setDrive] = useState<RouteResult | null>(null);
   const [mode, setMode] = useState<RouteMode>('foot');
   const [hoursOpen, setHoursOpen] = useState(false);
+  const [allFeatures, setAllFeatures] = useState(false);
   const owner = Boolean(session?.roles?.includes('VenueOwner'));
   const userId = session?.userId ?? null;
   const { lat, lng } = filters;
@@ -109,7 +112,10 @@ export default function Venue() {
       return;
     }
     let alive = true;
-    setLoading(true);
+    // Önbellekte varsa (kart dokunulurken çekildi ya da daha önce açıldı) anında göster, arkada tazele.
+    const cached = peekVenue(id);
+    setDetail(cached);
+    setLoading(!cached);
     setError(null);
     api
       .venue(id)
@@ -127,19 +133,10 @@ export default function Venue() {
           latitude: v.latitude,
           longitude: v.longitude,
         });
-        // Rota sayfayı bekletmesin: gelince görünür, gelmezse bölüm hiç çıkmaz.
-        void Promise.all([
-          api.route(lat, lng, v.latitude, v.longitude, 'foot'),
-          api.route(lat, lng, v.latitude, v.longitude, 'driving'),
-        ]).then(([foot, driving]) => {
-          if (alive) {
-            setWalk(foot ?? null);
-            setDrive(driving ?? null);
-          }
-        });
       })
       .catch((e) => {
-        if (alive) {
+        // Elde eski veri varsa sayfayı hata ekranına çevirme.
+        if (alive && !cached) {
           setError(friendlyError(e));
         }
       })
@@ -151,7 +148,28 @@ export default function Venue() {
     return () => {
       alive = false;
     };
-  }, [id, userId, lat, lng, attempt]);
+  }, [id, userId, attempt]);
+
+  // Rota ayrı yüklenir: sayfayı bekletmez, konum değişince mekanı yeniden indirmez.
+  const destLat = detail?.latitude;
+  const destLng = detail?.longitude;
+  useEffect(() => {
+    if (destLat == null || destLng == null) {
+      return;
+    }
+    let alive = true;
+    void Promise.all([api.route(lat, lng, destLat, destLng, 'foot'), api.route(lat, lng, destLat, destLng, 'driving')]).then(
+      ([foot, driving]) => {
+        if (alive) {
+          setWalk(foot ?? null);
+          setDrive(driving ?? null);
+        }
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [destLat, destLng, lat, lng]);
 
   // Yorum ekranından dönünce liste tazelensin.
   useFocusEffect(
@@ -265,6 +283,8 @@ export default function Venue() {
   const osm = `https://www.openstreetmap.org/?mlat=${detail.latitude}&mlon=${detail.longitude}#map=18/${detail.latitude}/${detail.longitude}`;
   const route = mode === 'foot' ? walk : drive;
   const slides = photos.length ? photos : [null];
+  const features = detail.amenityChips ?? [];
+  const external = detail.externalReviews ?? [];
 
   return (
     <View style={styles.bg}>
@@ -302,7 +322,9 @@ export default function Venue() {
                 onPress={() => setViewer({ uris: photoUris, index: Math.min(i, photoUris.length - 1) })}
                 accessibilityRole="imagebutton"
                 accessibilityLabel={`${detail.name} fotoğrafı ${i + 1}, büyüt`}>
-                <VenueImage placeId={detail.placeId} photoUrl={url} name={detail.name} style={StyleSheet.absoluteFill} radius={0} active />
+                {Math.abs(i - photoIx) <= 1 ? (
+                  <VenueImage placeId={detail.placeId} photoUrl={url} name={detail.name} style={StyleSheet.absoluteFill} radius={0} active />
+                ) : null}
                 <LinearGradient
                   colors={['rgba(4,56,43,0.45)', 'transparent', 'rgba(4,56,43,0.5)']}
                   locations={[0, 0.35, 1]}
@@ -327,6 +349,13 @@ export default function Venue() {
           <Text style={styles.h} accessibilityRole="header">
             {detail.name}
           </Text>
+          {metaLine(detail.category, detail.priceLevel) ? (
+            <Text
+              style={styles.kind}
+              accessibilityLabel={[detail.category, priceWord(detail.priceLevel)].filter(Boolean).join(', ')}>
+              {metaLine(detail.category, detail.priceLevel)}
+            </Text>
+          ) : null}
           {detail.address ? <Text style={styles.addr}>{detail.address}</Text> : null}
 
           <View style={styles.statusRow}>
@@ -344,9 +373,18 @@ export default function Venue() {
                 <Text style={styles.ratingText}>{detail.nereyeRating.toFixed(1)}</Text>
                 <Text style={styles.ratingCount}>({detail.nereyeRatingCount})</Text>
               </View>
-            ) : (
-              <Text style={styles.fresh}>Henüz puanlanmadı</Text>
-            )}
+            ) : null}
+            {detail.googleRating != null ? (
+              <View
+                style={styles.ratingInline}
+                accessible
+                accessibilityLabel={`Google puanı ${detail.googleRating.toFixed(1)}, ${detail.googleRatingCount ?? 0} değerlendirme`}>
+                <Ionicons name="logo-google" size={13} color={colors.muted} />
+                <Text style={styles.ratingText}>{detail.googleRating.toFixed(1).replace('.', ',')}</Text>
+                {detail.googleRatingCount ? <Text style={styles.ratingCount}>({compactCount(detail.googleRatingCount)})</Text> : null}
+              </View>
+            ) : null}
+            {detail.nereyeRating == null && detail.googleRating == null ? <Text style={styles.fresh}>Henüz puanlanmadı</Text> : null}
             {detail.claimed ? (
               <View style={styles.verified}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.sage} />
@@ -382,18 +420,52 @@ export default function Venue() {
             <Text style={styles.desc}>{detail.ownerDescription}</Text>
           ) : null}
 
-          {detail.vibes.length || (detail.amenityChips?.length ?? 0) ? (
-            <View style={styles.pills}>
-              {detail.amenityChips?.map((c) => (
-                <Text key={`a-${c}`} style={styles.vibe}>
-                  {c}
-                </Text>
+          {photoUris.length > 1 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery}>
+              {photoUris.map((uri, i) => (
+                <Pressable
+                  key={uri}
+                  onPress={() => setViewer({ uris: photoUris, index: i })}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel={`Fotoğraf ${i + 1} / ${photoUris.length}, büyüt`}>
+                  <Image source={{ uri }} style={styles.galleryPhoto} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+                </Pressable>
               ))}
+            </ScrollView>
+          ) : null}
+
+          {detail.vibes.length ? (
+            <View style={styles.pills}>
               {detail.vibes.map((v) => (
                 <Text key={`v-${v}`} style={styles.vibe}>
                   {vibeText(v)}
                 </Text>
               ))}
+            </View>
+          ) : null}
+
+          {features.length ? (
+            <View style={styles.box}>
+              <Text style={styles.boxTitle}>Öne çıkanlar</Text>
+              <View style={styles.features}>
+                {(allFeatures ? features : features.slice(0, 6)).map((f) => (
+                  <View key={f} style={styles.feature}>
+                    <Ionicons name={featureIcon(f) as ComponentProps<typeof Ionicons>['name']} size={18} color={colors.coral} />
+                    <Text style={styles.featureText} numberOfLines={2}>
+                      {f}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              {features.length > 6 ? (
+                <Pressable
+                  onPress={() => setAllFeatures((v) => !v)}
+                  style={styles.more}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: allFeatures }}>
+                  <Text style={styles.link}>{allFeatures ? 'Daha az göster' : `Tümünü göster (${features.length})`}</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : null}
 
@@ -551,6 +623,23 @@ export default function Venue() {
             </View>
           ))}
 
+          {external.length ? (
+            <>
+              <View style={styles.sectionRow}>
+                <Text style={styles.section}>Google’da ne diyorlar?</Text>
+                {detail.mapsUri ? (
+                  <Pressable onPress={() => void open(detail.mapsUri!)} hitSlop={10} accessibilityRole="link" accessibilityLabel="Tüm Google yorumlarını aç">
+                    <Text style={styles.link}>Tümü</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              {external.map((r, i) => (
+                <ExternalReviewCard key={`${r.author}-${i}`} review={r} />
+              ))}
+              <Text style={styles.source}>Yorumlar Google Haritalar’dan alınmıştır.</Text>
+            </>
+          ) : null}
+
           <View style={styles.footLinks}>
             {session ? (
               <Pressable
@@ -583,6 +672,37 @@ export default function Venue() {
       </View>
 
       <PhotoViewer uris={viewer?.uris ?? []} index={viewer?.index ?? null} onClose={() => setViewer(null)} />
+    </View>
+  );
+}
+
+function ExternalReviewCard({ review }: { review: ExternalReview }) {
+  const [open, setOpen] = useState(false);
+  const body = clip(review.text ?? '', 220);
+  return (
+    <View style={styles.review}>
+      <View style={styles.reviewHead}>
+        <Avatar name={review.author} url={review.authorPhotoUrl} size={36} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.author} numberOfLines={1}>
+            {review.author}
+          </Text>
+          <View style={styles.reviewMeta}>
+            <Stars value={review.rating} size={12} />
+            {review.when ? <Text style={styles.when}>{review.when}</Text> : null}
+          </View>
+        </View>
+      </View>
+      {review.text ? (
+        <Pressable
+          onPress={() => setOpen((v) => !v)}
+          disabled={!body.clipped}
+          accessibilityRole={body.clipped ? 'button' : 'text'}
+          accessibilityHint={body.clipped ? 'Yorumun tamamını gösterir' : undefined}>
+          <Text style={styles.reviewText}>{open ? review.text : body.text}</Text>
+          {body.clipped ? <Text style={[styles.link, styles.readMore]}>{open ? 'Kısalt' : 'Devamını oku'}</Text> : null}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -661,6 +781,15 @@ const styles = StyleSheet.create({
     minHeight: 400,
   },
   h: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, color: colors.ink },
+  kind: { color: colors.sage, fontFamily: fonts.sansBold, fontSize: 14, marginTop: 6 },
+  gallery: { gap: 8, marginTop: 16 },
+  galleryPhoto: { width: 132, height: 96, borderRadius: 14, backgroundColor: colors.line },
+  features: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, rowGap: 12 },
+  feature: { width: '50%', flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
+  featureText: { flex: 1, color: colors.ink, fontFamily: fonts.sansMed, fontSize: 13 },
+  more: { minHeight: 44, justifyContent: 'center', marginTop: 4 },
+  source: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 10 },
+  readMore: { marginTop: 6 },
   addr: { color: colors.muted, marginTop: 6, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 12 },
   status: {

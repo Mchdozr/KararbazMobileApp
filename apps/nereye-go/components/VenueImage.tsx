@@ -1,12 +1,12 @@
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { api } from '@/lib/api';
 import { photoSource } from '@/lib/photos';
 import { placeholderInitials, placeholderPalette, placeholderShapes } from '@/lib/placeholder';
 import { colors, fonts } from '@/lib/theme';
 
-export function VenueImage({
+export const VenueImage = memo(function VenueImage({
   placeId,
   photoUrl,
   photoReference,
@@ -27,7 +27,11 @@ export function VenueImage({
 }) {
   const given = photoSource(placeId, photoUrl, photoReference);
   const [lazyUrl, setLazyUrl] = useState<string | null>(null);
-  const source = given ?? photoSource(placeId, lazyUrl);
+  // Görsel indirilemezse (kota, silinmiş dosya) boş kare yerine yer tutucu göster.
+  const [broken, setBroken] = useState<string | null>(null);
+  const candidate = given ?? photoSource(placeId, lazyUrl);
+  const uri = candidate && typeof candidate === 'object' ? candidate.uri : null;
+  const source = uri && uri === broken ? null : candidate;
   const [a, b] = placeholderPalette(placeId);
   const shapes = placeholderShapes(placeId);
 
@@ -49,7 +53,15 @@ export function VenueImage({
   return (
     <View style={[styles.wrap, { borderRadius: radius }, style]}>
       {source ? (
-        <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" transition={220} cachePolicy="memory-disk" />
+        <Image
+          source={source}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={180}
+          cachePolicy="memory-disk"
+          recyclingKey={uri ?? placeId}
+          onError={() => setBroken(uri)}
+        />
       ) : fallback ? (
         <Image source={fallback} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (
@@ -75,7 +87,7 @@ export function VenueImage({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap: {

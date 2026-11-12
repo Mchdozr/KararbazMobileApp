@@ -35,6 +35,7 @@ public sealed class RecommendationService : IRecommendationService
 
         var placeIds = snapshots.Select(s => s.PlaceId).ToList();
         var overlays = await _db.Venues
+            .AsNoTracking()
             .AsSplitQuery()
             .Include(v => v.Tags)
             .Include(v => v.Photos)
@@ -57,7 +58,7 @@ public sealed class RecommendationService : IRecommendationService
         HashSet<string> recentFavorites = [];
         if (query.UserId is { } uid)
         {
-            var pref = await _db.UserPreferences.Include(p => p.Vibes)
+            var pref = await _db.UserPreferences.AsNoTracking().Include(p => p.Vibes)
                 .FirstOrDefaultAsync(p => p.UserId == uid, cancellationToken);
             if (userVibes.Count == 0 && pref is not null)
             {
@@ -150,7 +151,11 @@ public sealed class RecommendationService : IRecommendationService
                 PlaceMedia.Url(overlay?.Photos.FirstOrDefault()?.Url, place.PhotoReference),
                 overlay?.Tags.Select(t => t.Tag).ToList() ?? [],
                 events,
-                PlaceBlurb.Compose(place, distance, overlay?.Tags.Select(t => t.Tag).ToList()));
+                PlaceBlurb.Compose(place, distance, overlay?.Tags.Select(t => t.Tag).ToList()),
+                place.GoogleRating,
+                place.GoogleUserRatingCount,
+                place.PriceLevel,
+                place.Category);
         }).Where(i => i is not null).Cast<RecommendationItemDto>().ToList();
 
         var attribution = snapshots.FirstOrDefault()?.Attribution ?? "Harita verisi: OpenStreetMap";
@@ -177,20 +182,25 @@ public sealed class RecommendationService : IRecommendationService
         {
             var bucket = PlacesCacheKey.BucketMeters(query.RadiusMeters);
             var key = PlacesCacheKey.Nearby(geohash, query.Intent, bucket);
+            var fresh = false;
             snapshots = await _cache.GetOrSetAsync(
                 key,
                 PlacesCacheTtl.Nearby,
                 async ct =>
                 {
+                    fresh = true;
                     var found = await _places.NearbyAsync(query.Latitude, query.Longitude, query.Intent, bucket, ct);
                     return found.ToList();
                 },
                 cancellationToken);
-        }
 
-        foreach (var place in snapshots)
-        {
-            await _cache.SetAsync(PlacesCacheKey.Details(place.PlaceId), PlacesCacheTtl.Nearby, place, cancellationToken);
+            // Detay önbelleğini yalnızca liste gerçekten yeni çekildiğinde ve hepsini aynı anda doldur.
+            // (Önceden her öneri isteğinde, önbellekten gelse bile, mekan başına sırayla bir yazma yapılıyordu.)
+            if (fresh)
+            {
+                await Task.WhenAll(snapshots.Select(place =>
+                    _cache.SetAsync(PlacesCacheKey.Details(place.PlaceId), PlacesCacheTtl.Nearby, place, cancellationToken)));
+            }
         }
 
         return NearbyPlaces.WithinRadius(snapshots, query.Latitude, query.Longitude, query.RadiusMeters);

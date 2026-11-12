@@ -41,6 +41,26 @@ ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5079 Databas
 
 Bellek içi veritabanı ve örnek Kadıköy mekanlarıyla açılır. Expo istemcisi `--web` ile de çalışır (harita yer tutucu olur).
 
+## Google Places anahtarı
+
+Anahtar repoya yazılmaz. Üç yoldan biriyle ver:
+
+```powershell
+# Visual Studio / dotnet run
+dotnet user-secrets set "Places:ApiKey" "ANAHTAR" --project src/Nereye.Api
+```
+
+```powershell
+# Docker: kök dizinde .env dosyası (.env.example'dan kopyala)
+GOOGLE_PLACES_API_KEY=ANAHTAR
+```
+
+Ya da `GOOGLE_PLACES_API_KEY` ortam değişkeni. Anahtar boşsa uygulama yalnızca OpenStreetMap verisiyle çalışır.
+
+Google Cloud Console'da:
+- **Places API (New)** etkin olmalı; anahtarı yalnızca bu API'ye ve mümkünse sunucunun IP'sine kısıtla.
+- **Kotalar:** Nearby Search, Text Search, Place Details ve Place Photo için günlük sınırlar ayrı ayrıdır. Sınır doluysa o uç Pasifik gece yarısına kadar devre dışı kalır ve uygulama OSM ile devam eder (log: `Google Places 429 …`). Zengin içeriğin her mekanda görünmesi için bu sınırları kullanımına göre yükselt.
+
 ## Prod notları
 
 - `JWT_SIGNING_KEY` (en az 32 karakter) zorunlu; varsayılan anahtarla Production açılmaz

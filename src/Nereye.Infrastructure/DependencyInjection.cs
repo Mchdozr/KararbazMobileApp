@@ -95,7 +95,8 @@ public static class DependencyInjection
         }
 
         services.AddSingleton<IClock, SystemClock>();
-        services.AddScoped<IPlacesCache, DistributedPlacesCache>();
+        services.AddMemoryCache();
+        services.AddSingleton<IPlacesCache, DistributedPlacesCache>();
         services.AddScoped<IPaymentGateway, SandboxPaymentGateway>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
@@ -139,7 +140,13 @@ public static class DependencyInjection
                 options,
                 sp.GetRequiredService<IPlacesCache>(),
                 sp.GetService<ILogger<GoogleAugmentedPlacesClient>>());
-            var search = new FallbackPlacesClient(nominatim, overpass, fallbackOnEmpty: true, log);
+            // Arama da aynı sarmalayıcıdan geçer: OSM boş dönerse ya da kapalıysa Google yanıtlar.
+            var search = new GoogleAugmentedPlacesClient(
+                new FallbackPlacesClient(nominatim, overpass, fallbackOnEmpty: true, log),
+                google,
+                options,
+                sp.GetRequiredService<IPlacesCache>(),
+                sp.GetService<ILogger<GoogleAugmentedPlacesClient>>());
             return new CompositePlacesClient(nearby, search, nearby);
         });
         services.AddScoped<IGeoSuggest>(sp =>

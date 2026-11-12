@@ -33,6 +33,9 @@ export function photoSource(placeId: string, photoUrl?: string | null, photoRefe
     return local[placeId];
   }
   const raw = photoUrl || photoReference;
+  if (raw?.startsWith('/api/media/google')) {
+    return { uri: `${getApiBase()}${raw}` };
+  }
   if (raw?.startsWith('http')) {
     return { uri: raw };
   }

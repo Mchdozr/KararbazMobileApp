@@ -1,13 +1,16 @@
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { VenueImage } from '@/components/VenueImage';
 import { vibeText } from '@/lib/constants';
+import { api } from '@/lib/api';
 import { INTENT_PHOTOS } from '@/lib/photos';
+import { metaLine, ratingLine } from '@/lib/venue-format';
 import { mahalleLine } from '@/lib/geo-hit';
 import { colors, fonts, radii } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import type { VenueCard } from '@/lib/types';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -28,7 +31,7 @@ function eventClock(iso?: string) {
 
 const AnimatedView = Animated.createAnimatedComponent(View);
 
-export function VenueProductCard({
+export const VenueProductCard = memo(function VenueProductCard({
   card,
   width,
   featured = false,
@@ -44,7 +47,9 @@ export function VenueProductCard({
   const router = useRouter();
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const rating = card.nereyeRating != null ? card.nereyeRating.toFixed(1) : null;
+  const rated = ratingLine(card);
+  const rating = rated?.value ?? null;
+  const meta = metaLine(card.category, card.priceLevel);
   const photoH = featured ? 210 : 168;
   const vibes = card.vibes.slice(0, 2);
   const event = card.upcomingEvents[0];
@@ -52,6 +57,7 @@ export function VenueProductCard({
 
   const a11yLabel = [
     card.name,
+    card.category,
     rating ? `puan ${rating}` : null,
     card.distanceMeters >= 0 ? formatDistance(card.distanceMeters) : null,
     card.openNow === true ? 'açık' : card.openNow === false ? 'kapalı' : null,
@@ -64,6 +70,8 @@ export function VenueProductCard({
       <Pressable
         onPressIn={() => {
           scale.value = withTiming(0.97, { duration: 180 });
+          // Parmak daha kalkmadan detay isteği yola çıksın.
+          api.prefetchVenue(card.placeId);
         }}
         onPressOut={() => {
           scale.value = withTiming(1, { duration: 220 });
@@ -94,22 +102,31 @@ export function VenueProductCard({
             {card.name}
           </Text>
         </View>
-      <View style={styles.metaRow}>
-        {rating ? (
-          <View style={styles.rating}>
-            <Ionicons name="star" size={12} color={colors.gold} />
-            <Text style={styles.star}>{rating}</Text>
-            {card.nereyeRatingCount > 0 ? <Text style={styles.count}>({card.nereyeRatingCount})</Text> : null}
-          </View>
-        ) : (
-          <Text style={styles.fresh}>Yeni</Text>
-        )}
-        {card.address ? (
-          <Text numberOfLines={1} style={styles.addr}>
+        <View style={styles.metaRow}>
+          {rated ? (
+            <View style={styles.rating}>
+              <Ionicons name="star" size={12} color={colors.gold} />
+              <Text style={styles.star}>{rated.value}</Text>
+              {rated.count ? <Text style={styles.count}>({rated.count})</Text> : null}
+            </View>
+          ) : (
+            <Text style={styles.fresh}>Yeni</Text>
+          )}
+          {meta ? (
+            <Text numberOfLines={1} style={styles.meta}>
+              {meta}
+            </Text>
+          ) : card.address ? (
+            <Text numberOfLines={1} style={styles.addr}>
+              {mahalleLine(card.address) || card.address}
+            </Text>
+          ) : null}
+        </View>
+        {meta && card.address ? (
+          <Text numberOfLines={1} style={styles.where}>
             {mahalleLine(card.address) || card.address}
           </Text>
         ) : null}
-      </View>
       {vibes.length > 0 || clock ? (
         <View style={styles.chips}>
           {vibes.map((v) => (
@@ -129,7 +146,7 @@ export function VenueProductCard({
       <FavoriteButton venue={card} style={styles.heart} />
     </AnimatedView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { marginBottom: 4, position: 'relative' },
@@ -184,6 +201,8 @@ const styles = StyleSheet.create({
   count: { color: colors.muted, fontSize: 12 },
   fresh: { color: colors.sage, fontFamily: fonts.sansBold, fontSize: 12 },
   addr: { flex: 1, color: colors.muted, fontSize: 12 },
+  meta: { flex: 1, color: colors.ink, fontFamily: fonts.sansMed, fontSize: 12 },
+  where: { color: colors.muted, fontSize: 12, marginTop: 3, paddingHorizontal: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6, paddingHorizontal: 2 },
   chip: {
     backgroundColor: colors.surface,

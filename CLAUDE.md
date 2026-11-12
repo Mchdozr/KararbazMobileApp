@@ -6,7 +6,7 @@ Niyet bazlı mekan karar motoru. Kullanıcı "kahve / yemek / eğlence…" seçe
 
 | Yol | Ne |
 | --- | --- |
-| `apps/nereye-go` | **Canlı istemci.** Expo SDK 57, expo-router, TypeScript. Kendi `CLAUDE.md`/`AGENTS.md` dosyası var. |
+| `apps/nereye-go` | **Canlı istemci.** Expo SDK 58, expo-router, TypeScript. Kendi `CLAUDE.md`/`AGENTS.md` dosyası var. |
 | `apps/mobile` | Flutter arşivi. Dokunma. |
 | `src/Nereye.Api` | ASP.NET Core 10 Web API (JWT, hız sınırı, statik medya). |
 | `src/Nereye.Application` | Arayüzler ve DTO'lar. |
@@ -46,8 +46,11 @@ Web'de harita yer tutucudur (`components/Map.web.tsx`); diğer her ekran gerçek
 - **Depolama:** Doğrudan `expo-secure-store` çağırma; `lib/storage.ts` kullan (web'de localStorage'a düşer).
 - **Tasarım:** Renk/yazı tipi yalnızca `lib/theme.ts` üzerinden. `colors.coral` tarihsel bir addır, marka yeşilidir; hata için `colors.danger`. Dokunma hedefi en az 44pt, her `Pressable` için `accessibilityRole` + `accessibilityLabel`.
 - **Geri bildirim:** Başarı/başarısızlık için `toast`, yükleme için `Skeleton`, boş durum için `EmptyState`. `Alert` yalnızca yıkıcı eylem onayı için.
-- **Expo:** Paket eklerken `node_modules/expo/bundledNativeModules.json` içindeki sürümü kullan (SDK 57).
-- **Güvenlik:** Sır commit'leme. Production `JWT_SIGNING_KEY` ve `ADMIN_PASSWORD` ortam değişkeni ister.
+- **Expo:** Paket eklerken `node_modules/expo/bundledNativeModules.json` içindeki sürümü kullan (SDK 58). RN 0.88'de ref tipleri `TextInputInstance` / `ScrollViewInstance`.
+- **Mekan verisi:** Katalog OpenStreetMap; Google Places (New) üstüne zengin içerik ekler (özet, yorum, olanak, galeri, puan, fiyat). Google yanıtı yalnızca `GooglePlaceJson` ile ayrıştırılır, OSM ile `PlaceMerge` ile birleştirilir. Google yoksa, yavaşsa ya da kotası dolduysa her şey OSM ile çalışmaya devam etmeli — yeni kod bu kuralı bozmasın.
+- **Google kotası kıt kaynaktır:** Kota uç bazında günlüktür (Nearby, Text Search, Details, Photo). Liste isteğine Atmosphere alanı (`editorialSummary`, `reviews`, `serves*`) ekleme; bunlar yalnızca detayda ve 24 saat önbellekle istenir. Fotoğraf tek genişlikte (800) istenir.
+- **Önbellek:** `IPlacesCache` iki katmanlıdır (bellek + Redis) ve tekildir; dönen nesneyi değiştirme. Anahtar biçimi değişirse `PlacesCacheKey` içindeki sürümü artır.
+- **Güvenlik:** Sır commit'leme. Google anahtarı yalnızca `GOOGLE_PLACES_API_KEY` ortam değişkeni, `.env` (gitignore'da) ya da `dotnet user-secrets` ile verilir; istemciye hiç gitmez (fotoğraflar `/api/media/google` yönlendirmesinden geçer). Production `JWT_SIGNING_KEY` ve `ADMIN_PASSWORD` ortam değişkeni ister.
 
 ## Çalışma biçimi
 

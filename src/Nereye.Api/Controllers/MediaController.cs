@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.RateLimiting;
+using Nereye.Application.Places;
+using Nereye.Domain.Places;
 using Nereye.Infrastructure.Places;
 
 namespace Nereye.Api.Controllers;
@@ -9,46 +11,55 @@ namespace Nereye.Api.Controllers;
 [Route("api/media")]
 public sealed class MediaController : ControllerBase
 {
-    private readonly IHttpClientFactory _http;
-    private readonly GooglePlacesOptions _places;
+    // Tek genişlik: her fotoğraf için Google'a bir kez sorulur ve kart da detay da aynı önbellek kaydını kullanır.
+    // (Fotoğraf kotası günlüktür ve genişlik başına ayrı istek sayılır.)
+    private static readonly int[] Widths = [800];
+    private readonly GooglePlacesClient _google;
+    private readonly IPlacesCache _cache;
 
-    public MediaController(IHttpClientFactory http, IOptions<GooglePlacesOptions> places)
+    public MediaController(GooglePlacesClient google, IPlacesCache cache)
     {
-        _http = http;
-        _places = places.Value;
+        _google = google;
+        _cache = cache;
     }
 
+    /// <summary>
+    /// Google fotoğraf adını, anahtar içermeyen CDN adresine yönlendirir. API anahtarı istemciye hiç gitmez
+    /// ve görsel baytları bu sunucudan geçmez: istemci doğrudan CDN'den, istediği genişlikte indirir.
+    /// </summary>
     [AllowAnonymous]
+    [EnableRateLimiting("osm")]
     [HttpGet("google")]
-    [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
-    public async Task<IActionResult> GooglePhoto([FromQuery] string? name, CancellationToken ct)
+    public async Task<IActionResult> GooglePhoto([FromQuery] string? name, [FromQuery] int w = 800, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(name)
-            || !name.StartsWith("places/", StringComparison.OrdinalIgnoreCase)
+            || name.Length > 700
+            || !name.StartsWith("places/", StringComparison.Ordinal)
+            || !name.Contains("/photos/", StringComparison.Ordinal)
             || name.Contains("..", StringComparison.Ordinal)
-            || name.Contains("://", StringComparison.Ordinal))
+            || name.Contains("://", StringComparison.Ordinal)
+            || name.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '/' or '_' or '-')))
         {
             return BadRequest();
         }
 
-        if (string.IsNullOrWhiteSpace(_places.ApiKey))
+        // Serbest genişlik önbelleği parçalar; en yakın standart boya yuvarla.
+        var width = Widths.FirstOrDefault(x => x >= w, Widths[^1]);
+        var key = PlacesCacheKey.PhotoUri(name, width);
+        var uri = await _cache.TryGetAsync<string>(key, ct);
+        if (string.IsNullOrEmpty(uri))
         {
-            return NotFound();
+            uri = await _google.PhotoUriAsync(name, width, ct);
+            if (string.IsNullOrEmpty(uri))
+            {
+                // Bulunamayanı önbelleğe yazma: geçici bir hata saatlerce boş görsele dönüşmesin.
+                return NotFound();
+            }
+
+            await _cache.SetAsync(key, PlacesCacheTtl.PhotoUri, uri, ct);
         }
 
-        var client = _http.CreateClient();
-        var url = $"https://places.googleapis.com/v1/{name}/media?maxHeightPx=800&skipHttpRedirect=false";
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.TryAddWithoutValidation("X-Goog-Api-Key", _places.ApiKey);
-        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            return StatusCode((int)response.StatusCode);
-        }
-
-        var contentType = response.Content.Headers.ContentType?.ToString() ?? "image/jpeg";
-        var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-        Response.Headers.CacheControl = "public, max-age=86400";
-        return File(bytes, contentType);
+        Response.Headers.CacheControl = "public, max-age=43200";
+        return Redirect(uri);
     }
 }

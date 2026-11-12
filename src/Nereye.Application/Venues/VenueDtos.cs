@@ -17,7 +17,15 @@ public sealed record GoogleVenueBlock(
     string? OpeningHours = null,
     string? Cuisine = null,
     string? OutdoorSeating = null,
-    string? InternetAccess = null);
+    string? InternetAccess = null,
+    string? Summary = null,
+    int? PriceLevel = null,
+    string? Category = null,
+    IReadOnlyList<string>? PhotoUrls = null,
+    IReadOnlyList<string>? Features = null);
+
+/// <summary>Dış kaynaktan (Google) gelen yorum; Nereye yorumlarından ayrı bir bölümde gösterilir.</summary>
+public sealed record ExternalReviewDto(string Author, int Rating, string? Text, string? When, string? AuthorPhotoUrl);
 
 public sealed record NereyeVenueBlock(
     Guid? VenueId,
@@ -37,6 +45,7 @@ public sealed record VenueDetailDto(
     NereyeVenueBlock Nereye,
     IReadOnlyList<CultureEventDto> Events,
     string? Note,
-    IReadOnlyList<string>? AmenityChips = null);
+    IReadOnlyList<string>? AmenityChips = null,
+    IReadOnlyList<ExternalReviewDto>? ExternalReviews = null);
 
 public sealed record CultureEventDto(Guid Id, string Title, DateTime StartsAt, DateTime? EndsAt);

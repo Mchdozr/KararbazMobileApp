@@ -69,6 +69,14 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
             .HasForeignKey(x => x.VenueId);
 
         builder.Entity<RefreshToken>().HasIndex(x => x.TokenHash);
+        // Sık çalışan sorguların taradığı sütunlar: "yorumlarım", oturum temizliği, trend kayıtlar,
+        // açık şikayet kontrolü ve etkin kampanya araması.
+        builder.Entity<RefreshToken>().HasIndex(x => x.UserId);
+        builder.Entity<Review>().HasIndex(x => x.UserId);
+        builder.Entity<Favorite>().HasIndex(x => new { x.VenueId, x.CreatedAt });
+        builder.Entity<Report>().HasIndex(x => new { x.ReporterUserId, x.IsResolved });
+        builder.Entity<PromotionCampaign>().HasIndex(x => new { x.Status, x.TargetIntent, x.EndAt });
+        builder.Entity<ConsentLog>().HasIndex(x => x.UserId);
         builder.Entity<SavedPlace>(e =>
         {
             e.HasIndex(x => x.UserId);

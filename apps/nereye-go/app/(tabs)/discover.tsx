@@ -201,6 +201,11 @@ export default function Discover() {
         data={first ? [] : sorted}
         keyExtractor={(c) => c.placeId}
         numColumns={2}
+        // İlk ekranı doldurmaya yetecek kadar kart çiz; gerisi kaydırdıkça gelir.
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
         columnWrapperStyle={styles.column}
         contentContainerStyle={[styles.wrap, { paddingTop: insets.top + 8 }]}
         showsVerticalScrollIndicator={false}

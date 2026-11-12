@@ -12,8 +12,8 @@ public sealed class PlaceAmenityChipsTests
         Assert.Contains("Türk", chips);
         Assert.Contains("Açık oturma", chips);
         Assert.Contains("Wi-Fi", chips);
-        Assert.Contains("Telefon", chips);
-        Assert.Contains("Web", chips);
+        Assert.DoesNotContain("Telefon", chips);
+        Assert.DoesNotContain("Web", chips);
     }
 
     [Fact]

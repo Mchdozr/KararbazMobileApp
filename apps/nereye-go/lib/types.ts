@@ -31,6 +31,20 @@ export type VenueCard = {
   latitude: number;
   longitude: number;
   note?: string | null;
+  googleRating?: number | null;
+  googleRatingCount?: number | null;
+  /** 0 ücretsiz … 4 çok pahalı */
+  priceLevel?: number | null;
+  category?: string | null;
+};
+
+/** Dış kaynaktan (Google) gelen yorum. */
+export type ExternalReview = {
+  author: string;
+  rating: number;
+  text?: string | null;
+  when?: string | null;
+  authorPhotoUrl?: string | null;
 };
 
 export type VenueDetail = {
@@ -62,6 +76,10 @@ export type VenueDetail = {
   outdoorSeating?: string | null;
   internetAccess?: string | null;
   amenityChips?: string[];
+  summary?: string | null;
+  priceLevel?: number | null;
+  category?: string | null;
+  externalReviews?: ExternalReview[];
 };
 
 export type RouteMode = 'foot' | 'driving';

@@ -17,7 +17,7 @@ import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View , type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const IDEAS = ['Kahvaltı', 'Sahil', 'Tatlı', 'Canlı müzik', 'Kitap kafe', 'Manzara'];
@@ -36,7 +36,7 @@ export default function Search() {
   const [done, setDone] = useState(false);
   const [retry, setRetry] = useState(0);
   const seq = useRef(0);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   useEffect(() => {
     void loadRecentSearches().then(setRecent);

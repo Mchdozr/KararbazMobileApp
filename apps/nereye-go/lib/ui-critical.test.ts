@@ -13,6 +13,8 @@ import { debounceMs, shouldSearch } from './search-query.ts';
 import { ApiError, serverMessage } from './api-error.ts';
 import { relativeDate, summarizeRatings } from './reviews.ts';
 import { activeFilterCount, sortCards } from './sort.ts';
+import { clearVenueCache, isFresh, peekVenue, putVenue, shareVenueRequest } from './venue-cache.ts';
+import { clip, compactCount, featureIcon, metaLine, priceLabel, ratingLine } from './venue-format.ts';
 import { emailProblem, nameProblem, passwordProblem, passwordStrength } from './validation.ts';
 import { peekRecommend, putRecommend, recommendCacheKey } from './recommend-cache.ts';
 import { photoBatchIds } from './photo-batch.ts';
@@ -205,4 +207,75 @@ test('recommend timeout covers cold Overpass', () => {
   assert.ok(match, 'RECOMMEND_TIMEOUT_MS tanımı yok');
   const ms = Number(match[1].replaceAll('_', ''));
   assert.ok(ms >= 45_000, `öneri zaman aşımı ${ms} ms; soğuk Overpass (~22 s) için en az 45 s olmalı`);
+});
+
+test('price and counts read like a Turkish listing', () => {
+  assert.equal(priceLabel(2), '₺₺');
+  assert.equal(priceLabel(0), 'Ücretsiz');
+  assert.equal(priceLabel(null), '');
+  assert.equal(priceLabel(9), '');
+  assert.equal(compactCount(950), '950');
+  assert.equal(compactCount(4898), '4,9 B');
+  assert.equal(compactCount(120_400), '120 B');
+  assert.equal(compactCount(1_250_000), '1,3 Mn');
+  assert.equal(compactCount(0), '');
+  assert.equal(metaLine('Kahve dükkanı', 2), 'Kahve dükkanı · ₺₺');
+  assert.equal(metaLine(null, 3), '₺₺₺');
+  assert.equal(metaLine(' ', null), '');
+});
+
+test('card shows community rating first, google rating as fallback, never a blank', () => {
+  assert.deepEqual(ratingLine({ nereyeRating: 4.6, nereyeRatingCount: 12, googleRating: 4.1, googleRatingCount: 900 }), {
+    value: '4,6',
+    count: '12',
+    source: 'nereye',
+  });
+  assert.deepEqual(ratingLine({ nereyeRating: null, nereyeRatingCount: 0, googleRating: 4.34, googleRatingCount: 4898 }), {
+    value: '4,3',
+    count: '4,9 B',
+    source: 'google',
+  });
+  assert.equal(ratingLine({ nereyeRating: 5, nereyeRatingCount: 0 }), null);
+  assert.equal(ratingLine({}), null);
+});
+
+test('every known feature has an icon and unknown ones still render', () => {
+  assert.equal(featureIcon('Açık alan'), 'sunny-outline');
+  assert.equal(featureIcon('Bilinmeyen olanak'), 'checkmark-circle-outline');
+});
+
+test('long reviews are clipped at a word boundary', () => {
+  assert.deepEqual(clip('kısa yorum', 50), { text: 'kısa yorum', clipped: false });
+  const long = clip('Brekkie kahvaltı için gittik ve gerçekten çok memnun kaldık', 30);
+  assert.equal(long.clipped, true);
+  assert.ok(long.text.endsWith('…'));
+  assert.ok(!long.text.includes('gerçe'));
+});
+
+test('venue cache shares in-flight requests and evicts the oldest', async () => {
+  clearVenueCache();
+  let calls = 0;
+  const load = async () => {
+    calls += 1;
+    return { placeId: 'a', name: 'A' } as never;
+  };
+  const [x, y] = await Promise.all([shareVenueRequest('a', load), shareVenueRequest('a', load)]);
+  assert.equal(calls, 1);
+  assert.equal(x, y);
+  assert.equal(peekVenue('a')?.name, 'A');
+  assert.equal(isFresh('a'), true);
+  assert.equal(isFresh('a', Date.now() + 11 * 60_000), false);
+  for (let i = 0; i < 45; i += 1) {
+    putVenue({ placeId: `p${i}`, name: String(i) } as never);
+  }
+  assert.equal(peekVenue('a'), null);
+  assert.equal(peekVenue('p44')?.name, '44');
+});
+
+test('a failed venue request is not cached and can be retried', async () => {
+  clearVenueCache();
+  await assert.rejects(shareVenueRequest('b', async () => Promise.reject(new Error('ağ yok'))));
+  assert.equal(peekVenue('b'), null);
+  const ok = await shareVenueRequest('b', async () => ({ placeId: 'b', name: 'B' }) as never);
+  assert.equal(ok.name, 'B');
 });

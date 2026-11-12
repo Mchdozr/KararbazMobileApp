@@ -30,8 +30,8 @@ export default function TabLayout() {
         options={{
           title: 'Keşfet',
           tabBarAccessibilityLabel: 'Keşfet',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'compass' : 'compass-outline'} color={color} size={size} />
+          tabBarIcon: ({ size, focused }) => (
+            <Ionicons name={focused ? 'compass' : 'compass-outline'} color={focused ? colors.coral : colors.muted} size={size} />
           ),
         }}
       />
@@ -40,8 +40,8 @@ export default function TabLayout() {
         options={{
           title: 'Harita',
           tabBarAccessibilityLabel: 'Harita',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} color={color} size={size} />
+          tabBarIcon: ({ size, focused }) => (
+            <Ionicons name={focused ? 'map' : 'map-outline'} color={focused ? colors.coral : colors.muted} size={size} />
           ),
         }}
       />
@@ -50,8 +50,8 @@ export default function TabLayout() {
         options={{
           title: 'Ara',
           tabBarAccessibilityLabel: 'Ara',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} color={color} size={size} />
+          tabBarIcon: ({ size, focused }) => (
+            <Ionicons name={focused ? 'search' : 'search-outline'} color={focused ? colors.coral : colors.muted} size={size} />
           ),
         }}
       />
@@ -60,8 +60,8 @@ export default function TabLayout() {
         options={{
           title: 'Liste',
           tabBarAccessibilityLabel: 'Liste',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'list' : 'list-outline'} color={color} size={size} />
+          tabBarIcon: ({ size, focused }) => (
+            <Ionicons name={focused ? 'list' : 'list-outline'} color={focused ? colors.coral : colors.muted} size={size} />
           ),
         }}
       />
@@ -70,8 +70,8 @@ export default function TabLayout() {
         options={{
           title: 'Profil',
           tabBarAccessibilityLabel: 'Profil',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} color={color} size={size} />
+          tabBarIcon: ({ size, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} color={focused ? colors.coral : colors.muted} size={size} />
           ),
         }}
       />

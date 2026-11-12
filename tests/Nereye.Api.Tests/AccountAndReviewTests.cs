@@ -240,3 +240,51 @@ public sealed class AccountAndReviewTests
         live.EnsureSuccessStatusCode();
     }
 }
+
+[Collection("api-flow")]
+public sealed class RichVenueTests
+{
+    private readonly NereyeApiFactory _factory;
+
+    public RichVenueTests(NereyeApiFactory factory) => _factory = factory;
+
+    [Fact]
+    public async Task Venue_detail_carries_summary_features_gallery_and_external_reviews()
+    {
+        using var client = _factory.CreateClient();
+        var root = JsonDocument.Parse(await client.GetStringAsync("/api/venues/nereye:petra")).RootElement;
+        var google = root.GetProperty("google");
+        Assert.Contains("kahve", google.GetProperty("summary").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, google.GetProperty("priceLevel").GetInt32());
+        Assert.Equal("Kahve dükkanı", google.GetProperty("category").GetString());
+        Assert.True(google.GetProperty("photoUrls").GetArrayLength() >= 1);
+        Assert.Contains("Açık alan", google.GetProperty("features").EnumerateArray().Select(f => f.GetString()));
+        Assert.Contains("Açık alan", root.GetProperty("amenityChips").EnumerateArray().Select(f => f.GetString()));
+        var reviews = root.GetProperty("externalReviews");
+        Assert.Equal(3, reviews.GetArrayLength());
+        Assert.Equal(5, reviews[0].GetProperty("rating").GetInt32());
+    }
+
+    [Fact]
+    public async Task Cards_carry_rating_price_and_category_so_they_are_never_blank()
+    {
+        using var client = _factory.CreateClient();
+        var root = JsonDocument.Parse(await client.GetStringAsync("/api/recommendations?lat=40.9885&lng=29.0250&intent=Kahve")).RootElement;
+        var card = root.GetProperty("items")[0];
+        Assert.True(card.GetProperty("googleRating").GetDouble() > 3);
+        Assert.True(card.GetProperty("googleRatingCount").GetInt32() > 0);
+        Assert.Equal("Kahve dükkanı", card.GetProperty("category").GetString());
+        Assert.Equal(2, card.GetProperty("priceLevel").GetInt32());
+    }
+
+    [Fact]
+    public async Task Photo_redirect_rejects_names_that_are_not_google_photo_ids()
+    {
+        using var client = _factory.CreateClient();
+        foreach (var bad in new[] { "places/a/photos/b?key=1", "places/abc", "places/a/photos/../../x", "places/a/photos/b c" })
+        {
+            var res = await client.GetAsync("/api/media/google?name=" + Uri.EscapeDataString(bad));
+            Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+        }
+    }
+}

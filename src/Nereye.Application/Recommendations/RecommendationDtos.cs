@@ -29,7 +29,11 @@ public sealed record RecommendationItemDto(
     string? PhotoUrl,
     IReadOnlyList<VibeTag> Vibes,
     IReadOnlyList<CultureEventDto> UpcomingEvents,
-    string Note);
+    string Note,
+    double? GoogleRating = null,
+    int? GoogleRatingCount = null,
+    int? PriceLevel = null,
+    string? Category = null);
 
 public sealed record CultureEventDto(Guid Id, string Title, DateTime StartsAt, DateTime? EndsAt);
 
