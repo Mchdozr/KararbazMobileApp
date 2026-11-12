@@ -19,4 +19,11 @@ public sealed class PlacesController : ControllerBase
         var url = await _venues.GetPhotoAsync(placeId, ct);
         return url is null ? NotFound() : Ok(new { photoUrl = url });
     }
+
+    [HttpPost("photos")]
+    public async Task<ActionResult<PlacePhotosResponse>> Photos([FromBody] PlacePhotosRequest? body, CancellationToken ct)
+    {
+        var photos = await _venues.GetPhotosAsync(body?.PlaceIds ?? [], ct);
+        return Ok(new PlacePhotosResponse(photos));
+    }
 }

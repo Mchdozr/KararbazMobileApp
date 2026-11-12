@@ -11,7 +11,6 @@ namespace Nereye.Infrastructure.Recommendations;
 
 public sealed class RecommendationService : IRecommendationService
 {
-    private static readonly TimeSpan NearbyTtl = TimeSpan.FromMinutes(30);
     private readonly IPlacesClient _places;
     private readonly IPlacesCache _cache;
     private readonly NereyeDbContext _db;
@@ -32,15 +31,7 @@ public sealed class RecommendationService : IRecommendationService
     public async Task<RecommendationResponse> RecommendAsync(RecommendationQuery query, CancellationToken cancellationToken = default)
     {
         var geohash = Geohash.Encode(query.Latitude, query.Longitude, 7);
-        var cacheKey = PlacesCacheKey.Nearby(geohash, query.Intent, query.RadiusMeters, query.Latitude, query.Longitude);
-        var snapshots = await _cache.GetOrSetAsync(
-            cacheKey,
-            NearbyTtl,
-            async ct =>
-            {
-                return await _places.NearbyAsync(query.Latitude, query.Longitude, query.Intent, query.RadiusMeters, ct);
-            },
-            cancellationToken);
+        var snapshots = await LoadSnapshotsAsync(query, geohash, cancellationToken);
 
         var placeIds = snapshots.Select(s => s.PlaceId).ToList();
         var overlays = await _db.Venues
@@ -103,6 +94,11 @@ public sealed class RecommendationService : IRecommendationService
                 continue;
             }
 
+            if (!IntentPlaceTypes.Fits(query.Intent, place.Name, place.Cuisine, place.Types))
+            {
+                continue;
+            }
+
             var venueVibes = overlay?.Tags.Select(t => t.Tag).ToList() ?? [];
             var recentSaves = overlay is null ? 0 : saveCounts.GetValueOrDefault(overlay.Id);
             var score = RecommendationScorer.Score(new ScoreInput(
@@ -133,7 +129,10 @@ public sealed class RecommendationService : IRecommendationService
                 return null;
             }
 
-            var (place, overlay, score, distance) = row;
+            var place = row.Place;
+            var overlay = row.Overlay;
+            var score = row.Score;
+            var distance = row.Distance;
             var events = MapEvents(overlay, query.Intent);
             return new RecommendationItemDto(
                 place.PlaceId,
@@ -156,6 +155,45 @@ public sealed class RecommendationService : IRecommendationService
 
         var attribution = snapshots.FirstOrDefault()?.Attribution ?? "Harita verisi: OpenStreetMap";
         return new RecommendationResponse(items, geohash, attribution, hasMore);
+    }
+
+    private async Task<IReadOnlyList<PlaceSnapshot>> LoadSnapshotsAsync(
+        RecommendationQuery query,
+        string geohash,
+        CancellationToken cancellationToken)
+    {
+        List<PlaceSnapshot>? snapshots = null;
+        foreach (var bucket in PlacesCacheKey.ServingBuckets(query.RadiusMeters))
+        {
+            var key = PlacesCacheKey.Nearby(geohash, query.Intent, bucket);
+            snapshots = await _cache.TryGetAsync<List<PlaceSnapshot>>(key, cancellationToken);
+            if (snapshots is not null)
+            {
+                break;
+            }
+        }
+
+        if (snapshots is null)
+        {
+            var bucket = PlacesCacheKey.BucketMeters(query.RadiusMeters);
+            var key = PlacesCacheKey.Nearby(geohash, query.Intent, bucket);
+            snapshots = await _cache.GetOrSetAsync(
+                key,
+                PlacesCacheTtl.Nearby,
+                async ct =>
+                {
+                    var found = await _places.NearbyAsync(query.Latitude, query.Longitude, query.Intent, bucket, ct);
+                    return found.ToList();
+                },
+                cancellationToken);
+        }
+
+        foreach (var place in snapshots)
+        {
+            await _cache.SetAsync(PlacesCacheKey.Details(place.PlaceId), PlacesCacheTtl.Nearby, place, cancellationToken);
+        }
+
+        return NearbyPlaces.WithinRadius(snapshots, query.Latitude, query.Longitude, query.RadiusMeters);
     }
 
     private async Task<IReadOnlyList<RankedCard>> LoadSponsoredAsync(Intent intent, string geohash, CancellationToken cancellationToken)

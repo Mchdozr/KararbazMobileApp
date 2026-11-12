@@ -1,5 +1,7 @@
 import { ApiError, serverMessage } from '@/lib/api-error';
 import { DEFAULT_API, FALLBACK_APIS } from '@/lib/constants';
+import { photoBatchIds } from '@/lib/photo-batch';
+import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
   MyReview,
@@ -23,8 +25,45 @@ let refreshToken: string | null = null;
 let refreshWait: Promise<boolean> | null = null;
 let authEvents: { onRefreshed?: (session: Session) => void; onCleared?: () => void } = {};
 
-const EMPTY_PREFS: Preferences = { defaultRadiusMeters: 1500, intents: [], vibes: [] };
+const EMPTY_PREFS: Preferences = { defaultRadiusMeters: 5000, intents: [], vibes: [] };
 const photoWait = new Map<string, Promise<string | null>>();
+
+function enqueuePlacePhoto(placeId: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    photoQueue.push({ id: placeId, resolve });
+    if (!photoFlush) {
+      photoFlush = setTimeout(() => {
+        void flushPlacePhotos();
+      }, 32);
+    }
+  });
+}
+
+async function flushPlacePhotos() {
+  photoFlush = null;
+  const batch = photoQueue.splice(0, 8);
+  if (photoQueue.length > 0) {
+    photoFlush = setTimeout(() => {
+      void flushPlacePhotos();
+    }, 32);
+  }
+  try {
+    const ids = photoBatchIds(batch.map((row) => row.id));
+    const data = await request<{ photos?: Record<string, string> } | undefined>(
+      '/api/places/photos',
+      { method: 'POST', body: JSON.stringify({ placeIds: ids }) },
+      { skipAuth: true, optional: true },
+    );
+    const photos = data?.photos ?? {};
+    for (const waiter of batch) {
+      waiter.resolve(photos[waiter.id] ?? null);
+    }
+  } catch {
+    for (const waiter of batch) {
+      waiter.resolve(null);
+    }
+  }
+}
 
 export function setApiBase(url: string) {
   apiBase = url.replace(/\/$/, '');
@@ -147,9 +186,15 @@ async function ensureFreshAccess() {
   }
 }
 
-const TIMEOUT_MS = 20_000;
+const TIMEOUT_MS = 45_000;
+/** Soğuk Overpass 15–22 s; 15 s client abort iskeleti düşürüyor. */
+const RECOMMEND_TIMEOUT_MS = 45_000;
 
-async function raw(path: string, init: RequestInit = {}, skipAuth = false) {
+type PhotoWaiter = { id: string; resolve: (url: string | null) => void };
+const photoQueue: PhotoWaiter[] = [];
+let photoFlush: ReturnType<typeof setTimeout> | null = null;
+
+async function raw(path: string, init: RequestInit = {}, skipAuth = false, timeoutMs = TIMEOUT_MS) {
   if (!skipAuth) {
     await ensureFreshAccess();
   }
@@ -162,7 +207,7 @@ async function raw(path: string, init: RequestInit = {}, skipAuth = false) {
     headers.Authorization = `Bearer ${accessToken}`;
   }
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(`${apiBase}${path}`, { ...init, headers, signal: ctrl.signal });
     return { ok: res.ok, status: res.status, text: await res.text() };
@@ -179,15 +224,15 @@ async function raw(path: string, init: RequestInit = {}, skipAuth = false) {
 async function request<T>(
   path: string,
   init: RequestInit = {},
-  opts: { skipAuth?: boolean; optional?: boolean } = {},
+  opts: { skipAuth?: boolean; optional?: boolean; timeoutMs?: number } = {},
 ): Promise<T> {
   let result: Awaited<ReturnType<typeof raw>>;
   try {
-    result = await raw(path, init, opts.skipAuth);
+    result = await raw(path, init, opts.skipAuth, opts.timeoutMs);
     if (result.status === 401 && !opts.skipAuth && refreshToken) {
       const refreshed = await refreshAccess();
       if (refreshed) {
-        result = await raw(path, init, false);
+        result = await raw(path, init, false, opts.timeoutMs);
       }
     }
   } catch (e) {
@@ -226,25 +271,38 @@ export const api = {
     intent: string,
     openNow: boolean,
     vibes: string[],
-    radiusMeters = 1500,
+    radiusMeters = 5000,
     skip = 0,
     take = 20,
   ) => {
+    const key = recommendCacheKey({ lat, lng, intent, radiusMeters, openNow, vibes, skip, take });
     const res = await request<{ items?: VenueCard[]; hasMore?: boolean }>(
       `/api/recommendations?lat=${lat}&lng=${lng}&intent=${intent}&radiusMeters=${radiusMeters}&openNow=${openNow}&skip=${skip}&take=${take}${vibes.length ? `&vibes=${vibes.join(',')}` : ''}`,
+      {},
+      { timeoutMs: RECOMMEND_TIMEOUT_MS },
     );
-    return { items: res.items ?? [], hasMore: Boolean(res.hasMore) };
+    const page = { items: res.items ?? [], hasMore: Boolean(res.hasMore) };
+    putRecommend(key, page);
+    return page;
+  },
+  placePhotos: async (placeIds: string[]) => {
+    const ids = photoBatchIds(placeIds);
+    if (ids.length === 0) {
+      return {} as Record<string, string>;
+    }
+    const data = await request<{ photos?: Record<string, string> } | undefined>(
+      '/api/places/photos',
+      { method: 'POST', body: JSON.stringify({ placeIds: ids }) },
+      { skipAuth: true, optional: true },
+    );
+    return data?.photos ?? {};
   },
   placePhoto: async (placeId: string) => {
     const hit = photoWait.get(placeId);
     if (hit) {
       return hit;
     }
-    const pending = request<{ photoUrl?: string } | undefined>(
-      `/api/places/${encodeURIComponent(placeId)}/photo`,
-      {},
-      { skipAuth: true, optional: true },
-    ).then((data) => data?.photoUrl ?? null);
+    const pending = enqueuePlacePhoto(placeId);
     photoWait.set(placeId, pending);
     return pending;
   },

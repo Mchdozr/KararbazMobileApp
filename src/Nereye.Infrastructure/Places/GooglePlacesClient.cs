@@ -16,6 +16,7 @@ public sealed class GooglePlacesOptions
 
 public sealed class GooglePlacesClient : IPlacesClient
 {
+    private static DateTimeOffset _quotaUntil;
     private readonly HttpClient _http;
     private readonly GooglePlacesOptions _options;
 
@@ -33,6 +34,11 @@ public sealed class GooglePlacesClient : IPlacesClient
         int radiusMeters,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey) || !QuotaOpen())
+        {
+            return [];
+        }
+
         var types = IntentPlaceTypes.GoogleTypes(intent);
         var radius = Math.Min(SearchRadius.Clamp(radiusMeters), 50_000);
         var body = new
@@ -53,9 +59,13 @@ public sealed class GooglePlacesClient : IPlacesClient
         {
             Content = JsonContent.Create(body)
         };
-        ApplyHeaders(request, "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.photos,places.photos.name,places.currentOpeningHours.openNow,places.regularOpeningHours.openNow");
+        ApplyHeaders(request, "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.photos.name,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.googleMapsUri,places.currentOpeningHours,places.regularOpeningHours");
         using var response = await _http.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!await Allow(response, cancellationToken))
+        {
+            return [];
+        }
+
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
         return ParseList(json);
     }
@@ -64,8 +74,13 @@ public sealed class GooglePlacesClient : IPlacesClient
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"v1/places/{placeId}");
         ApplyHeaders(request, "id,displayName,formattedAddress,location,types,photos,photos.name,googleMapsUri,regularOpeningHours,regularOpeningHours.openNow,currentOpeningHours,currentOpeningHours.openNow");
+        if (!QuotaOpen())
+        {
+            return null;
+        }
+
         using var response = await _http.SendAsync(request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        if (!await Allow(response, cancellationToken))
         {
             return null;
         }
@@ -80,6 +95,11 @@ public sealed class GooglePlacesClient : IPlacesClient
         double longitude,
         CancellationToken cancellationToken = default)
     {
+        if (!QuotaOpen() || string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            return [];
+        }
+
         var body = new
         {
             textQuery = query,
@@ -99,7 +119,11 @@ public sealed class GooglePlacesClient : IPlacesClient
         };
         ApplyHeaders(request, "places.id,places.displayName,places.formattedAddress,places.location,places.types,places.photos,places.photos.name,places.currentOpeningHours.openNow,places.regularOpeningHours.openNow");
         using var response = await _http.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!await Allow(response, cancellationToken))
+        {
+            return [];
+        }
+
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
         return ParseList(json);
     }
@@ -110,7 +134,7 @@ public sealed class GooglePlacesClient : IPlacesClient
         double longitude,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(name))
+        if (!QuotaOpen() || string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(name))
         {
             return null;
         }
@@ -134,6 +158,32 @@ public sealed class GooglePlacesClient : IPlacesClient
         }
 
         return null;
+    }
+
+    private static bool QuotaOpen() => DateTimeOffset.UtcNow >= _quotaUntil;
+
+    private static async Task<bool> Allow(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        if ((int)response.StatusCode == 429)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (body.Contains("quota", StringComparison.OrdinalIgnoreCase)
+                || body.Contains("RESOURCE_EXHAUSTED", StringComparison.OrdinalIgnoreCase)
+                || body.Length == 0)
+            {
+                var tz = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+                var pacific = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, tz);
+                var next = pacific.Date.AddDays(1);
+                _quotaUntil = new DateTimeOffset(next, tz.GetUtcOffset(next));
+            }
+        }
+
+        return false;
     }
 
     private void ApplyHeaders(HttpRequestMessage request, string fieldMask)
@@ -184,8 +234,46 @@ public sealed class GooglePlacesClient : IPlacesClient
 
         var maps = p.TryGetProperty("googleMapsUri", out var gmu) ? gmu.GetString() : null;
         bool? openNow = ReadOpenNow(p);
+        var phone = p.TryGetProperty("nationalPhoneNumber", out var phoneEl) ? phoneEl.GetString() : null;
+        var website = p.TryGetProperty("websiteUri", out var webEl) ? webEl.GetString() : null;
+        double? rating = p.TryGetProperty("rating", out var ratingEl) && ratingEl.ValueKind == JsonValueKind.Number
+            ? ratingEl.GetDouble()
+            : null;
+        int? ratingCount = p.TryGetProperty("userRatingCount", out var countEl) && countEl.ValueKind == JsonValueKind.Number
+            ? countEl.GetInt32()
+            : null;
+        var hours = WeekdayText(p);
 
-        return new PlaceSnapshot(id, name, address, lat, lng, types, openNow, photo, null, null, maps, [], "Harita verisi: Google");
+        return new PlaceSnapshot(
+            id,
+            name,
+            address,
+            lat,
+            lng,
+            types,
+            openNow,
+            photo,
+            rating,
+            ratingCount,
+            maps,
+            [],
+            "Harita verisi: Google",
+            website,
+            null,
+            phone,
+            hours);
+    }
+
+    private static string? WeekdayText(JsonElement p)
+    {
+        if (!p.TryGetProperty("regularOpeningHours", out var hours) || !hours.TryGetProperty("weekdayDescriptions", out var days))
+        {
+            return null;
+        }
+
+        var lines = days.EnumerateArray().Select(d => d.GetString()).Where(s => !string.IsNullOrWhiteSpace(s));
+        var text = string.Join("; ", lines);
+        return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
     private static bool? ReadOpenNow(JsonElement p)

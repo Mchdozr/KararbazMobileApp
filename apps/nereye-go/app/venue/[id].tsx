@@ -81,7 +81,9 @@ async function open(url: string) {
 }
 
 export default function Venue() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; name?: string }>();
+  const id = (Array.isArray(params.id) ? params.id[0] : params.id) || '';
+  const hintedName = Array.isArray(params.name) ? params.name[0] : params.name;
   const filters = useFilters();
   const { session } = useSession();
   const router = useRouter();
@@ -98,7 +100,7 @@ export default function Venue() {
   const [drive, setDrive] = useState<RouteResult | null>(null);
   const [mode, setMode] = useState<RouteMode>('foot');
   const [hoursOpen, setHoursOpen] = useState(false);
-  const owner = Boolean(session?.roles.includes('VenueOwner'));
+  const owner = Boolean(session?.roles?.includes('VenueOwner'));
   const userId = session?.userId ?? null;
   const { lat, lng } = filters;
 
@@ -232,12 +234,11 @@ export default function Venue() {
         <Stack.Screen options={{ headerRight: undefined }} />
         {loading ? (
           <View accessibilityLabel="Mekan yükleniyor" accessibilityRole="progressbar">
-            <Skeleton height={HERO} radius={0} />
+            <Skeleton height={180} radius={0} />
             <View style={styles.skel}>
-              <Skeleton width="70%" height={28} />
+              <Text style={styles.h}>{hintedName || 'Mekan'}</Text>
               <Skeleton width="45%" height={14} />
               <Skeleton height={64} radius={16} style={{ marginTop: 12 }} />
-              <Skeleton height={120} radius={16} />
             </View>
           </View>
         ) : (
@@ -267,7 +268,7 @@ export default function Venue() {
 
   return (
     <View style={styles.bg}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <Stack.Screen
         options={{
           headerRight: () => (
@@ -301,7 +302,7 @@ export default function Venue() {
                 onPress={() => setViewer({ uris: photoUris, index: Math.min(i, photoUris.length - 1) })}
                 accessibilityRole="imagebutton"
                 accessibilityLabel={`${detail.name} fotoğrafı ${i + 1}, büyüt`}>
-                <VenueImage placeId={detail.placeId} photoUrl={url} name={detail.name} style={StyleSheet.absoluteFill} radius={0} />
+                <VenueImage placeId={detail.placeId} photoUrl={url} name={detail.name} style={StyleSheet.absoluteFill} radius={0} active />
                 <LinearGradient
                   colors={['rgba(4,56,43,0.45)', 'transparent', 'rgba(4,56,43,0.5)']}
                   locations={[0, 0.35, 1]}

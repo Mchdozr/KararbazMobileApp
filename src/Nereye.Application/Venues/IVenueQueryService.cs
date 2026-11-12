@@ -9,4 +9,8 @@ public interface IVenueQueryService
     Task UpdateOwnerAsync(string placeId, Guid userId, string? displayName, string? description, CancellationToken cancellationToken = default);
     Task<string> AddOwnerPhotoAsync(string placeId, Guid userId, byte[] bytes, CancellationToken cancellationToken = default);
     Task<string?> GetPhotoAsync(string placeId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<string, string>> GetPhotosAsync(
+        IReadOnlyList<string> placeIds,
+        CancellationToken cancellationToken = default);
 }

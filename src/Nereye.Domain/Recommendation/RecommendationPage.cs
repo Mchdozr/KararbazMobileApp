@@ -3,7 +3,7 @@ namespace Nereye.Domain.Recommendation;
 public static class RecommendationPage
 {
     public const int DefaultTake = 20;
-    public const int MaxTake = 60;
+    public const int MaxTake = 200;
 
     public static (IReadOnlyList<T> Items, bool HasMore) Slice<T>(IReadOnlyList<T> items, int skip, int take)
     {

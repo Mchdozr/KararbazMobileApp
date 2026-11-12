@@ -15,14 +15,36 @@ public static class IntentPlaceTypes
 
     public static IReadOnlyList<(string Key, string Value)> OsmTags(Intent intent) => intent switch
     {
-        Intent.Kahve => [("amenity", "cafe"), ("shop", "coffee")],
-        Intent.Yemek => [("amenity", "restaurant"), ("amenity", "fast_food")],
-        Intent.Eglence => [("amenity", "bar"), ("amenity", "pub"), ("amenity", "cinema")],
-        Intent.Kultur => [("amenity", "theatre"), ("amenity", "museum"), ("tourism", "museum"), ("amenity", "arts_centre"), ("amenity", "library")],
-        Intent.AcikHava => [("leisure", "park"), ("leisure", "garden"), ("amenity", "park")],
+        Intent.Kahve => [("amenity", "cafe"), ("shop", "coffee"), ("shop", "bakery"), ("amenity", "ice_cream")],
+        Intent.Yemek => [("amenity", "restaurant"), ("amenity", "fast_food"), ("amenity", "food_court")],
+        Intent.Eglence => [("amenity", "bar"), ("amenity", "pub"), ("amenity", "cinema"), ("amenity", "nightclub")],
+        Intent.Kultur => [("amenity", "theatre"), ("amenity", "museum"), ("tourism", "museum"), ("tourism", "gallery"), ("amenity", "arts_centre"), ("amenity", "library")],
+        Intent.AcikHava => [("leisure", "park"), ("leisure", "garden"), ("leisure", "playground"), ("leisure", "nature_reserve"), ("amenity", "park")],
         Intent.Gece => [("amenity", "bar"), ("amenity", "pub"), ("amenity", "nightclub")],
         _ => throw new ArgumentOutOfRangeException(nameof(intent), intent, null)
     };
+
+    public static bool Fits(Intent intent, string name, string? cuisine, IReadOnlyList<string> types)
+    {
+        var allowed = GoogleTypes(intent);
+        if (!types.Any(t => allowed.Contains(t)))
+        {
+            return false;
+        }
+
+        if (intent != Intent.Kahve)
+        {
+            return true;
+        }
+
+        var blob = $"{name} {cuisine}".ToLowerInvariant();
+        var coffee = blob.Contains("kahve") || blob.Contains("cafe") || blob.Contains("kafe")
+                     || blob.Contains("coffee") || blob.Contains("çay") || blob.Contains("cay")
+                     || blob.Contains("tea") || blob.Contains("espresso");
+        var otherMeal = blob.Contains("restoran") || blob.Contains("restaurant")
+                        || blob.Contains("sushi") || blob.Contains("uzakdoğu") || blob.Contains("uzakdogu");
+        return !otherMeal || coffee;
+    }
 
     public static string NominatimQuery(Intent intent) => intent switch
     {
@@ -37,7 +59,7 @@ public static class IntentPlaceTypes
 
     public static string GoogleTypeFromOsm(string? amenity, string? shop, string? leisure, string? tourism)
     {
-        if (amenity is "cafe" || shop is "coffee")
+        if (amenity is "cafe" or "ice_cream" || shop is "coffee" or "bakery")
         {
             return "cafe";
         }
@@ -72,7 +94,7 @@ public static class IntentPlaceTypes
             return "museum";
         }
 
-        if (leisure is "park" or "garden" || amenity is "park")
+        if (leisure is "park" or "garden" or "playground" or "nature_reserve" || amenity is "park")
         {
             return "park";
         }

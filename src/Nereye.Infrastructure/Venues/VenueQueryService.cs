@@ -13,7 +13,7 @@ namespace Nereye.Infrastructure.Venues;
 
 public sealed class VenueQueryService : IVenueQueryService
 {
-    private static readonly TimeSpan DetailsTtl = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan DetailsTtl = PlacesCacheTtl.Nearby;
     private readonly IPlacesClient _places;
     private readonly IPlacesCache _cache;
     private readonly IPlacePhotoEnricher _photos;
@@ -39,11 +39,7 @@ public sealed class VenueQueryService : IVenueQueryService
         var place = await _cache.GetOrSetAsync(
             PlacesCacheKey.Details(placeId),
             DetailsTtl,
-            async ct =>
-            {
-                var found = await _places.DetailsAsync(placeId, ct);
-                return found is null ? null : await _photos.EnrichOneAsync(found, ct);
-            },
+            ct => _places.DetailsAsync(placeId, ct),
             cancellationToken);
         if (place is null)
         {
@@ -171,13 +167,82 @@ public sealed class VenueQueryService : IVenueQueryService
         var place = await _cache.GetOrSetAsync(
             PlacesCacheKey.Details(placeId),
             DetailsTtl,
-            async ct =>
-            {
-                var found = await _places.DetailsAsync(placeId, ct);
-                return found is null ? null : await _photos.EnrichOneAsync(found, ct);
-            },
+            ct => _places.DetailsAsync(placeId, ct),
             cancellationToken);
-        return PlaceMedia.Url(null, place?.PhotoReference);
+        if (place is null)
+        {
+            return null;
+        }
+
+        var enriched = await _photos.EnrichOneAsync(place, cancellationToken);
+        return PlaceMedia.Url(null, enriched.PhotoReference);
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> GetPhotosAsync(
+        IReadOnlyList<string> placeIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = PhotoBatch.Take(placeIds);
+        if (ids.Count == 0)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        var overlays = await _db.Venues
+            .AsSplitQuery()
+            .Include(v => v.Photos)
+            .Where(v => ids.Contains(v.GooglePlaceId))
+            .ToListAsync(cancellationToken);
+        var overlayById = overlays.ToDictionary(v => v.GooglePlaceId);
+        var found = new Dictionary<string, string>(StringComparer.Ordinal);
+        var missing = new List<PlaceSnapshot>();
+        foreach (var id in ids)
+        {
+            overlayById.TryGetValue(id, out var overlay);
+            var owner = overlay?.Photos.Select(p => p.Url).FirstOrDefault(u => !string.IsNullOrWhiteSpace(u));
+            var owned = PlaceMedia.Url(owner, null);
+            if (!string.IsNullOrWhiteSpace(owned))
+            {
+                found[id] = owned;
+                continue;
+            }
+
+            var place = await _cache.GetOrSetAsync(
+                PlacesCacheKey.Details(id),
+                DetailsTtl,
+                ct => _places.DetailsAsync(id, ct),
+                cancellationToken);
+            if (place is null)
+            {
+                continue;
+            }
+
+            var tagged = PlaceMedia.Url(null, place.PhotoReference);
+            if (!string.IsNullOrWhiteSpace(tagged))
+            {
+                found[id] = tagged;
+                continue;
+            }
+
+            missing.Add(place);
+        }
+
+        if (missing.Count == 0)
+        {
+            return found;
+        }
+
+        var enriched = await _photos.EnrichLiteAsync(missing, cancellationToken);
+        foreach (var place in enriched)
+        {
+            var url = PlaceMedia.Url(null, place.PhotoReference);
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                found[place.PlaceId] = url;
+            }
+        }
+
+        return found;
     }
 
     public async Task<IReadOnlyList<RecommendationItemDto>> SearchAsync(

@@ -89,6 +89,25 @@ public sealed class ApiFlowTests
     }
 
     [Fact]
+    public async Task Place_photos_batch_returns_known_media_and_caps_at_eight()
+    {
+        var ids = new[]
+        {
+            "nereye:petra", "nereye:fazil", "nereye:walter", "nereye:montag",
+            "nereye:federica", "nereye:goygoy", "nereye:opera", "nereye:mandabatmaz",
+            "nereye:kronotrop"
+        };
+        var response = await _client.PostAsJsonAsync("/api/places/photos", new { placeIds = ids });
+        response.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var photos = doc.RootElement.GetProperty("photos");
+        Assert.True(photos.TryGetProperty("nereye:petra", out var petra));
+        Assert.Contains("/media/venues/petra", petra.GetString());
+        Assert.Equal(8, photos.EnumerateObject().Count());
+        Assert.False(photos.TryGetProperty("nereye:kronotrop", out _));
+    }
+
+    [Fact]
     public async Task OpenNow_excludes_closed_opera_kahve()
     {
         var all = await _client.GetAsync("/api/recommendations?lat=40.9885&lng=29.0250&intent=Kahve&radiusMeters=1500");

@@ -13,9 +13,9 @@ public sealed class OverpassPlacesClient : IPlacesClient
     private const string Attribution = "Harita verisi: OpenStreetMap";
     private static readonly Uri[] Endpoints =
     [
-        new("https://overpass.osm.ch/api/interpreter"),
+        new("https://overpass-api.de/api/interpreter"),
         new("https://overpass.kumi.systems/api/interpreter"),
-        new("https://overpass-api.de/api/interpreter")
+        new("https://overpass.osm.ch/api/interpreter")
     ];
     private readonly HttpClient _http;
     private readonly ILogger<OverpassPlacesClient> _log;
@@ -39,9 +39,9 @@ public sealed class OverpassPlacesClient : IPlacesClient
             "",
             IntentPlaceTypes.OsmTags(intent).Select(t =>
                 $"nwr[\"{Escape(t.Key)}\"=\"{Escape(t.Value)}\"](around:{radius.ToString(CultureInfo.InvariantCulture)},{Fmt(latitude)},{Fmt(longitude)});"));
-        var query = $"[out:json][timeout:18];({filters});out center 80;";
-        var json = await PostAsync(query, cancellationToken);
-        return ParseList(json, latitude, longitude).Take(60).ToList();
+        var query = $"[out:json][timeout:12];({filters});out center 80;";
+        var json = await PostAsync(query, cancellationToken, primaryBudgetSeconds: 12);
+        return ParseList(json, latitude, longitude).Take(80).ToList();
     }
 
     public async Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default)
@@ -54,8 +54,15 @@ public sealed class OverpassPlacesClient : IPlacesClient
         var body = type == "way" || type == "relation"
             ? $"[out:json][timeout:10];{type}({id});out center;"
             : $"[out:json][timeout:10];node({id});out;";
-        var json = await PostAsync(body, cancellationToken);
-        return ParseList(json, 0, 0).FirstOrDefault();
+        try
+        {
+            var json = await PostAsync(body, cancellationToken, primaryBudgetSeconds: 8, takeEndpoints: 1);
+            return ParseList(json, 0, 0).FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return null;
+        }
     }
 
     public async Task<IReadOnlyList<PlaceSnapshot>> TextSearchAsync(
@@ -76,11 +83,17 @@ public sealed class OverpassPlacesClient : IPlacesClient
         return ParseList(json, latitude, longitude).Take(40).ToList();
     }
 
-    private async Task<JsonElement> PostAsync(string query, CancellationToken cancellationToken)
+    private async Task<JsonElement> PostAsync(
+        string query,
+        CancellationToken cancellationToken,
+        int primaryBudgetSeconds = 22,
+        int? takeEndpoints = null)
     {
         Exception? last = null;
-        foreach (var uri in Endpoints)
+        var uris = takeEndpoints is null ? Endpoints : Endpoints.Take(takeEndpoints.Value).ToArray();
+        for (var i = 0; i < uris.Length; i++)
         {
+            var uri = uris[i];
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, uri)
@@ -89,7 +102,8 @@ public sealed class OverpassPlacesClient : IPlacesClient
                 };
                 request.Headers.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(20));
+                var budget = i == 0 ? primaryBudgetSeconds : 8;
+                cts.CancelAfter(TimeSpan.FromSeconds(budget));
                 using var response = await _http.SendAsync(request, cts.Token);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -98,7 +112,17 @@ public sealed class OverpassPlacesClient : IPlacesClient
                     continue;
                 }
 
-                return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+                var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
+                var count = json.TryGetProperty("elements", out var elements) && elements.ValueKind == JsonValueKind.Array
+                    ? elements.GetArrayLength()
+                    : 0;
+                if (count == 0)
+                {
+                    _log.LogWarning("Overpass {Uri} returned no elements", uri);
+                    continue;
+                }
+
+                return json;
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {

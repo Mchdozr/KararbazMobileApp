@@ -4,6 +4,7 @@ import { FilterSheet } from '@/components/FilterSheet';
 import { VenueGridSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { api } from '@/lib/api';
+import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { INTENTS, intentLabel } from '@/lib/constants';
 import { emptyDiscover, friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
@@ -31,9 +32,13 @@ export default function Discover() {
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
   const [sort, setSort] = useState<SortKey>('smart');
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   // Filtre hızla değişirse eski isteğin cevabı yenisinin üstüne yazmasın.
   const seq = useRef(0);
   const { lat, lng, intent, openNow, vibes, radiusMeters, minRating } = filters;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ item?: VenueCard }> }) => {
+    setVisibleIds(new Set(viewableItems.map((row) => row.item?.placeId).filter((id): id is string => Boolean(id))));
+  }).current;
 
   const fetchPage = useCallback(
     async (skip: number) => {
@@ -51,8 +56,28 @@ export default function Discover() {
 
   const load = useCallback(async () => {
     const n = ++seq.current;
-    setLoading(true);
     setError(null);
+    const cached = peekRecommend(
+      recommendCacheKey({
+        lat,
+        lng,
+        intent,
+        radiusMeters,
+        openNow,
+        vibes,
+        skip: 0,
+        take: PAGE,
+      }),
+    );
+    if (cached) {
+      const cards = cached.items.filter((c) => !minRating || (c.nereyeRating ?? 0) >= minRating);
+      offset.current = cached.items.length;
+      setItems(cards);
+      setHasMore(cached.hasMore);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const page = await fetchPage(0);
       if (n !== seq.current) {
@@ -65,15 +90,17 @@ export default function Discover() {
       if (n !== seq.current) {
         return;
       }
-      setError(friendlyError(e));
-      setItems([]);
-      setHasMore(false);
+      if (!cached) {
+        setError(friendlyError(e));
+        setItems([]);
+        setHasMore(false);
+      }
     } finally {
       if (n === seq.current) {
         setLoading(false);
       }
     }
-  }, [fetchPage]);
+  }, [fetchPage, lat, lng, intent, radiusMeters, openNow, vibes, minRating]);
 
   useEffect(() => {
     void load();
@@ -180,9 +207,11 @@ export default function Discover() {
         ListHeaderComponent={header}
         renderItem={({ item }) => (
           <View style={styles.cell}>
-            <VenueProductCard card={item} intent={intent} />
+            <VenueProductCard card={item} intent={intent} loadPhoto={visibleIds.has(item.placeId)} />
           </View>
         )}
+        viewabilityConfig={{ itemVisiblePercentThreshold: 30, minimumViewTime: 80 }}
+        onViewableItemsChanged={onViewableItemsChanged}
         ListEmptyComponent={
           !loading && !error ? (
             <EmptyState
@@ -192,14 +221,14 @@ export default function Discover() {
               action={badge > 0 ? 'Filtreleri temizle' : 'Yarıçapı büyüt'}
               onAction={() => (badge > 0 ? filters.resetFilters() : filters.setRadius(Math.max(3000, radiusMeters * 2)))}
             />
-          ) : null
+          ) : undefined
         }
         ListFooterComponent={
           loadingMore ? (
             <ActivityIndicator color={colors.coral} style={styles.foot} />
           ) : !hasMore && sorted.length > 6 ? (
             <Text style={styles.end}>Hepsi bu kadar · {sorted.length} mekan</Text>
-          ) : null
+          ) : undefined
         }
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.6}

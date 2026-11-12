@@ -33,6 +33,14 @@ public class IntentPlaceTypesTests
     }
 
     [Fact]
+    public void Kahve_drops_a_sushi_restaurant_tagged_as_cafe()
+    {
+        Assert.False(IntentPlaceTypes.Fits(Intent.Kahve, "Sushi City Alsancak uzakdoğu restorani", "sushi", ["cafe"]));
+        Assert.True(IntentPlaceTypes.Fits(Intent.Kahve, "Montag Coffee Roasters", "coffee_shop", ["cafe"]));
+        Assert.True(IntentPlaceTypes.Fits(Intent.Kahve, "OMBOR", "tea", ["cafe"]));
+    }
+
+    [Fact]
     public void Osm_cafe_maps_to_google_cafe()
     {
         Assert.Equal("cafe", IntentPlaceTypes.GoogleTypeFromOsm("cafe", null, null, null));

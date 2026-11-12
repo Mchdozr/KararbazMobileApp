@@ -40,7 +40,7 @@ public sealed class RecommendationsController : ControllerBase
         }
 
         skip = Math.Max(0, skip);
-        take = Math.Clamp(take, 1, 50);
+        take = Math.Clamp(take, 1, 200);
         Guid? userId = User.Identity?.IsAuthenticated == true ? User.Id() : null;
         if (userId is { } uid && radiusMeters == 1500)
         {

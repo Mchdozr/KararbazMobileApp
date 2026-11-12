@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { emptyDiscover, emptyMap, emptyNearby, emptySearch, friendlyError } from './empty.ts';
 import { geoChip, geoKindIcon, geoKindLabel, geoSubtitle, mahalleLine } from './geo-hit.ts';
 import { parseOpeningHours } from './hours.ts';
@@ -11,6 +14,8 @@ import { ApiError, serverMessage } from './api-error.ts';
 import { relativeDate, summarizeRatings } from './reviews.ts';
 import { activeFilterCount, sortCards } from './sort.ts';
 import { emailProblem, nameProblem, passwordProblem, passwordStrength } from './validation.ts';
+import { peekRecommend, putRecommend, recommendCacheKey } from './recommend-cache.ts';
+import { photoBatchIds } from './photo-batch.ts';
 
 test('onboarding skip is a one-shot gate', () => {
   assert.equal(typeof emptyNearby('Kahve', 'Kadıköy'), 'string');
@@ -150,4 +155,54 @@ test('sorting keeps server order for smart and never mutates input', () => {
   assert.deepEqual(cards.map((c) => c.id), ['a', 'b', 'c']);
   assert.equal(activeFilterCount({ openNow: true, vibes: ['Sessiz', 'Laptop'], minRating: 4 }), 4);
   assert.equal(activeFilterCount({ openNow: false, vibes: [], minRating: 0 }), 0);
+});
+
+test('recommend cache key is stable for gps jitter and rounded radius', () => {
+  const a = recommendCacheKey({
+    lat: 40.9885,
+    lng: 29.025,
+    intent: 'Kahve',
+    radiusMeters: 5000,
+    openNow: false,
+    vibes: [],
+    skip: 0,
+    take: 20,
+  });
+  const b = recommendCacheKey({
+    lat: 40.98851,
+    lng: 29.02504,
+    intent: 'Kahve',
+    radiusMeters: 4800,
+    openNow: false,
+    vibes: [],
+    skip: 0,
+    take: 20,
+  });
+  const other = recommendCacheKey({
+    lat: 40.9885,
+    lng: 29.025,
+    intent: 'Yemek',
+    radiusMeters: 5000,
+    openNow: false,
+    vibes: [],
+    skip: 0,
+    take: 20,
+  });
+  assert.equal(a, b);
+  assert.notEqual(a, other);
+  putRecommend(a, { items: [{ placeId: 'osm:1' } as never], hasMore: false });
+  assert.equal(peekRecommend(a)?.items[0]?.placeId, 'osm:1');
+});
+
+test('photo batch keeps eight unique ids', () => {
+  const ids = photoBatchIds(['a', 'a', 'b', '', 'c', 'd', 'e', 'f', 'g', 'h', 'i']);
+  assert.deepEqual(ids, ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']);
+});
+
+test('recommend timeout covers cold Overpass', () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'api.ts'), 'utf8');
+  const match = src.match(/RECOMMEND_TIMEOUT_MS\s*=\s*([\d_]+)/);
+  assert.ok(match, 'RECOMMEND_TIMEOUT_MS tanımı yok');
+  const ms = Number(match[1].replaceAll('_', ''));
+  assert.ok(ms >= 45_000, `öneri zaman aşımı ${ms} ms; soğuk Overpass (~22 s) için en az 45 s olmalı`);
 });

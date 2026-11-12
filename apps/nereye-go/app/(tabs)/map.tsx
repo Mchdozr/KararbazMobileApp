@@ -5,10 +5,12 @@ import { VenueProductCard } from '@/components/VenueProductCard';
 import { emptyMap, friendlyError } from '@/lib/empty';
 import { detectLocation, reverseLabel } from '@/lib/geo';
 import { geoDistanceMeters } from '@/lib/geo-hit';
+import { clampRadius } from '@/lib/radius';
 import { activeFilterCount } from '@/lib/sort';
 import { toast } from '@/lib/toast';
 import { useFilters } from '@/lib/filters';
 import { api } from '@/lib/api';
+import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,8 +48,27 @@ export default function MapScreen() {
   });
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError(null);
+    const radius = clampRadius(filters.radiusMeters);
+    const cached = peekRecommend(
+      recommendCacheKey({
+        lat: filters.lat,
+        lng: filters.lng,
+        intent: filters.intent,
+        radiusMeters: radius,
+        openNow: filters.openNow,
+        vibes: filters.vibes,
+        skip: 0,
+        take: 40,
+      }),
+    );
+    if (cached) {
+      const next = cached.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
+      setItems(next);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const res = await api.recommend(
         filters.lat,
@@ -55,15 +76,39 @@ export default function MapScreen() {
         filters.intent,
         filters.openNow,
         filters.vibes,
-        filters.radiusMeters,
+        radius,
         0,
         40,
       );
       const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems(next);
+      setLoading(false);
+      if (res.hasMore) {
+        try {
+          const more = await api.recommend(
+            filters.lat,
+            filters.lng,
+            filters.intent,
+            filters.openNow,
+            filters.vibes,
+            radius,
+            40,
+            110,
+          );
+          const extra = more.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
+          setItems((prev) => {
+            const seen = new Set(prev.map((c) => c.placeId));
+            return [...prev, ...extra.filter((c) => !seen.has(c.placeId))];
+          });
+        } catch {
+          /* ilk dalga durur */
+        }
+      }
     } catch (e) {
-      setError(friendlyError(e));
-      setItems([]);
+      if (!cached) {
+        setError(friendlyError(e));
+        setItems([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -178,7 +223,7 @@ export default function MapScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {sheetCards.map((card) => (
             <View key={card.placeId} style={styles.card}>
-              <VenueProductCard card={card} width={168} intent={filters.intent} />
+              <VenueProductCard card={card} width={168} intent={filters.intent} loadPhoto />
             </View>
           ))}
         </ScrollView>

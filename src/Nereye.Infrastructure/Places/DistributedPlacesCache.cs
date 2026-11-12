@@ -2,13 +2,13 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Nereye.Application.Places;
+using Nereye.Domain.Places;
 
 namespace Nereye.Infrastructure.Places;
 
 public sealed class DistributedPlacesCache : IPlacesCache
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private static readonly TimeSpan EmptyTtl = TimeSpan.FromMinutes(2);
     private readonly IDistributedCache _cache;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new();
 
@@ -20,40 +20,50 @@ public sealed class DistributedPlacesCache : IPlacesCache
         Func<CancellationToken, Task<T>> factory,
         CancellationToken cancellationToken = default)
     {
-        var existing = await _cache.GetStringAsync(key, cancellationToken);
+        var existing = await TryGetAsync<T>(key, cancellationToken);
         if (existing is not null)
         {
-            return JsonSerializer.Deserialize<T>(existing, Json)!;
+            return existing;
         }
 
         var gate = _gates.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
         await gate.WaitAsync(cancellationToken);
         try
         {
-            existing = await _cache.GetStringAsync(key, cancellationToken);
+            existing = await TryGetAsync<T>(key, cancellationToken);
             if (existing is not null)
             {
-                return JsonSerializer.Deserialize<T>(existing, Json)!;
+                return existing;
             }
 
             var created = await factory(cancellationToken);
-            if (created is null)
-            {
-                return created;
-            }
-
-            var empty = created is System.Collections.ICollection { Count: 0 };
-            var payload = JsonSerializer.Serialize(created, Json);
-            await _cache.SetStringAsync(
-                key,
-                payload,
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = empty ? EmptyTtl : ttl },
-                cancellationToken);
+            await SetAsync(key, ttl, created, cancellationToken);
             return created;
         }
         finally
         {
             gate.Release();
         }
+    }
+
+    public async Task<T?> TryGetAsync<T>(string key, CancellationToken cancellationToken = default)
+    {
+        var existing = await _cache.GetStringAsync(key, cancellationToken);
+        return existing is null ? default : JsonSerializer.Deserialize<T>(existing, Json);
+    }
+
+    public async Task SetAsync<T>(string key, TimeSpan ttl, T value, CancellationToken cancellationToken = default)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        var empty = value is System.Collections.ICollection { Count: 0 };
+        await _cache.SetStringAsync(
+            key,
+            JsonSerializer.Serialize(value, Json),
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = empty ? PlacesCacheTtl.Empty : ttl },
+            cancellationToken);
     }
 }

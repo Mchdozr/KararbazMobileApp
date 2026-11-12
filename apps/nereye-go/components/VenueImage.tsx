@@ -13,6 +13,8 @@ export function VenueImage({
   name,
   style,
   radius = 18,
+  fallback,
+  active = false,
 }: {
   placeId: string;
   photoUrl?: string | null;
@@ -20,6 +22,8 @@ export function VenueImage({
   name?: string | null;
   style?: object;
   radius?: number;
+  fallback?: number;
+  active?: boolean;
 }) {
   const given = photoSource(placeId, photoUrl, photoReference);
   const [lazyUrl, setLazyUrl] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export function VenueImage({
   const shapes = placeholderShapes(placeId);
 
   useEffect(() => {
-    if (given || !placeId) {
+    if (given || !placeId || !active) {
       return;
     }
     let alive = true;
@@ -40,12 +44,14 @@ export function VenueImage({
     return () => {
       alive = false;
     };
-  }, [given, placeId]);
+  }, [given, placeId, active]);
 
   return (
     <View style={[styles.wrap, { borderRadius: radius }, style]}>
       {source ? (
         <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" transition={220} cachePolicy="memory-disk" />
+      ) : fallback ? (
+        <Image source={fallback} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (
         <View style={[styles.ph, { backgroundColor: a }]}>
           {shapes.map((s, i) => (

@@ -59,10 +59,8 @@ export default function RootLayout() {
               name="venue/[id]"
               options={{
                 title: '',
-                headerTransparent: true,
-                headerTintColor: '#FFFFFF',
                 headerBackVisible: false,
-                headerLeft: () => <BackButton light />,
+                headerLeft: () => <BackButton />,
               }}
             />
             <Stack.Screen

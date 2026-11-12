@@ -27,7 +27,7 @@ let state: State = {
   intent: 'Kahve',
   openNow: false,
   vibes: [],
-  radiusMeters: 1500,
+  radiusMeters: 5000,
   minRating: 0,
 };
 

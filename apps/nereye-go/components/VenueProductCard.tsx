@@ -1,6 +1,7 @@
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { VenueImage } from '@/components/VenueImage';
 import { vibeText } from '@/lib/constants';
+import { INTENT_PHOTOS } from '@/lib/photos';
 import { mahalleLine } from '@/lib/geo-hit';
 import { colors, fonts, radii } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,18 +26,20 @@ function eventClock(iso?: string) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedView = Animated.createAnimatedComponent(View);
 
 export function VenueProductCard({
   card,
   width,
   featured = false,
-  intent: _intent,
+  intent,
+  loadPhoto = false,
 }: {
   card: VenueCard;
   width?: number;
   featured?: boolean;
   intent?: string;
+  loadPhoto?: boolean;
 }) {
   const router = useRouter();
   const scale = useSharedValue(1);
@@ -47,47 +50,50 @@ export function VenueProductCard({
   const event = card.upcomingEvents[0];
   const clock = eventClock(event?.startsAt);
 
+  const a11yLabel = [
+    card.name,
+    rating ? `puan ${rating}` : null,
+    card.distanceMeters >= 0 ? formatDistance(card.distanceMeters) : null,
+    card.openNow === true ? 'açık' : card.openNow === false ? 'kapalı' : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   return (
-    <AnimatedPressable
-      onPressIn={() => {
-        scale.value = withTiming(0.97, { duration: 180 });
-      }}
-      onPressOut={() => {
-        scale.value = withTiming(1, { duration: 220 });
-      }}
-      onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId } })}
-      style={[styles.card, width ? { width } : { width: '100%' }, style]}
-      accessibilityRole="button"
-      accessibilityHint="Mekan detayını açar"
-      accessibilityLabel={[
-        card.name,
-        rating ? `puan ${rating}` : null,
-        card.distanceMeters >= 0 ? formatDistance(card.distanceMeters) : null,
-        card.openNow === true ? 'açık' : card.openNow === false ? 'kapalı' : null,
-      ]
-        .filter(Boolean)
-        .join(', ')}>
-      <View style={[styles.photo, { height: photoH }]}>
-        <VenueImage
-          placeId={card.placeId}
-          photoUrl={card.photoUrl}
-          photoReference={card.photoReference}
-          name={card.name}
-          style={StyleSheet.absoluteFill}
-          radius={radii.md}
-        />
-        <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={styles.fade} />
-        <View style={styles.badges}>
-          {card.kind === 'Sponsored' ? <Text style={[styles.pill, styles.boost]}>Öne çıkan</Text> : null}
-          {card.distanceMeters >= 0 ? <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text> : null}
-          {card.openNow === true ? <Text style={[styles.pill, styles.open]}>Açık</Text> : null}
-          {card.openNow === false ? <Text style={[styles.pill, styles.closed]}>Kapalı</Text> : null}
+    <AnimatedView style={[styles.card, width ? { width } : { width: '100%' }, style]}>
+      <Pressable
+        onPressIn={() => {
+          scale.value = withTiming(0.97, { duration: 180 });
+        }}
+        onPressOut={() => {
+          scale.value = withTiming(1, { duration: 220 });
+        }}
+        onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId, name: card.name } })}
+        accessibilityRole="button"
+        accessibilityHint="Mekan detayını açar"
+        accessibilityLabel={a11yLabel}>
+        <View style={[styles.photo, { height: photoH }]}>
+          <VenueImage
+            placeId={card.placeId}
+            photoUrl={card.photoUrl}
+            photoReference={card.photoReference}
+            name={card.name}
+            fallback={intent ? INTENT_PHOTOS[intent] : undefined}
+            style={StyleSheet.absoluteFill}
+            radius={radii.md}
+            active={loadPhoto}
+          />
+          <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={styles.fade} />
+          <View style={styles.badges}>
+            {card.kind === 'Sponsored' ? <Text style={[styles.pill, styles.boost]}>Öne çıkan</Text> : null}
+            {card.distanceMeters >= 0 ? <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text> : null}
+            {card.openNow === true ? <Text style={[styles.pill, styles.open]}>Açık</Text> : null}
+            {card.openNow === false ? <Text style={[styles.pill, styles.closed]}>Kapalı</Text> : null}
+          </View>
+          <Text numberOfLines={2} style={styles.onPhoto}>
+            {card.name}
+          </Text>
         </View>
-        <FavoriteButton venue={card} style={styles.heart} />
-        <Text numberOfLines={2} style={styles.onPhoto}>
-          {card.name}
-        </Text>
-      </View>
       <View style={styles.metaRow}>
         {rating ? (
           <View style={styles.rating}>
@@ -114,17 +120,19 @@ export function VenueProductCard({
           {clock ? <Text style={styles.chip}>{clock}</Text> : null}
         </View>
       ) : null}
-      {card.note ? (
-        <Text numberOfLines={1} style={styles.note}>
-          {card.note}
-        </Text>
-      ) : null}
-    </AnimatedPressable>
+        {card.note ? (
+          <Text numberOfLines={1} style={styles.note}>
+            {card.note}
+          </Text>
+        ) : null}
+      </Pressable>
+      <FavoriteButton venue={card} style={styles.heart} />
+    </AnimatedView>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { marginBottom: 4 },
+  card: { marginBottom: 4, position: 'relative' },
   photo: {
     borderRadius: radii.md,
     overflow: 'hidden',
@@ -147,7 +155,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  heart: { position: 'absolute', top: 8, right: 8 },
+  heart: { position: 'absolute', top: 8, right: 8, zIndex: 2 },
   pill: {
     color: colors.white,
     backgroundColor: 'rgba(6,78,59,0.45)',

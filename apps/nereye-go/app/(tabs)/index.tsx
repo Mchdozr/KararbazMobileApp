@@ -14,6 +14,7 @@ import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
 import { recentAsCard, useRecentVenues } from '@/lib/recent-venues';
 import { api } from '@/lib/api';
+import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,9 +35,28 @@ export default function Home() {
   const favorites = useFavorites();
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError(null);
     setShowAll(false);
+    const cached = peekRecommend(
+      recommendCacheKey({
+        lat: filters.lat,
+        lng: filters.lng,
+        intent: filters.intent,
+        radiusMeters: filters.radiusMeters,
+        openNow: filters.openNow,
+        vibes: filters.vibes,
+        skip: 0,
+        take: 20,
+      }),
+    );
+    if (cached) {
+      const next = cached.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
+      setItems(next);
+      setHasMore(cached.hasMore);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const res = await api.recommend(
         filters.lat,
@@ -52,9 +72,11 @@ export default function Home() {
       setItems(next);
       setHasMore(res.hasMore);
     } catch (e) {
-      setError(friendlyError(e));
-      setItems([]);
-      setHasMore(false);
+      if (!cached) {
+        setError(friendlyError(e));
+        setItems([]);
+        setHasMore(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -153,7 +175,7 @@ export default function Home() {
         {featured ? (
           <View style={styles.feat}>
             <Text style={styles.gridTitle}>Sana özel</Text>
-            <VenueProductCard card={featured} featured intent={filters.intent} />
+            <VenueProductCard card={featured} featured intent={filters.intent} loadPhoto />
           </View>
         ) : null}
         <HorizontalVenueRow
@@ -197,7 +219,7 @@ export default function Home() {
             <Text style={styles.gridTitle}>Yakındakiler</Text>
             {organic.map((card) => (
               <View key={`feed-${card.placeId}`} style={styles.listItem}>
-                <VenueProductCard card={card} intent={filters.intent} />
+                <VenueProductCard card={card} intent={filters.intent} loadPhoto />
               </View>
             ))}
           </View>

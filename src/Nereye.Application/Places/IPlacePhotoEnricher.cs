@@ -8,5 +8,9 @@ public interface IPlacePhotoEnricher
         IReadOnlyList<PlaceSnapshot> places,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<PlaceSnapshot>> EnrichLiteAsync(
+        IReadOnlyList<PlaceSnapshot> places,
+        CancellationToken cancellationToken = default);
+
     Task<PlaceSnapshot> EnrichOneAsync(PlaceSnapshot place, CancellationToken cancellationToken = default);
 }

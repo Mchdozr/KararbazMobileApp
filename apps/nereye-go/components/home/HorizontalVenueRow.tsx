@@ -44,6 +44,7 @@ export function HorizontalVenueRow({
             width={!compact && i === 0 ? 220 : 176}
             featured={!compact && i === 0}
             intent={intent}
+            loadPhoto={i < 4}
           />
         ))}
       </ScrollView>

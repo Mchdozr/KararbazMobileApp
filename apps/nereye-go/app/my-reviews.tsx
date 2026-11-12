@@ -85,7 +85,7 @@ export default function MyReviews() {
       renderItem={({ item }) => (
         <Pressable
           style={styles.card}
-          onPress={() => router.push({ pathname: '/venue/[id]', params: { id: item.placeId } })}
+          onPress={() => router.push({ pathname: '/venue/[id]', params: { id: item.placeId, name: item.venueName } })}
           accessibilityRole="button"
           accessibilityLabel={`${item.venueName}, ${item.stars} yıldız`}>
           <View style={styles.head}>

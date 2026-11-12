@@ -37,6 +37,13 @@ public static class DependencyInjection
     {
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
         services.Configure<GooglePlacesOptions>(configuration.GetSection(GooglePlacesOptions.Section));
+        services.PostConfigure<GooglePlacesOptions>(o =>
+        {
+            if (string.IsNullOrWhiteSpace(o.ApiKey))
+            {
+                o.ApiKey = Environment.GetEnvironmentVariable("GOOGLE_PLACES_API_KEY") ?? "";
+            }
+        });
         services.Configure<MapillaryOptions>(o =>
         {
             configuration.GetSection(MapillaryOptions.Section).Bind(o);
@@ -124,7 +131,14 @@ public static class DependencyInjection
 
             var overpass = sp.GetRequiredService<OverpassPlacesClient>();
             var nominatim = sp.GetRequiredService<NominatimPlacesClient>();
-            var nearby = new FallbackPlacesClient(overpass, nominatim, fallbackOnEmpty: true, log);
+            var google = sp.GetRequiredService<GooglePlacesClient>();
+            var osm = new FallbackPlacesClient(overpass, nominatim, fallbackOnEmpty: true, log);
+            var nearby = new GoogleAugmentedPlacesClient(
+                osm,
+                google,
+                options,
+                sp.GetRequiredService<IPlacesCache>(),
+                sp.GetService<ILogger<GoogleAugmentedPlacesClient>>());
             var search = new FallbackPlacesClient(nominatim, overpass, fallbackOnEmpty: true, log);
             return new CompositePlacesClient(nearby, search, nearby);
         });
