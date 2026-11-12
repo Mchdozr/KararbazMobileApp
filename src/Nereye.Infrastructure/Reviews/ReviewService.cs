@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Nereye.Application.Common;
 using Nereye.Application.Places;
 using Nereye.Application.Recommendations;
 using Nereye.Application.Reviews;
 using Nereye.Domain.Entities;
 using Nereye.Domain.Places;
 using Nereye.Domain.Recommendation;
+using Nereye.Domain.Reviews;
 using Nereye.Infrastructure.Persistence;
 
 namespace Nereye.Infrastructure.Reviews;
@@ -41,39 +43,152 @@ public sealed class ReviewService : IReviewService
             .ToListAsync(cancellationToken);
 
         var userIds = reviews.Select(r => r.UserId).Distinct().ToList();
-        var names = userIds.Count == 0
-            ? new Dictionary<Guid, string>()
+        var authors = userIds.Count == 0
+            ? []
             : await _db.Users.Where(u => userIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => u.DisplayName, cancellationToken);
+                .Select(u => new { u.Id, u.DisplayName, u.AvatarUrl })
+                .ToListAsync(cancellationToken);
+        var byId = authors.ToDictionary(a => a.Id);
 
-        return reviews.Select(r => ToDto(r, names.GetValueOrDefault(r.UserId))).ToList();
+        return reviews
+            .Select(r => byId.TryGetValue(r.UserId, out var a) ? ToDto(r, a.DisplayName, a.AvatarUrl) : ToDto(r))
+            .ToList();
     }
 
     public async Task<ReviewDto> WriteAsync(string placeId, Guid userId, WriteReviewRequest request, CancellationToken cancellationToken = default)
     {
-        if (request.Stars is < 1 or > 5)
+        if (!ReviewRules.StarsValid(request.Stars))
         {
-            throw new ArgumentOutOfRangeException(nameof(request), "Puan 1-5 olmalı.");
+            throw new ValidationException("Puan 1-5 olmalı.");
+        }
+
+        var tags = (request.Tags ?? []).Distinct().Take(ReviewRules.MaxTags).ToList();
+        var photos = (request.PhotoUrls ?? []).Distinct().ToList();
+        if (photos.Count > ReviewRules.MaxPhotos)
+        {
+            throw new ValidationException($"En fazla {ReviewRules.MaxPhotos} fotoğraf eklenebilir.");
+        }
+
+        if (!photos.All(ReviewRules.IsOwnUpload))
+        {
+            throw new ValidationException("Fotoğraf uygulamadan yüklenmeli.");
         }
 
         var venue = await EnsureVenueAsync(placeId, cancellationToken);
-        var review = new Review
+        var review = await _db.Reviews
+            .Include(r => r.Tags)
+            .Include(r => r.Photos)
+            .Include(r => r.Reply)
+            .FirstOrDefaultAsync(r => r.VenueId == venue.Id && r.UserId == userId, cancellationToken);
+        if (review is null)
         {
-            Id = Guid.NewGuid(),
-            VenueId = venue.Id,
-            UserId = userId,
-            Stars = request.Stars,
-            Text = request.Text,
-            CreatedAt = _clock.UtcNow,
-            Tags = request.Tags.Select(t => new ReviewTag { Tag = t }).ToList(),
-            Photos = request.PhotoUrls.Select(u => new ReviewPhoto { Id = Guid.NewGuid(), Url = u }).ToList()
-        };
-        _db.Reviews.Add(review);
+            review = new Review
+            {
+                Id = Guid.NewGuid(),
+                VenueId = venue.Id,
+                UserId = userId,
+                CreatedAt = _clock.UtcNow
+            };
+            _db.Reviews.Add(review);
+        }
+        else
+        {
+            // Etiket anahtarı (ReviewId, Tag): aynı etiketi silip yeniden eklemek yerine farkı uygula.
+            foreach (var gone in review.Tags.Where(t => !tags.Contains(t.Tag)).ToList())
+            {
+                review.Tags.Remove(gone);
+                _db.ReviewTags.Remove(gone);
+            }
+
+            _db.ReviewPhotos.RemoveRange(review.Photos);
+            review.Photos.Clear();
+        }
+
+        review.Stars = request.Stars;
+        review.Text = ReviewRules.CleanText(request.Text);
+        foreach (var tag in tags.Where(t => review.Tags.All(x => x.Tag != t)))
+        {
+            review.Tags.Add(new ReviewTag { ReviewId = review.Id, Tag = tag });
+        }
+
+        foreach (var url in photos)
+        {
+            review.Photos.Add(new ReviewPhoto { Id = Guid.NewGuid(), ReviewId = review.Id, Url = url });
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         await RecalcRatingAsync(venue.Id, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
-        var author = await _db.Users.Where(u => u.Id == userId).Select(u => u.DisplayName).FirstOrDefaultAsync(cancellationToken);
-        return ToDto(review, author);
+        var author = await _db.Users.Where(u => u.Id == userId)
+            .Select(u => new { u.DisplayName, u.AvatarUrl })
+            .FirstOrDefaultAsync(cancellationToken);
+        return ToDto(review, author?.DisplayName, author?.AvatarUrl);
+    }
+
+    public async Task DeleteAsync(Guid reviewId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var review = await _db.Reviews
+            .Include(r => r.Tags)
+            .Include(r => r.Photos)
+            .Include(r => r.Reply)
+            .FirstOrDefaultAsync(r => r.Id == reviewId, cancellationToken)
+            ?? throw new NotFoundException("Yorum bulunamadı.");
+        if (review.UserId != userId)
+        {
+            throw new ForbiddenException("Yalnızca kendi yorumunu silebilirsin.");
+        }
+
+        var venueId = review.VenueId;
+        if (review.Reply is not null)
+        {
+            _db.ReviewReplies.Remove(review.Reply);
+        }
+
+        _db.Reviews.Remove(review);
+        await _db.SaveChangesAsync(cancellationToken);
+        await RecalcRatingAsync(venueId, cancellationToken);
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<MyReviewDto>> ListMineAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var reviews = await _db.Reviews
+            .Include(r => r.Tags)
+            .Include(r => r.Photos)
+            .Include(r => r.Reply)
+            .Include(r => r.Venue)
+            .Where(r => r.UserId == userId && !r.IsHidden)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var items = new List<MyReviewDto>(reviews.Count);
+        foreach (var review in reviews)
+        {
+            var placeId = review.Venue?.GooglePlaceId;
+            if (placeId is null)
+            {
+                continue;
+            }
+
+            var name = review.Venue?.OwnerDisplayName;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                name = (await _places.DetailsAsync(placeId, cancellationToken))?.Name ?? "Mekan";
+            }
+
+            items.Add(new MyReviewDto(
+                review.Id,
+                placeId,
+                name,
+                review.Stars,
+                review.Text,
+                review.Tags.Select(t => t.Tag).ToList(),
+                review.Photos.Select(p => p.Url).ToList(),
+                review.Reply?.Text,
+                review.CreatedAt));
+        }
+
+        return items;
     }
 
     public async Task<bool> IsFavoriteAsync(string placeId, Guid userId, CancellationToken cancellationToken = default)
@@ -176,14 +291,27 @@ public sealed class ReviewService : IReviewService
 
     public async Task ReportAsync(string placeId, Guid userId, string reason, Guid? reviewId, CancellationToken cancellationToken = default)
     {
+        var clean = ReviewRules.CleanText(reason, ReviewRules.MaxReasonLength)
+                    ?? throw new ValidationException("Şikayet nedeni gerekli.");
         var venue = await _db.Venues.FirstOrDefaultAsync(v => v.GooglePlaceId == placeId, cancellationToken);
+        var venueId = venue?.Id;
+
+        // Aynı kullanıcı aynı hedefi tekrar tekrar bildirirse kuyruğu şişirmesin.
+        var already = await _db.Reports.AnyAsync(
+            r => r.ReporterUserId == userId && !r.IsResolved && r.VenueId == venueId && r.ReviewId == reviewId,
+            cancellationToken);
+        if (already)
+        {
+            return;
+        }
+
         _db.Reports.Add(new Report
         {
             Id = Guid.NewGuid(),
             ReporterUserId = userId,
-            VenueId = venue?.Id,
+            VenueId = venueId,
             ReviewId = reviewId,
-            Reason = reason,
+            Reason = clean,
             CreatedAt = _clock.UtcNow
         });
         await _db.SaveChangesAsync(cancellationToken);
@@ -191,12 +319,15 @@ public sealed class ReviewService : IReviewService
 
     public async Task ReplyAsync(Guid reviewId, Guid ownerUserId, string text, CancellationToken cancellationToken = default)
     {
-        var review = await _db.Reviews.Include(r => r.Venue)
+        var clean = ReviewRules.CleanText(text)
+                    ?? throw new ValidationException("Yanıt boş olamaz.");
+        text = clean;
+        var review = await _db.Reviews.Include(r => r.Venue).Include(r => r.Reply)
             .FirstOrDefaultAsync(r => r.Id == reviewId, cancellationToken)
-            ?? throw new InvalidOperationException("Yorum yok.");
+            ?? throw new NotFoundException("Yorum bulunamadı.");
         if (review.Venue?.OwnerUserId != ownerUserId)
         {
-            throw new UnauthorizedAccessException("Sadece işletme yanıtlayabilir.");
+            throw new ForbiddenException("Sadece işletme yanıtlayabilir.");
         }
 
         if (review.Reply is not null)
@@ -227,7 +358,7 @@ public sealed class ReviewService : IReviewService
         }
 
         var place = await _places.DetailsAsync(placeId, cancellationToken)
-                    ?? throw new InvalidOperationException("Mekan bulunamadı.");
+                    ?? throw new NotFoundException("Mekan bulunamadı.");
         var venue = new Venue
         {
             Id = Guid.NewGuid(),
@@ -262,7 +393,7 @@ public sealed class ReviewService : IReviewService
         return Intent.Yemek;
     }
 
-    private static ReviewDto ToDto(Review review, string? authorName = null) => new(
+    private static ReviewDto ToDto(Review review, string? authorName = null, string? authorAvatarUrl = null) => new(
         review.Id,
         review.UserId,
         authorName,
@@ -271,5 +402,6 @@ public sealed class ReviewService : IReviewService
         review.Tags.Select(t => t.Tag).ToList(),
         review.Photos.Select(p => p.Url).ToList(),
         review.Reply?.Text,
-        review.CreatedAt);
+        review.CreatedAt,
+        authorAvatarUrl);
 }

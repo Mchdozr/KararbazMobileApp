@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Nereye.Application.Auth;
+using Nereye.Application.Common;
 using Nereye.Application.Places;
 using Nereye.Application.Preferences;
 using Nereye.Application.Recommendations;
@@ -24,6 +28,9 @@ public sealed class MeController : ControllerBase
     private readonly AvatarStorage _avatars;
     private readonly UserManager<AppUser> _users;
     private readonly NereyeDbContext _db;
+    private readonly IAuthService _auth;
+
+    private static readonly HashSet<string> ConsentPurposes = ["location", "kvkk", "marketing"];
 
     public MeController(
         IPreferenceService preferences,
@@ -31,8 +38,10 @@ public sealed class MeController : ControllerBase
         ISavedPlaceService places,
         AvatarStorage avatars,
         UserManager<AppUser> users,
-        NereyeDbContext db)
+        NereyeDbContext db,
+        IAuthService auth)
     {
+        _auth = auth;
         _preferences = preferences;
         _reviews = reviews;
         _places = places;
@@ -40,6 +49,19 @@ public sealed class MeController : ControllerBase
         _users = users;
         _db = db;
     }
+
+    [HttpGet]
+    public async Task<ActionResult<ProfileDto>> Profile(CancellationToken ct) =>
+        Ok(await _auth.GetProfileAsync(User.Id(), ct));
+
+    [HttpPut]
+    [EnableRateLimiting("write")]
+    public async Task<ActionResult<ProfileDto>> UpdateProfile(UpdateProfileRequest body, CancellationToken ct) =>
+        Ok(await _auth.UpdateProfileAsync(User.Id(), body, ct));
+
+    [HttpGet("reviews")]
+    public async Task<ActionResult<IReadOnlyList<MyReviewDto>>> Reviews(CancellationToken ct) =>
+        Ok(await _reviews.ListMineAsync(User.Id(), ct));
 
     [HttpGet("preferences")]
     public async Task<ActionResult<PreferenceDto>> Get(CancellationToken ct) =>
@@ -77,14 +99,40 @@ public sealed class MeController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Her amaç için en son verilen rıza durumu.</summary>
+    [HttpGet("consents")]
+    public async Task<ActionResult<IReadOnlyDictionary<string, bool>>> Consents(CancellationToken ct)
+    {
+        var uid = User.Id();
+        var logs = await _db.ConsentLogs
+            .Where(c => c.UserId == uid)
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => new { c.Purpose, c.Granted })
+            .ToListAsync(ct);
+        var latest = new Dictionary<string, bool>();
+        foreach (var log in logs)
+        {
+            latest[log.Purpose] = log.Granted;
+        }
+
+        return Ok(latest);
+    }
+
     [HttpPost("consent")]
+    [EnableRateLimiting("write")]
     public async Task<IActionResult> Consent([FromBody] ConsentBody body, CancellationToken ct)
     {
+        var purpose = string.IsNullOrWhiteSpace(body.Purpose) ? "location" : body.Purpose.Trim().ToLowerInvariant();
+        if (!ConsentPurposes.Contains(purpose))
+        {
+            throw new ValidationException("Bilinmeyen rıza türü.");
+        }
+
         _db.ConsentLogs.Add(new ConsentLog
         {
             Id = Guid.NewGuid(),
             UserId = User.Id(),
-            Purpose = string.IsNullOrWhiteSpace(body.Purpose) ? "location" : body.Purpose.Trim(),
+            Purpose = purpose,
             Granted = body.Granted,
             CreatedAt = DateTime.UtcNow
         });
@@ -93,6 +141,7 @@ public sealed class MeController : ControllerBase
     }
 
     [HttpPost("avatar")]
+    [EnableRateLimiting("write")]
     [RequestSizeLimit(3_000_000)]
     public async Task<ActionResult<object>> Avatar(AvatarUploadRequest body, CancellationToken ct)
     {
@@ -117,6 +166,7 @@ public sealed class MeController : ControllerBase
     }
 
     [HttpPost("photos")]
+    [EnableRateLimiting("write")]
     [RequestSizeLimit(3_000_000)]
     public async Task<ActionResult<object>> Photo(AvatarUploadRequest body, CancellationToken ct)
     {

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Nereye.Application.Common;
 using Nereye.Application.Preferences;
+using Nereye.Domain.Geo;
 using Nereye.Application.Recommendations;
 using Nereye.Domain.Places;
 
@@ -32,6 +34,13 @@ public sealed class RecommendationsController : ControllerBase
         [FromQuery] int take = 20,
         CancellationToken ct = default)
     {
+        if (!GeoBounds.IsValid(lat, lng))
+        {
+            throw new ValidationException("Konum geçersiz.");
+        }
+
+        skip = Math.Max(0, skip);
+        take = Math.Clamp(take, 1, 50);
         Guid? userId = User.Identity?.IsAuthenticated == true ? User.Id() : null;
         if (userId is { } uid && radiusMeters == 1500)
         {
@@ -47,7 +56,10 @@ public sealed class RecommendationsController : ControllerBase
         var vibeList = string.IsNullOrWhiteSpace(vibes)
             ? []
             : vibes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(Enum.Parse<VibeTag>)
+                .Select(v => Enum.TryParse<VibeTag>(v, ignoreCase: true, out var tag) && Enum.IsDefined(tag) ? tag : (VibeTag?)null)
+                .Where(v => v is not null)
+                .Select(v => v!.Value)
+                .Distinct()
                 .ToList();
 
         var result = await _service.RecommendAsync(

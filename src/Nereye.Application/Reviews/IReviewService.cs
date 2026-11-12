@@ -5,11 +5,14 @@ namespace Nereye.Application.Reviews;
 public interface IReviewService
 {
     Task<IReadOnlyList<ReviewDto>> ListAsync(string placeId, CancellationToken cancellationToken = default);
+    /// <summary>Kullanıcı başına mekan başına tek yorum: ikinci yazış öncekini günceller.</summary>
     Task<ReviewDto> WriteAsync(string placeId, Guid userId, WriteReviewRequest request, CancellationToken cancellationToken = default);
     Task FavoriteAsync(string placeId, Guid userId, CancellationToken cancellationToken = default);
     Task UnfavoriteAsync(string placeId, Guid userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<RecommendationItemDto>> ListFavoritesAsync(Guid userId, CancellationToken cancellationToken = default);
     Task ReportAsync(string placeId, Guid userId, string reason, Guid? reviewId, CancellationToken cancellationToken = default);
     Task ReplyAsync(Guid reviewId, Guid ownerUserId, string text, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Guid reviewId, Guid userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MyReviewDto>> ListMineAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<bool> IsFavoriteAsync(string placeId, Guid userId, CancellationToken cancellationToken = default);
 }

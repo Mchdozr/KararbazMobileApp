@@ -61,7 +61,15 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddIdentityCore<AppUser>(o =>
             {
+                // Kural tek yerde: AccountRules (8+ karakter, harf + rakam). Sembol/büyük harf zorlamıyoruz.
                 o.Password.RequiredLength = 8;
+                o.Password.RequireNonAlphanumeric = false;
+                o.Password.RequireUppercase = false;
+                o.Password.RequireLowercase = false;
+                o.Password.RequireDigit = true;
+                o.Lockout.MaxFailedAccessAttempts = 5;
+                o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+                o.Lockout.AllowedForNewUsers = true;
                 o.User.RequireUniqueEmail = true;
             })
             .AddRoles<IdentityRole<Guid>>()

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Nereye.Application.Claims;
 using Nereye.Application.Places;
 using Nereye.Application.Reviews;
@@ -36,9 +37,18 @@ public sealed class VenuesController : ControllerBase
         Ok(await _reviews.ListAsync(placeId, ct));
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost("{placeId}/reviews")]
     public async Task<ActionResult<ReviewDto>> Write(string placeId, WriteReviewRequest request, CancellationToken ct) =>
         Ok(await _reviews.WriteAsync(placeId, User.Id(), request, ct));
+
+    [Authorize]
+    [HttpDelete("reviews/{reviewId:guid}")]
+    public async Task<IActionResult> DeleteReview(Guid reviewId, CancellationToken ct)
+    {
+        await _reviews.DeleteAsync(reviewId, User.Id(), ct);
+        return NoContent();
+    }
 
     [Authorize]
     [HttpGet("{placeId}/favorite")]
@@ -62,14 +72,16 @@ public sealed class VenuesController : ControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost("{placeId}/reports")]
     public async Task<IActionResult> Report(string placeId, [FromBody] ReportBody body, CancellationToken ct)
     {
-        await _reviews.ReportAsync(placeId, User.Id(), body.Reason, body.ReviewId, ct);
+        await _reviews.ReportAsync(placeId, User.Id(), body.Reason ?? "", body.ReviewId, ct);
         return NoContent();
     }
 
     [Authorize]
+    [EnableRateLimiting("write")]
     [HttpPost("{placeId}/claims")]
     public async Task<ActionResult<ClaimDto>> Claim(string placeId, ClaimRequest request, CancellationToken ct) =>
         Ok(await _claims.SubmitAsync(placeId, User.Id(), request, ct));
@@ -78,7 +90,7 @@ public sealed class VenuesController : ControllerBase
     [HttpPost("reviews/{reviewId:guid}/reply")]
     public async Task<IActionResult> Reply(Guid reviewId, [FromBody] ReplyBody body, CancellationToken ct)
     {
-        await _reviews.ReplyAsync(reviewId, User.Id(), body.Text, ct);
+        await _reviews.ReplyAsync(reviewId, User.Id(), body.Text ?? "", ct);
         return NoContent();
     }
 
@@ -104,7 +116,7 @@ public sealed class VenuesController : ControllerBase
         return Ok(new { url });
     }
 
-    public sealed record ReportBody(string Reason, Guid? ReviewId);
-    public sealed record ReplyBody(string Text);
+    public sealed record ReportBody(string? Reason, Guid? ReviewId);
+    public sealed record ReplyBody(string? Text);
     public sealed record OwnerUpdateBody(string? DisplayName, string? Description);
 }

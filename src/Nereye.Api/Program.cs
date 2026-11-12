@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
+using Nereye.Api;
 using Nereye.Infrastructure;
 using Nereye.Infrastructure.Auth;
 using Nereye.Infrastructure.Persistence;
@@ -24,17 +28,55 @@ builder.Services.AddControllers().AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
+builder.Services.Configure<ApiBehaviorOptions>(o =>
+{
+    // Model bağlama hataları da diğer hatalarla aynı { error } biçiminde dönsün.
+    o.InvalidModelStateResponseFactory = _ => new BadRequestObjectResult(new { error = "Geçersiz istek." });
+});
 builder.Services.AddOpenApi();
 builder.Services.AddAuthorization();
+builder.Services.AddResponseCompression(o =>
+{
+    o.EnableForHttps = true;
+    o.Providers.Add<BrotliCompressionProvider>();
+    o.Providers.Add<GzipCompressionProvider>();
+});
+// Yalnızca ters vekil arkasında aç (Proxy:TrustForwardedHeaders=true); aksi halde
+// istemci X-Forwarded-For ile IP'sini uydurup hız sınırını aşabilir.
+var trustProxy = builder.Configuration.GetValue("Proxy:TrustForwardedHeaders", false);
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownIPNetworks.Clear();
+    o.KnownProxies.Clear();
+});
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    o.AddFixedWindowLimiter("osm", opt =>
+    o.OnRejected = async (ctx, ct) =>
     {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 90;
-        opt.QueueLimit = 0;
-    });
+        ctx.HttpContext.Response.Headers.RetryAfter = "60";
+        await ctx.HttpContext.Response.WriteAsJsonAsync(new { error = "Çok sık istek. Bir dakika sonra tekrar dene." }, ct);
+    };
+    // Sınırlar istemci başına: tek bir kullanıcı herkesin kotasını tüketemez.
+    o.AddPolicy("osm", ctx => RateLimitPartition.GetFixedWindowLimiter(ClientIp.Key(ctx), _ => new FixedWindowRateLimiterOptions
+    {
+        Window = TimeSpan.FromMinutes(1),
+        PermitLimit = 90,
+        QueueLimit = 0
+    }));
+    o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter("ip:" + ClientIp.Ip(ctx), _ => new FixedWindowRateLimiterOptions
+    {
+        Window = TimeSpan.FromMinutes(1),
+        PermitLimit = 12,
+        QueueLimit = 0
+    }));
+    o.AddPolicy("write", ctx => RateLimitPartition.GetFixedWindowLimiter(ClientIp.Key(ctx), _ => new FixedWindowRateLimiterOptions
+    {
+        Window = TimeSpan.FromMinutes(1),
+        PermitLimit = 30,
+        QueueLimit = 0
+    }));
 });
 
 var testing = builder.Environment.IsEnvironment("Testing");
@@ -56,6 +98,12 @@ var signing = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY");
 if (!string.IsNullOrWhiteSpace(signing))
 {
     jwt.SigningKey = signing;
+}
+
+if (builder.Environment.IsProduction()
+    && (jwt.SigningKey.Length < 32 || jwt.SigningKey.StartsWith("dev-only", StringComparison.Ordinal)))
+{
+    throw new InvalidOperationException("Production için JWT_SIGNING_KEY ortam değişkeni (en az 32 karakter) zorunlu.");
 }
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -82,22 +130,56 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+if (trustProxy)
+{
+    app.UseForwardedHeaders();
+}
+
 app.Use(async (ctx, next) =>
 {
-    var id = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    var given = ctx.Request.Headers["X-Request-Id"].FirstOrDefault();
+    var id = given is { Length: > 0 and <= 64 } && given.All(c => char.IsAsciiLetterOrDigit(c) || c == '-')
+        ? given
+        : Guid.NewGuid().ToString("N");
     ctx.Response.Headers["X-Request-Id"] = id;
-    await next();
+    ctx.Response.Headers.XContentTypeOptions = "nosniff";
+    ctx.Response.Headers.XFrameOptions = "DENY";
+    ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
+    using (app.Logger.BeginScope(new Dictionary<string, object> { ["RequestId"] = id }))
+    {
+        await next();
+    }
 });
+app.UseMiddleware<ApiErrorMiddleware>();
+if (app.Environment.IsProduction())
+{
+    app.UseHsts();
+}
+
+app.UseResponseCompression();
 app.UseCors();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Yüklenen dosyalar benzersiz adlıdır; mekan görselleri nadiren değişir.
+        var path = ctx.Context.Request.Path.Value ?? "";
+        ctx.Context.Response.Headers.CacheControl =
+            path.StartsWith("/media/uploads/", StringComparison.Ordinal) ? "public, max-age=31536000, immutable"
+            : path.StartsWith("/media/avatars/", StringComparison.Ordinal) ? "public, max-age=300"
+            : "public, max-age=86400";
+    }
+});
+app.UseAuthentication();
 if (!testing)
 {
+    // Kimlik doğrulamadan sonra: bölümleme anahtarı kullanıcıyı görebilsin.
     app.UseRateLimiter();
 }
 
-app.UseStaticFiles();
-app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/health/live", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/health", async (NereyeDbContext db, IDistributedCache cache) =>
 {
     var dbOk = await db.Database.CanConnectAsync();

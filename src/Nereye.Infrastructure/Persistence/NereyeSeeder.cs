@@ -45,8 +45,23 @@ public static class NereyeSeeder
                 DisplayName = "Nereye Admin",
                 EmailConfirmed = true
             };
-            await users.CreateAsync(admin, "Admin!12345");
-            await users.AddToRolesAsync(admin, [RoleNames.Admin, RoleNames.User]);
+            // Bilinen varsayılan şifre yalnızca geliştirmede. Production'da ADMIN_PASSWORD verilmezse
+            // admin hesabı hiç oluşturulmaz: herkesin bildiği şifreyle açık bir yönetici kalmasın.
+            var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+            var password = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
+            if (string.IsNullOrWhiteSpace(password) && !env.IsProduction())
+            {
+                password = "Admin!12345";
+            }
+
+            if (!string.IsNullOrWhiteSpace(password))
+            {
+                var created = await users.CreateAsync(admin, password);
+                if (created.Succeeded)
+                {
+                    await users.AddToRolesAsync(admin, [RoleNames.Admin, RoleNames.User]);
+                }
+            }
         }
 
         if (!await db.Venues.AnyAsync())
