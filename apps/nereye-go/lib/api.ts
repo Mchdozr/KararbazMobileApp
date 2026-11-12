@@ -10,6 +10,25 @@ let authEvents: { onRefreshed?: (session: Session) => void; onCleared?: () => vo
 
 const EMPTY_PREFS: Preferences = { defaultRadiusMeters: 1500, intents: [], vibes: [] };
 const photoWait = new Map<string, Promise<string | null>>();
+let photoActive = 0;
+const photoQueue: Array<() => void> = [];
+
+function runPhoto<T>(job: () => Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const start = () => {
+      photoActive += 1;
+      job().then(resolve, reject).finally(() => {
+        photoActive -= 1;
+        photoQueue.shift()?.();
+      });
+    };
+    if (photoActive < 3) {
+      start();
+    } else {
+      photoQueue.push(start);
+    }
+  });
+}
 
 export function setApiBase(url: string) {
   apiBase = url.replace(/\/$/, '');
@@ -195,11 +214,13 @@ export const api = {
     if (hit) {
       return hit;
     }
-    const pending = request<{ photoUrl?: string } | undefined>(
-      `/api/places/${encodeURIComponent(placeId)}/photo`,
-      {},
-      { skipAuth: true, optional: true },
-    ).then((data) => data?.photoUrl ?? null);
+    const pending = runPhoto(() =>
+      request<{ photoUrl?: string } | undefined>(
+        `/api/places/${encodeURIComponent(placeId)}/photo`,
+        {},
+        { skipAuth: true, optional: true },
+      ).then((data) => data?.photoUrl ?? null),
+    );
     photoWait.set(placeId, pending);
     return pending;
   },

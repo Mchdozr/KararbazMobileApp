@@ -5,14 +5,15 @@ import { SearchingOverlay } from '@/components/SearchingOverlay';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { emptyMap, friendlyError } from '@/lib/empty';
 import { detectLocation } from '@/lib/geo';
-import { useFilters } from '@/lib/filters';
+import { isLocPinned, useFilters } from '@/lib/filters';
 import { api } from '@/lib/api';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Region, UrlTile } from 'react-native-maps';
+import { ExploreMapView, ExploreMarker, ExploreUrlTile, type Region } from '@/components/explore-map-parts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function inRegion(card: VenueCard, region: Region) {
@@ -27,7 +28,7 @@ function inRegion(card: VenueCard, region: Region) {
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const filters = useFilters();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<{ animateToRegion?: (region: Region) => void } | null>(null);
   const [items, setItems] = useState<VenueCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -69,6 +70,33 @@ export default function MapScreen() {
     void load();
   }, [load]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (isLocPinned()) {
+        return;
+      }
+      let alive = true;
+      void detectLocation().then((fix) => {
+        if (alive && fix && !isLocPinned()) {
+          filters.setLoc(fix.lat, fix.lng, fix.label, false);
+        }
+      });
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
+
+  useEffect(() => {
+    const next = {
+      latitude: filters.lat,
+      longitude: filters.lng,
+      latitudeDelta: 0.035,
+      longitudeDelta: 0.035,
+    };
+    mapRef.current?.animateToRegion?.(next);
+  }, [filters.lat, filters.lng]);
+
   const visible = useMemo(() => items.filter((c) => inRegion(c, region)), [items, region]);
   const sheetCards = picked ? [picked] : visible;
 
@@ -78,7 +106,7 @@ export default function MapScreen() {
       const fix = await detectLocation();
       if (fix) {
         filters.setLoc(fix.lat, fix.lng, fix.label, false);
-        mapRef.current?.animateToRegion({
+        mapRef.current?.animateToRegion?.({
           latitude: fix.lat,
           longitude: fix.lng,
           latitudeDelta: 0.035,
@@ -92,23 +120,23 @@ export default function MapScreen() {
 
   return (
     <View style={styles.bg}>
-      <MapView
-        ref={mapRef}
+      <ExploreMapView
+        ref={mapRef as never}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
         onRegionChangeComplete={setRegion}
         onPress={() => setPicked(null)}>
-        <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
-        <Marker coordinate={{ latitude: filters.lat, longitude: filters.lng }} title="Sen" pinColor={colors.coral} />
+        <ExploreUrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
+        <ExploreMarker coordinate={{ latitude: filters.lat, longitude: filters.lng }} title="Sen" pinColor={colors.coral} />
         {visible.map((card) => (
-          <Marker
+          <ExploreMarker
             key={card.placeId}
             coordinate={{ latitude: card.latitude, longitude: card.longitude }}
             pinColor={picked?.placeId === card.placeId ? colors.coral : colors.espresso}
             onPress={() => setPicked(card)}
           />
         ))}
-      </MapView>
+      </ExploreMapView>
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
         <Pressable
           style={styles.chip}

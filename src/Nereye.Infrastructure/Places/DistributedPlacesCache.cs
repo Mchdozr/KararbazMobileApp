@@ -8,7 +8,6 @@ namespace Nereye.Infrastructure.Places;
 public sealed class DistributedPlacesCache : IPlacesCache
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-    private static readonly TimeSpan EmptyTtl = TimeSpan.FromMinutes(2);
     private readonly IDistributedCache _cache;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new();
 
@@ -37,17 +36,16 @@ public sealed class DistributedPlacesCache : IPlacesCache
             }
 
             var created = await factory(cancellationToken);
-            if (created is null)
+            if (created is null || created is System.Collections.ICollection { Count: 0 })
             {
                 return created;
             }
 
-            var empty = created is System.Collections.ICollection { Count: 0 };
             var payload = JsonSerializer.Serialize(created, Json);
             await _cache.SetStringAsync(
                 key,
                 payload,
-                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = empty ? EmptyTtl : ttl },
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl },
                 cancellationToken);
             return created;
         }

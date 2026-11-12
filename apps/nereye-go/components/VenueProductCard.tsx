@@ -29,7 +29,7 @@ export function VenueProductCard({
   card,
   width,
   featured = false,
-  intent: _intent,
+  intent,
 }: {
   card: VenueCard;
   width?: number;
@@ -63,6 +63,7 @@ export function VenueProductCard({
           photoUrl={card.photoUrl}
           photoReference={card.photoReference}
           name={card.name}
+          intent={intent}
           style={StyleSheet.absoluteFill}
           radius={radii.md}
         />

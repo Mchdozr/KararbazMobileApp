@@ -56,9 +56,9 @@ public sealed class FallbackPlacesClient : IPlacesClient
                 return place;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            /* ignore */
+            _log?.LogWarning(ex, "Place details primary failed for {PlaceId}", placeId);
         }
 
         return await _fallback.DetailsAsync(placeId, cancellationToken);

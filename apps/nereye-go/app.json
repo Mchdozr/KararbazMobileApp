@@ -18,6 +18,8 @@
       }
     },
     "android": {
+      "package": "com.mchdozr.nereye",
+      "versionCode": 1,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#f4dfbf",

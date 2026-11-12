@@ -47,7 +47,9 @@ public sealed class RecommendationsController : ControllerBase
         var vibeList = string.IsNullOrWhiteSpace(vibes)
             ? []
             : vibes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(Enum.Parse<VibeTag>)
+                .Select(v => Enum.TryParse<VibeTag>(v, true, out var tag) ? tag : (VibeTag?)null)
+                .Where(t => t is not null)
+                .Select(t => t!.Value)
                 .ToList();
 
         var result = await _service.RecommendAsync(

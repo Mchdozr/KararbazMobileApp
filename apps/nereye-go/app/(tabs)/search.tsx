@@ -70,6 +70,8 @@ export default function Search() {
             return;
           }
           setError(friendlyError(e));
+          setItems([]);
+          setSuggest([]);
         } finally {
           if (n === seq.current) {
             setLoading(false);

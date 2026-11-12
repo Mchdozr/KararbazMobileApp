@@ -13,7 +13,6 @@ public sealed class OsrmRouteClient
     {
         _http = http;
         _http.Timeout = TimeSpan.FromSeconds(8);
-        _http.BaseAddress ??= new Uri("https://router.project-osrm.org/");
         if (!_http.DefaultRequestHeaders.UserAgent.Any())
         {
             _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
@@ -29,9 +28,12 @@ public sealed class OsrmRouteClient
         CancellationToken cancellationToken = default)
     {
         var profile = OsrmRoute.Profile(mode);
+        var root = profile == "driving"
+            ? "https://routing.openstreetmap.de/routed-car/"
+            : "https://routing.openstreetmap.de/routed-foot/";
         var path =
             $"route/v1/{profile}/{Fmt(fromLng)},{Fmt(fromLat)};{Fmt(toLng)},{Fmt(toLat)}?overview=full&geometries=geojson";
-        using var response = await _http.GetAsync(path, cancellationToken);
+        using var response = await _http.GetAsync(new Uri(new Uri(root), path), cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             return null;

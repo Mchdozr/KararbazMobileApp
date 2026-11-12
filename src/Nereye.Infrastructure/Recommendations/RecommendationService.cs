@@ -124,6 +124,27 @@ public sealed class RecommendationService : IRecommendationService
 
         var sponsored = await LoadSponsoredAsync(query.Intent, geohash, cancellationToken);
         var assembled = PromotionSlotAssembler.Assemble(rankedOrganic, sponsored);
+        foreach (var card in assembled)
+        {
+            if (card.Kind != CardKind.Sponsored || scored.ContainsKey(card.PlaceId))
+            {
+                continue;
+            }
+
+            var sponsoredPlace = await _places.DetailsAsync(card.PlaceId, cancellationToken);
+            if (sponsoredPlace is null)
+            {
+                continue;
+            }
+
+            var sponsoredDistance = GeoMath.HaversineMeters(
+                query.Latitude,
+                query.Longitude,
+                sponsoredPlace.Latitude,
+                sponsoredPlace.Longitude);
+            scored[sponsoredPlace.PlaceId] = (sponsoredPlace, null, card.Score, sponsoredDistance);
+        }
+
         var (page, hasMore) = RecommendationPage.Slice(assembled, query.Skip, query.Take);
 
         var items = page.Select(card =>

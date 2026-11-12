@@ -28,7 +28,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
+import { RouteMap } from '@/components/RouteMap';
 
 export default function Venue() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,6 +45,7 @@ export default function Venue() {
   const [walk, setWalk] = useState<RouteResult | null>(null);
   const [drive, setDrive] = useState<RouteResult | null>(null);
   const [mode, setMode] = useState<RouteMode>('foot');
+  const [reloadKey, setReloadKey] = useState(0);
   const owner = Boolean(session?.roles.includes('VenueOwner'));
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function Venue() {
     return () => {
       alive = false;
     };
-  }, [id, session, filters.lat, filters.lng]);
+  }, [id, session, filters.lat, filters.lng, reloadKey]);
 
   async function toggleSave() {
     if (!session) {
@@ -131,7 +132,7 @@ export default function Venue() {
   if (!detail) {
     return (
       <View style={styles.bg}>
-        {error ? <ErrorBanner message={error} onRetry={() => setDetail(null)} /> : <EmptyState title="Mekan bulunamadı." />}
+        {error ? <ErrorBanner message={error} onRetry={() => setReloadKey((n) => n + 1)} /> : <EmptyState title="Mekan bulunamadı." />}
       </View>
     );
   }
@@ -253,26 +254,15 @@ export default function Venue() {
             </Text>
           </Pressable>
         </View>
-        {(mode === 'foot' ? walk : drive)?.points.length ? (
-          <MapView
-            style={styles.miniMap}
-            pointerEvents="none"
-            initialRegion={{
-              latitude: detail.latitude,
-              longitude: detail.longitude,
-              latitudeDelta: 0.02,
-              longitudeDelta: 0.02,
-            }}>
-            <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
-            <Polyline
-              coordinates={(mode === 'foot' ? walk : drive)!.points}
-              strokeColor={colors.coral}
-              strokeWidth={4}
-            />
-            <Marker coordinate={{ latitude: filters.lat, longitude: filters.lng }} pinColor={colors.coral} />
-            <Marker coordinate={{ latitude: detail.latitude, longitude: detail.longitude }} pinColor={colors.espresso} />
-          </MapView>
-        ) : null}
+        <RouteMap
+          mode={mode}
+          walk={walk}
+          drive={drive}
+          venueLat={detail.latitude}
+          venueLng={detail.longitude}
+          originLat={filters.lat}
+          originLng={filters.lng}
+        />
         <Pressable
           style={styles.btn}
           onPress={() => {

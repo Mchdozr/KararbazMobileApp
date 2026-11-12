@@ -19,6 +19,47 @@ const local: Record<string, number> = {
   'nereye:moda': require('../assets/venues/moda.jpg'),
 };
 
+function word(token: string, stem: string) {
+  return token === stem || token === `${stem}i` || token === `${stem}ı` || token === `${stem}si` || token === `${stem}sı`;
+}
+
+const pools: Record<string, number[]> = {
+  Kahve: [local['nereye:petra']],
+  Yemek: [local['nereye:ciya'], local['nereye:karakoy'], local['nereye:fazil']],
+  Eglence: [local['nereye:mini'], local['nereye:goygoy'], local['nereye:opera']],
+  Kultur: [local['nereye:sureyya'], local['nereye:modern'], local['nereye:zorlu']],
+  AcikHava: [local['nereye:moda'], local['nereye:federica']],
+  Gece: [local['nereye:opera'], local['nereye:mini'], local['nereye:goygoy']],
+};
+
+function pick(pool: number[], placeId?: string) {
+  let h = 2166136261;
+  const value = placeId || 'ny';
+  for (let i = 0; i < value.length; i += 1) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return pool[(h >>> 0) % pool.length];
+}
+
+export function servicePhoto(name?: string | null, intent?: string, placeId?: string) {
+  const tokens = (name ?? '').toLocaleLowerCase('tr-TR').split(/[^a-z0-9çğıöşü]+/).filter(Boolean);
+  const has = (stem: string) => tokens.some((token) => word(token, stem));
+  let kind = intent && pools[intent] ? intent : 'Kahve';
+  if (has('müze') || has('muze') || has('tiyatro') || tokens.includes('miniatürk')) {
+    kind = 'Kultur';
+  } else if (has('park') || has('sahil') || has('plaj')) {
+    kind = 'AcikHava';
+  } else if (has('pub') || has('lounge')) {
+    kind = 'Gece';
+  } else if (has('restoran') || has('lokanta') || has('kebap') || has('döner') || has('doner') || has('pideci') || has('pastane')) {
+    kind = 'Yemek';
+  } else if (has('kahve') || has('cafe') || has('kafe') || has('çay') || has('cay')) {
+    kind = 'Kahve';
+  }
+  return pick(pools[kind], placeId);
+}
+
 export const INTENT_PHOTOS: Record<string, number> = {
   Kahve: local['nereye:petra'],
   Yemek: local['nereye:ciya'],
