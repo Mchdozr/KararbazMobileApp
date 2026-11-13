@@ -76,7 +76,7 @@ export const VenueProductCard = memo(function VenueProductCard({
         onPressOut={() => {
           scale.value = withTiming(1, { duration: 220 });
         }}
-        onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId, name: card.name } })}
+        onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId, name: card.name, photo: card.photoUrl ?? card.photoReference ?? '' } })}
         accessibilityRole="button"
         accessibilityHint="Mekan detayını açar"
         accessibilityLabel={a11yLabel}>

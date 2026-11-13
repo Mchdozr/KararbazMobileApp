@@ -1,5 +1,6 @@
 import { ApiError, serverMessage } from '@/lib/api-error';
 import { isFresh, shareVenueRequest } from '@/lib/venue-cache';
+import { venuePhotoUrls } from '@/lib/venue-photos';
 import { DEFAULT_API, FALLBACK_APIS } from '@/lib/constants';
 import { photoBatchIds } from '@/lib/photo-batch';
 import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
@@ -457,48 +458,16 @@ export function mediaUrl(path?: string | null) {
   return `${apiBase}${path}`;
 }
 
-function canonicalPhoto(url: string) {
-  let name: string | null = null;
-  if (url.startsWith('places/')) {
-    name = url;
-  } else if (url.includes('/api/media/google') && url.includes('name=')) {
-    const raw = url.slice(url.indexOf('name=') + 5).split('&')[0] ?? '';
-    try {
-      name = decodeURIComponent(raw);
-    } catch {
-      name = raw;
-    }
-  }
-  if (name?.startsWith('places/')) {
-    return `/api/media/google?name=${encodeURIComponent(name)}`;
-  }
-  return url;
-}
-
 export function mapVenueDetail(raw: Record<string, unknown>): VenueDetail {
   const google = (raw.google as Record<string, unknown> | undefined) ?? {};
   const nereye = (raw.nereye as Record<string, unknown> | undefined) ?? {};
   const ownerPhotos = (nereye.photoUrls as string[] | undefined) ?? [];
-  const osmPhoto =
-    typeof google.photoReference === 'string'
-    && (google.photoReference.startsWith('http')
-      || google.photoReference.startsWith('/media/')
-      || google.photoReference.startsWith('/api/media/')
-      || google.photoReference.startsWith('places/'))
-      ? google.photoReference
-      : undefined;
-  const gallery = Array.isArray(google.photoUrls) ? (google.photoUrls as string[]) : [];
-  // photoReference ham `places/…`, galeri ise aynı karenin `/api/media/google?name=` hali.
-  // İkisi de aynı URI’ye çözülür; tekilleştirmezsek galeri anahtarı çakışır.
-  const seen = new Set<string>();
-  const photoUrls: string[] = [];
-  for (const raw of [...ownerPhotos, ...gallery, osmPhoto]) {
-    if (!raw) continue;
-    const canon = canonicalPhoto(raw);
-    if (seen.has(canon)) continue;
-    seen.add(canon);
-    photoUrls.push(canon);
-  }
+  // İşletme fotoğrafları önce, sonra sunucu galerisi; aynı Google karesinin farklı yazımları tek öğe olur.
+  const photoUrls = venuePhotoUrls({
+    ownerPhotos,
+    gallery: Array.isArray(google.photoUrls) ? (google.photoUrls as string[]) : [],
+    photoReference: typeof google.photoReference === 'string' ? google.photoReference : null,
+  });
   return {
     placeId: raw.placeId as string,
     name: (nereye.ownerDisplayName as string) || (google.name as string),

@@ -7,7 +7,7 @@ import { RatingSummary } from '@/components/RatingSummary';
 import { Skeleton } from '@/components/Skeleton';
 import { Stars } from '@/components/Stars';
 import { VenueImage } from '@/components/VenueImage';
-import { api, getApiBase, mediaUrl } from '@/lib/api';
+import { api, mediaUrl } from '@/lib/api';
 import { vibeText } from '@/lib/constants';
 import { friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
@@ -23,6 +23,7 @@ import { shareVenue } from '@/lib/share';
 import { colors, fonts, radii } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { peekVenue } from '@/lib/venue-cache';
+import { displayPhotos, uniqueStrings } from '@/lib/venue-photos';
 import { clip, compactCount, featureIcon, metaLine, priceWord } from '@/lib/venue-format';
 import type { ExternalReview, ReviewItem, RouteMode, RouteResult, VenueDetail } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +31,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import {
   Alert,
   Linking,
@@ -45,24 +46,6 @@ import MapView, { Marker, Polyline, UrlTile } from '@/components/Map';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HERO = 320;
-
-function keyDupes(xs: string[]) {
-  const n = new Map<string, number>();
-  for (const x of xs) n.set(x, (n.get(x) ?? 0) + 1);
-  return [...n.entries()].filter(([, c]) => c > 1).map(([k, c]) => ({ k: k.slice(0, 160), c }));
-}
-
-// #region agent log
-function agentLog(hypothesisId: string, location: string, message: string, data: Record<string, unknown>) {
-  const body = JSON.stringify({ sessionId: 'a447f2', runId: 'pre', hypothesisId, location, message, data, timestamp: Date.now() });
-  const headers = { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a447f2' };
-  fetch('http://127.0.0.1:7367/ingest/b42e33df-9fbe-41ad-91d2-b4bf8ae1751a', { method: 'POST', headers, body }).catch(() => {});
-  const host = getApiBase().replace(/^https?:\/\//, '').split(':')[0];
-  if (host && host !== '127.0.0.1' && host !== 'localhost') {
-    fetch(`http://${host}:7367/ingest/b42e33df-9fbe-41ad-91d2-b4bf8ae1751a`, { method: 'POST', headers, body }).catch(() => {});
-  }
-}
-// #endregion
 
 function Action({
   icon,
@@ -101,9 +84,11 @@ async function open(url: string) {
 }
 
 export default function Venue() {
-  const params = useLocalSearchParams<{ id: string; name?: string }>();
+  const params = useLocalSearchParams<{ id: string; name?: string; photo?: string }>();
   const id = (Array.isArray(params.id) ? params.id[0] : params.id) || '';
   const hintedName = Array.isArray(params.name) ? params.name[0] : params.name;
+  // Kartta görünen (ve cihazda önbellekte olan) fotoğraf: galeri indirilemezse yedek.
+  const hintedPhoto = (Array.isArray(params.photo) ? params.photo[0] : params.photo) || null;
   const filters = useFilters();
   const { session } = useSession();
   const router = useRouter();
@@ -121,7 +106,11 @@ export default function Venue() {
   const [mode, setMode] = useState<RouteMode>('foot');
   const [hoursOpen, setHoursOpen] = useState(false);
   const [allFeatures, setAllFeatures] = useState(false);
-  const photoLogged = useRef('');
+  // İndirilemeyen kareler (kota, silinmiş dosya): listeden düşer, yerine sıradaki gelir.
+  const [failedPhotos, setFailedPhotos] = useState<ReadonlySet<string>>(() => new Set());
+  const markFailed = useCallback((uri: string) => {
+    setFailedPhotos((prev) => (prev.has(uri) ? prev : new Set(prev).add(uri)));
+  }, []);
   const owner = Boolean(session?.roles?.includes('VenueOwner'));
   const userId = session?.userId ?? null;
   const { lat, lng } = filters;
@@ -133,6 +122,8 @@ export default function Venue() {
     let alive = true;
     // Önbellekte varsa (kart dokunulurken çekildi ya da daha önce açıldı) anında göster, arkada tazele.
     const cached = peekVenue(id);
+    setFailedPhotos(new Set());
+    setPhotoIx(0);
     setDetail(cached);
     setLoading(!cached);
     setError(null);
@@ -292,43 +283,22 @@ export default function Venue() {
     );
   }
 
-  const photos = detail.photoUrls.length ? detail.photoUrls : detail.photoUrl ? [detail.photoUrl] : [];
-  const resolvedPhotos = photos.flatMap((raw) => {
+  // Tekilleştirme tek yerde ve photoSource'un ürettiği URI üzerinden: kapak, şerit ve tam ekran aynı listeyi kullanır.
+  const resolvePhoto = (raw: string) => {
     const src = photoSource(detail.placeId, raw);
-    const uri = src && typeof src === 'object' ? src.uri : null;
-    return uri ? [{ raw, uri }] : [];
-  });
-  const seenUri = new Set<string>();
-  const uniquePhotos = resolvedPhotos.filter((row) => {
-    if (seenUri.has(row.uri)) return false;
-    seenUri.add(row.uri);
-    return true;
-  });
-  const photoUris = uniquePhotos.map((row) => row.uri);
+    return src && typeof src === 'object' ? src.uri : null;
+  };
+  const own = displayPhotos([...detail.photoUrls, detail.photoUrl], resolvePhoto, failedPhotos);
+  // Galerinin tamamı indirilemezse kapak boş kalmasın: kartta görünen (önbellekteki) kareye düş.
+  const photos = own.length ? own : displayPhotos([hintedPhoto], resolvePhoto, failedPhotos);
+  const photoUris = photos.map((p) => p.uri);
   const week = parseOpeningHours(detail.openingHours);
   const today = week[(new Date().getDay() + 6) % 7];
   const osm = `https://www.openstreetmap.org/?mlat=${detail.latitude}&mlon=${detail.longitude}#map=18/${detail.latitude}/${detail.longitude}`;
   const route = mode === 'foot' ? walk : drive;
-  const slides = uniquePhotos.length ? uniquePhotos.map((row) => row.raw) : [null];
-  // #region agent log
-  {
-    const sig = `${detail.placeId}:${photos.join('\n')}:post`;
-    if (photoLogged.current !== sig) {
-      photoLogged.current = sig;
-      const preUris = resolvedPhotos.map((row) => row.uri);
-      const payload = {
-        placeId: detail.placeId,
-        rawCount: photos.length,
-        rawDupes: keyDupes(photos),
-        uriDupes: keyDupes(preUris),
-        uniqueCount: photoUris.length,
-        reviewUriDupes: keyDupes(reviews.flatMap((r) => (r.photoUrls ?? []).map((u) => mediaUrl(u)).filter((u): u is string => Boolean(u)))),
-      };
-      agentLog('A-E', 'venue/[id].tsx:photos', 'photo key candidates', payload);
-      console.log('[photo-keys]', JSON.stringify(payload));
-    }
-  }
-  // #endregion
+  const slides: (string | null)[] = photos.length ? photos.map((p) => p.raw) : [null];
+  // Bir kare listeden düşünce gösterge son karenin ötesinde kalmasın.
+  const shownIx = Math.min(photoIx, slides.length - 1);
   const features = detail.amenityChips ?? [];
   const external = detail.externalReviews ?? [];
 
@@ -368,8 +338,16 @@ export default function Venue() {
                 onPress={() => setViewer({ uris: photoUris, index: Math.min(i, photoUris.length - 1) })}
                 accessibilityRole="imagebutton"
                 accessibilityLabel={`${detail.name} fotoğrafı ${i + 1}, büyüt`}>
-                {Math.abs(i - photoIx) <= 1 ? (
-                  <VenueImage placeId={detail.placeId} photoUrl={url} name={detail.name} style={StyleSheet.absoluteFill} radius={0} active />
+                {Math.abs(i - shownIx) <= 1 ? (
+                  <VenueImage
+                    placeId={detail.placeId}
+                    photoUrl={url}
+                    name={detail.name}
+                    style={StyleSheet.absoluteFill}
+                    radius={0}
+                    active
+                    onFail={markFailed}
+                  />
                 ) : null}
                 <LinearGradient
                   colors={['rgba(4,56,43,0.45)', 'transparent', 'rgba(4,56,43,0.5)']}
@@ -382,10 +360,10 @@ export default function Venue() {
           {slides.length > 1 ? (
             <View style={styles.dots} pointerEvents="none">
               {slides.map((_, i) => (
-                <View key={`dot-${i}`} style={[styles.dot, i === photoIx ? styles.dotOn : null]} />
+                <View key={`dot-${i}`} style={[styles.dot, i === shownIx ? styles.dotOn : null]} />
               ))}
               <Text style={styles.count}>
-                {photoIx + 1} / {slides.length}
+                {shownIx + 1} / {slides.length}
               </Text>
             </View>
           ) : null}
@@ -474,7 +452,14 @@ export default function Venue() {
                   onPress={() => setViewer({ uris: photoUris, index: i })}
                   accessibilityRole="imagebutton"
                   accessibilityLabel={`Fotoğraf ${i + 1} / ${photoUris.length}, büyüt`}>
-                  <Image source={{ uri }} style={styles.galleryPhoto} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+                  <Image
+                    source={{ uri }}
+                    style={styles.galleryPhoto}
+                    contentFit="cover"
+                    transition={150}
+                    cachePolicy="memory-disk"
+                    onError={() => markFailed(uri)}
+                  />
                 </Pressable>
               ))}
             </ScrollView>
@@ -760,12 +745,8 @@ function ReviewBody({
   review: ReviewItem;
   onPhoto: (v: { uris: string[]; index: number }) => void;
 }) {
-  const uris = (review.photoUrls ?? []).map((u) => mediaUrl(u)).filter((u): u is string => Boolean(u));
-  // #region agent log
-  if (uris.length !== new Set(uris).size) {
-    agentLog('D', 'venue/[id].tsx:ReviewBody', 'review photo uri dupes', { dupes: keyDupes(uris), raw: (review.photoUrls ?? []).map((u) => u.slice(0, 90)) });
-  }
-  // #endregion
+  // Aynı fotoğraf iki kez eklenmişse bir kez göster (anahtar da URI).
+  const uris = uniqueStrings((review.photoUrls ?? []).map((u) => mediaUrl(u)));
   return (
     <>
       {review.text ? <Text style={styles.reviewText}>{review.text}</Text> : null}

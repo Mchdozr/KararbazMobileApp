@@ -15,6 +15,7 @@ export const VenueImage = memo(function VenueImage({
   radius = 18,
   fallback,
   active = false,
+  onFail,
 }: {
   placeId: string;
   photoUrl?: string | null;
@@ -24,6 +25,8 @@ export const VenueImage = memo(function VenueImage({
   radius?: number;
   fallback?: number;
   active?: boolean;
+  /** Görsel indirilemediğinde, denenmiş URI ile çağrılır. */
+  onFail?: (uri: string) => void;
 }) {
   const given = photoSource(placeId, photoUrl, photoReference);
   const [lazyUrl, setLazyUrl] = useState<string | null>(null);
@@ -60,7 +63,12 @@ export const VenueImage = memo(function VenueImage({
           transition={180}
           cachePolicy="memory-disk"
           recyclingKey={uri ?? placeId}
-          onError={() => setBroken(uri)}
+          onError={() => {
+            setBroken(uri);
+            if (uri) {
+              onFail?.(uri);
+            }
+          }}
         />
       ) : fallback ? (
         <Image source={fallback} style={StyleSheet.absoluteFill} contentFit="cover" />

@@ -1,4 +1,3 @@
-import { getApiBase } from '@/lib/api';
 import { colors, fonts } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -21,21 +20,6 @@ export function PhotoViewer({
   const ref = useRef<ScrollViewInstance>(null);
   const [at, setAt] = useState(0);
   const open = index != null && uris.length > 0;
-  // #region agent log
-  useEffect(() => {
-    if (!open) return;
-    const n = new Map<string, number>();
-    for (const u of uris) n.set(u, (n.get(u) ?? 0) + 1);
-    const dupes = [...n.entries()].filter(([, c]) => c > 1).map(([k, c]) => ({ k: k.slice(0, 160), c }));
-    const body = JSON.stringify({ sessionId: 'a447f2', runId: 'pre', hypothesisId: 'C', location: 'PhotoViewer.tsx', message: 'viewer keys', data: { count: uris.length, dupes }, timestamp: Date.now() });
-    const headers = { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a447f2' };
-    fetch('http://127.0.0.1:7367/ingest/b42e33df-9fbe-41ad-91d2-b4bf8ae1751a', { method: 'POST', headers, body }).catch(() => {});
-    const host = getApiBase().replace(/^https?:\/\//, '').split(':')[0];
-    if (host && host !== '127.0.0.1' && host !== 'localhost') {
-      fetch(`http://${host}:7367/ingest/b42e33df-9fbe-41ad-91d2-b4bf8ae1751a`, { method: 'POST', headers, body }).catch(() => {});
-    }
-  }, [open, uris]);
-  // #endregion
 
   useEffect(() => {
     if (index != null) {

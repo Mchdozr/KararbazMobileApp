@@ -14,6 +14,7 @@ import { ApiError, serverMessage } from './api-error.ts';
 import { relativeDate, summarizeRatings } from './reviews.ts';
 import { activeFilterCount, sortCards } from './sort.ts';
 import { clearVenueCache, isFresh, peekVenue, putVenue, shareVenueRequest } from './venue-cache.ts';
+import { canonicalPhoto, displayPhotos, uniqueStrings, venuePhotoUrls } from './venue-photos.ts';
 import { clip, compactCount, featureIcon, metaLine, priceLabel, ratingLine } from './venue-format.ts';
 import { emailProblem, nameProblem, passwordProblem, passwordStrength } from './validation.ts';
 import { peekRecommend, putRecommend, recommendCacheKey } from './recommend-cache.ts';
@@ -278,4 +279,47 @@ test('a failed venue request is not cached and can be retried', async () => {
   assert.equal(peekVenue('b'), null);
   const ok = await shareVenueRequest('b', async () => ({ placeId: 'b', name: 'B' }) as never);
   assert.equal(ok.name, 'B');
+});
+
+const NAME = 'places/ChIJabc/photos/AV-0GLd_x-1';
+const PROXIED = `/api/media/google?name=${encodeURIComponent(NAME)}`;
+
+test('one google photo has one canonical form however it is written', () => {
+  assert.equal(canonicalPhoto(NAME), PROXIED);
+  assert.equal(canonicalPhoto(PROXIED), PROXIED);
+  assert.equal(canonicalPhoto(`http://192.168.1.248:5079${PROXIED}`), PROXIED);
+  assert.equal(canonicalPhoto(`https://api.nereye.app${PROXIED}&w=800`), PROXIED);
+  assert.equal(canonicalPhoto(`/api/media/google?w=400&name=${NAME}`), PROXIED);
+  assert.equal(canonicalPhoto('/media/uploads/a.jpg'), '/media/uploads/a.jpg');
+  assert.equal(canonicalPhoto('https://commons.wikimedia.org/x.jpg?name=places/y'), 'https://commons.wikimedia.org/x.jpg?name=places/y');
+  assert.equal(canonicalPhoto('/api/media/google?name=%E0%A4%A'), '/api/media/google?name=%E0%A4%A');
+});
+
+test('venue photo list: owner first, gallery deduped, raw photoReference not repeated', () => {
+  const other = `/api/media/google?name=${encodeURIComponent('places/ChIJabc/photos/second')}`;
+  assert.deepEqual(
+    venuePhotoUrls({
+      ownerPhotos: ['/media/uploads/owner.jpg'],
+      gallery: [PROXIED, other, `http://10.0.2.2:5079${PROXIED}`],
+      photoReference: NAME,
+    }),
+    ['/media/uploads/owner.jpg', PROXIED, other],
+  );
+  // Sunucu galerisi doluysa ham referans hiç eklenmez (galeride olmasa bile).
+  assert.deepEqual(venuePhotoUrls({ gallery: [other], photoReference: NAME }), [other]);
+  // Eski sunucu: galeri yok, tek kare photoReference'tan gelir.
+  assert.deepEqual(venuePhotoUrls({ gallery: [], photoReference: NAME }), [PROXIED]);
+  assert.deepEqual(venuePhotoUrls({ photoReference: 'cafe-only' }), []);
+  assert.deepEqual(venuePhotoUrls({ ownerPhotos: [null, '', ' '], gallery: [undefined] }), []);
+});
+
+test('display list has unique keys and drops frames that failed to load', () => {
+  const base = 'http://192.168.1.248:5079';
+  const resolve = (raw: string) => (raw.startsWith('places/') ? `${base}${canonicalPhoto(raw)}` : raw.startsWith('/') ? `${base}${raw}` : null);
+  const shown = displayPhotos([PROXIED, NAME, '/media/uploads/o.jpg', null, 'cafe-only', PROXIED], resolve);
+  assert.deepEqual(shown.map((p) => p.uri), [`${base}${PROXIED}`, `${base}/media/uploads/o.jpg`]);
+  assert.equal(new Set(shown.map((p) => p.uri)).size, shown.length);
+  const afterFail = displayPhotos([PROXIED, '/media/uploads/o.jpg'], resolve, new Set([`${base}${PROXIED}`]));
+  assert.deepEqual(afterFail.map((p) => p.raw), ['/media/uploads/o.jpg']);
+  assert.deepEqual(uniqueStrings(['a', null, 'a', 'b', undefined]), ['a', 'b']);
 });
