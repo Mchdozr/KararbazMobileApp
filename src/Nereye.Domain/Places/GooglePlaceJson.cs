@@ -11,13 +11,13 @@ public static class GooglePlaceJson
 
     /// <summary>Liste istekleri: kart için yeten alanlar (Enterprise SKU; Atmosphere alanı yok).</summary>
     public const string ListMask =
-        "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.location,places.types,"
+        "places.id,places.displayName,places.formattedAddress,places.shortFormattedAddress,places.location,places.types,places.primaryType,"
         + "places.primaryTypeDisplayName,places.photos.name,places.nationalPhoneNumber,places.websiteUri,places.rating,"
         + "places.userRatingCount,places.priceLevel,places.googleMapsUri,places.currentOpeningHours.openNow,"
         + "places.regularOpeningHours.openNow,places.regularOpeningHours.weekdayDescriptions";
 
     private const string RichFields =
-        "id,displayName,formattedAddress,shortFormattedAddress,location,types,primaryTypeDisplayName,photos.name,"
+        "id,displayName,formattedAddress,shortFormattedAddress,location,types,primaryType,primaryTypeDisplayName,photos.name,"
         + "nationalPhoneNumber,websiteUri,rating,userRatingCount,priceLevel,googleMapsUri,currentOpeningHours.openNow,"
         + "regularOpeningHours.openNow,regularOpeningHours.weekdayDescriptions,editorialSummary,reviews.rating,reviews.text,"
         + "reviews.relativePublishTimeDescription,reviews.authorAttribution,dineIn,takeout,delivery,reservable,outdoorSeating,"
@@ -96,6 +96,13 @@ public static class GooglePlaceJson
         var types = p.TryGetProperty("types", out var typesEl) && typesEl.ValueKind == JsonValueKind.Array
             ? typesEl.EnumerateArray().Select(t => t.GetString() ?? "").Where(s => s.Length > 0).ToList()
             : [];
+        // Niyet eşlemesi Types[0]'ı ana tür sayar. Google "types" dizisini ana türe göre sıralamaz
+        // (ör. ana türü "bar" olan bir mekanın ilk türü "seafood_restaurant" olabilir).
+        if (Str(p, "primaryType") is { Length: > 0 } primary)
+        {
+            types.Remove(primary);
+            types.Insert(0, primary);
+        }
 
         var photos = Photos(p);
         var features = Features(p);

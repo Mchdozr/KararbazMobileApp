@@ -9,8 +9,14 @@ public static class PlaceMerge
 
     private static readonly string[] Generic = ["coffeeshop", "coffee", "kahve", "cafe", "kafe", "restaurant", "restoran"];
 
+    /// <summary>
+    /// Yakın, adı örtüşen ve aynı türden. Tür şartı olmadan "Müze Gazhane" ile içindeki
+    /// "Müze Gazhane Cafe & Restaurant" eşleşir ve müzenin sayfasına restoranın içeriği gelir.
+    /// </summary>
     public static bool Same(PlaceSnapshot a, PlaceSnapshot b, double maxMeters = MatchMeters) =>
-        GeoMath.HaversineMeters(a.Latitude, a.Longitude, b.Latitude, b.Longitude) <= maxMeters && SameName(a.Name, b.Name);
+        GeoMath.HaversineMeters(a.Latitude, a.Longitude, b.Latitude, b.Longitude) <= maxMeters
+        && SameName(a.Name, b.Name)
+        && IntentPlaceTypes.Compatible(a.Types, b.Types);
 
     public static bool SameName(string first, string second)
     {

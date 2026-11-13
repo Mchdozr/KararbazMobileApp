@@ -391,18 +391,8 @@ public sealed class ReviewService : IReviewService
         venue.NereyeRatingAvg = visible.Count == 0 ? null : visible.Average(r => r.Stars);
     }
 
-    private static Intent InferIntent(PlaceSnapshot place)
-    {
-        foreach (var intent in Enum.GetValues<Intent>())
-        {
-            if (place.Types.Any(t => IntentPlaceTypes.GoogleTypes(intent).Contains(t)))
-            {
-                return intent;
-            }
-        }
-
-        return Intent.Yemek;
-    }
+    private static Intent InferIntent(PlaceSnapshot place) =>
+        IntentPlaceTypes.IntentOf(place.Types, place.Name, place.Cuisine) ?? Intent.Yemek;
 
     private static ReviewDto ToDto(Review review, string? authorName = null, string? authorAvatarUrl = null) => new(
         review.Id,

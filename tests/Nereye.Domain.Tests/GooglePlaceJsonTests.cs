@@ -12,7 +12,8 @@ public sealed class GooglePlaceJsonTests
       "formattedAddress": "Caferağa, Moda Cd. No:1, 34710 Kadıköy/İstanbul, Türkiye",
       "shortFormattedAddress": "Caferağa, Moda Cd. No:1, Kadıköy",
       "location": { "latitude": 40.9871, "longitude": 29.0262 },
-      "types": ["breakfast_restaurant", "cafe"],
+      "types": ["cafe", "breakfast_restaurant"],
+      "primaryType": "breakfast_restaurant",
       "primaryTypeDisplayName": { "text": "kahvaltı restoranı" },
       "rating": 4.3,
       "userRatingCount": 4898,
@@ -56,6 +57,14 @@ public sealed class GooglePlaceJsonTests
         Assert.Equal("Kahvaltı restoranı", p.Category);
         Assert.Equal("Kahvaltı ve brunch sunan bohem mekan.", p.Summary);
         Assert.Equal("Pazartesi: 08:00–22:00; Salı: Kapalı", p.OpeningHoursText);
+    }
+
+    [Fact]
+    public void Primary_type_comes_first_even_when_google_lists_it_later()
+    {
+        Assert.Equal(["breakfast_restaurant", "cafe"], Parsed().Types);
+        Assert.True(IntentPlaceTypes.Fits(Intent.Yemek, "Brekkie", null, Parsed().Types));
+        Assert.False(IntentPlaceTypes.Fits(Intent.Kahve, "Brekkie", null, Parsed().Types));
     }
 
     [Fact]

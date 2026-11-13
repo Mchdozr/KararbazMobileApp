@@ -9,7 +9,7 @@ public class PlacesCacheKeyTests
     public void Nearby_key_is_geohash6_intent_and_radius_bucket()
     {
         var key = PlacesCacheKey.Nearby("sxk967x", Intent.Kahve, 1500);
-        Assert.Equal("places:nearby:v5:sxk967:kahve:1500", key);
+        Assert.Equal("places:nearby:v6:sxk967:kahve:1500", key);
     }
 
     [Fact]
@@ -45,6 +45,6 @@ public class PlacesCacheKeyTests
     [Fact]
     public void Details_key_uses_place_id()
     {
-        Assert.Equal("places:details:v3:ChIJabc", PlacesCacheKey.Details("ChIJabc"));
+        Assert.Equal("places:details:v4:ChIJabc", PlacesCacheKey.Details("ChIJabc"));
     }
 }

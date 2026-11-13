@@ -19,7 +19,7 @@ import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function Home() {
@@ -32,9 +32,13 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const recents = useRecentVenues();
+  // Niyet ya da konum değişince önceki isteğin geç gelen cevabı yeni listeyi ezmesin
+  // (ör. Yemek cevabı, Kültür seçildikten sonra gelip Kültür başlığı altına yemek mekanı koymasın).
+  const seq = useRef(0);
   const favorites = useFavorites();
 
   const load = useCallback(async () => {
+    const n = ++seq.current;
     setError(null);
     setShowAll(false);
     const cached = peekRecommend(
@@ -68,17 +72,25 @@ export default function Home() {
         0,
         20,
       );
+      if (n !== seq.current) {
+        return;
+      }
       const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems(next);
       setHasMore(res.hasMore);
     } catch (e) {
+      if (n !== seq.current) {
+        return;
+      }
       if (!cached) {
         setError(friendlyError(e));
         setItems([]);
         setHasMore(false);
       }
     } finally {
-      setLoading(false);
+      if (n === seq.current) {
+        setLoading(false);
+      }
     }
   }, [filters.lat, filters.lng, filters.intent, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
 
@@ -96,6 +108,7 @@ export default function Home() {
     if (!hasMore || loadingMore) {
       return;
     }
+    const n = seq.current;
     setLoadingMore(true);
     try {
       const res = await api.recommend(
@@ -108,6 +121,9 @@ export default function Home() {
         items.length,
         20,
       );
+      if (n !== seq.current) {
+        return;
+      }
       const extra = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems((prev) => {
         const seen = new Set(prev.map((c) => c.placeId));

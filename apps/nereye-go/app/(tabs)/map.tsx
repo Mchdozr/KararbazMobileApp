@@ -40,6 +40,8 @@ export default function MapScreen() {
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
   const [picked, setPicked] = useState<VenueCard | null>(null);
+  // Niyet/konum değişince önceki isteğin geç gelen cevabı yeni listeyi ezmesin.
+  const seq = useRef(0);
   const [region, setRegion] = useState<Region>({
     latitude: filters.lat,
     longitude: filters.lng,
@@ -48,6 +50,9 @@ export default function MapScreen() {
   });
 
   const load = useCallback(async () => {
+    const n = ++seq.current;
+    // Seçili kart önceki niyetin mekanı olabilir; yeni liste gelirken alt sayfada kalmasın.
+    setPicked(null);
     setError(null);
     const radius = clampRadius(filters.radiusMeters);
     const cached = peekRecommend(
@@ -80,6 +85,9 @@ export default function MapScreen() {
         0,
         40,
       );
+      if (n !== seq.current) {
+        return;
+      }
       const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems(next);
       setLoading(false);
@@ -95,6 +103,10 @@ export default function MapScreen() {
             40,
             110,
           );
+          // İkinci dalga eski niyetin mekanlarını yeni listeye eklemesin.
+          if (n !== seq.current) {
+            return;
+          }
           const extra = more.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
           setItems((prev) => {
             const seen = new Set(prev.map((c) => c.placeId));
@@ -105,12 +117,17 @@ export default function MapScreen() {
         }
       }
     } catch (e) {
+      if (n !== seq.current) {
+        return;
+      }
       if (!cached) {
         setError(friendlyError(e));
         setItems([]);
       }
     } finally {
-      setLoading(false);
+      if (n === seq.current) {
+        setLoading(false);
+      }
     }
   }, [filters.lat, filters.lng, filters.intent, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
 

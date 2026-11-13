@@ -159,7 +159,7 @@ public sealed class GoogleAugmentedPlacesClient : IPlacesClient
         }
 
         // Google'da karşılığı olmayan mekanı her açılışta yeniden aramak kotayı boşa harcar.
-        var missKey = "places:richmiss:v1:" + osm.PlaceId;
+        var missKey = "places:richmiss:v2:" + osm.PlaceId;
         if (await _cache.TryGetAsync<string>(missKey, cancellationToken) is not null)
         {
             return osm;

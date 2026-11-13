@@ -255,9 +255,6 @@ public sealed class RecommendationService : IRecommendationService
             .ToList();
     }
 
-    private static bool IntentMatches(PlaceSnapshot place, Intent intent)
-    {
-        var types = IntentPlaceTypes.GoogleTypes(intent);
-        return place.Types.Any(t => types.Contains(t));
-    }
+    private static bool IntentMatches(PlaceSnapshot place, Intent intent) =>
+        IntentPlaceTypes.Fits(intent, place.Name, place.Cuisine, place.Types);
 }
