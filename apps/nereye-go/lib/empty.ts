@@ -44,6 +44,12 @@ export function friendlyError(reason: unknown) {
     if (api.status === 401) {
       return api.message || 'Oturum doldu. Giriş yapman yeterli.';
     }
+    if (api.status === 404 && !api.message) {
+      return 'Aradığın yer bulunamadı. Kaldırılmış ya da taşınmış olabilir.';
+    }
+    if (api.status === 403 && !api.message) {
+      return 'Bu işlem için yetkin yok.';
+    }
     if ((api.status ?? 0) >= 500) {
       return 'Sunucuda bir sorun var. Biraz sonra tekrar dene.';
     }

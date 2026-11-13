@@ -323,3 +323,10 @@ test('display list has unique keys and drops frames that failed to load', () => 
   assert.deepEqual(afterFail.map((p) => p.raw), ['/media/uploads/o.jpg']);
   assert.deepEqual(uniqueStrings(['a', null, 'a', 'b', undefined]), ['a', 'b']);
 });
+
+test('framework error titles never reach the user in English', () => {
+  assert.equal(serverMessage('{"type":"https://tools.ietf.org/html/rfc9110#section-15.5.5","title":"Not Found","status":404}'), '');
+  assert.match(friendlyError(new ApiError(404, '')), /bulunamadı/);
+  assert.match(friendlyError(new ApiError(403, '')), /yetkin yok/);
+  assert.equal(friendlyError(new ApiError(404, 'Yorum bulunamadı.')), 'Yorum bulunamadı.');
+});

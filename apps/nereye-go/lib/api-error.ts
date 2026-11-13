@@ -20,10 +20,9 @@ export function serverMessage(body: string): string {
   }
   try {
     const parsed = JSON.parse(text) as { error?: unknown; title?: unknown };
-    if (typeof parsed.error === 'string') {
-      return parsed.error;
-    }
-    return typeof parsed.title === 'string' ? parsed.title : '';
+    // Yalnızca bizim Türkçe { error } gövdemiz. ASP.NET'in ProblemDetails "title" alanı İngilizcedir
+    // ("Not Found") ve kullanıcıya gösterilmemeli.
+    return typeof parsed.error === 'string' ? parsed.error : '';
   } catch {
     return '';
   }
