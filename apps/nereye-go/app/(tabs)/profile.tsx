@@ -12,7 +12,8 @@ import { toast } from '@/lib/toast';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
-import { colors, fonts, gradients } from '@/lib/theme';
+import { colors, fonts, gradients, shadows } from '@/lib/theme';
+import { isEvening } from '@/lib/copy';
 import type { Preferences, Profile as ProfileInfo } from '@/lib/types';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -91,7 +92,6 @@ export default function Profile() {
     }, [session]),
   );
 
-  const heroIntent = prefs?.intents[0] ?? 'AcikHava';
   const name = session?.displayName ?? 'Gezgin';
   const role = session?.roles.includes('Admin') ? 'Admin' : session?.roles.includes('VenueOwner') ? 'İşletme' : 'Gezgin';
   const selectedCount = (prefs?.intents.length ?? 0) + (prefs?.vibes.length ?? 0);
@@ -206,14 +206,13 @@ export default function Profile() {
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
       <StatusBar style="light" />
-      <View style={styles.hero}>
-        <Image source={INTENT_PHOTOS[heroIntent] ?? INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <LinearGradient colors={[colors.scrimSoft, colors.scrim]} style={StyleSheet.absoluteFill} />
+      {/* Diğer ekranlarla aynı yeşil degrade üst alan. */}
+      <LinearGradient colors={isEvening() ? gradients.evening : gradients.hero} style={styles.hero}>
         <View style={[styles.heroCopy, { paddingTop: insets.top + 12 }]}>
           <Text style={styles.kicker}>Profil</Text>
           <Text style={styles.heroLine}>Karar tarzın.</Text>
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.identity}>
         <Pressable
@@ -411,10 +410,10 @@ export default function Profile() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   wrap: { paddingBottom: 56 },
-  hero: { height: 228, backgroundColor: colors.espresso },
+  hero: { height: 220, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   heroCopy: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 20, paddingBottom: 84 },
   kicker: {
-    color: colors.coralSoft,
+    color: colors.onDarkMuted,
     fontWeight: '700',
     letterSpacing: 1.4,
     fontSize: 11,
@@ -429,8 +428,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 28,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.line,
+    ...shadows.card,
   },
   avatar: {
     position: 'absolute',
@@ -488,11 +486,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 18,
-    borderWidth: 1,
-    borderColor: colors.line,
+    ...shadows.card,
   },
   sectionKicker: {
-    color: colors.coral,
+    color: colors.accent,
     fontWeight: '700',
     letterSpacing: 1.2,
     fontSize: 11,
@@ -566,13 +563,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     backgroundColor: colors.surface,
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.line,
-    overflow: 'hidden',
+    ...shadows.card,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56 },
   rowText: { flex: 1, fontFamily: fonts.sansMed, fontSize: 15 },
-  danger: { color: colors.coral },
+  danger: { color: colors.danger },
   muted: { color: colors.muted },
   divider: { height: 1, backgroundColor: colors.line, marginLeft: 48 },
 });

@@ -8,11 +8,12 @@ import { haptic } from '@/lib/haptics';
 import { markOnboarded } from '@/lib/onboard';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, gradients, shadows } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -72,17 +73,25 @@ export default function Onboarding() {
 
   return (
     <View style={styles.bg}>
-      <ScrollView
-        contentContainerStyle={[styles.wrap, { paddingTop: insets.top + 16 }]}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.head}>
-          <BrandLogo size={40} />
-          <Pressable onPress={() => void finish('skip')} hitSlop={12} accessibilityRole="button" accessibilityLabel="Atla">
-            <Text style={styles.skip}>Atla</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.h}>Bugün canın{'\n'}ne çekiyor?</Text>
-        <Text style={styles.sub}>Bir ya da birkaç niyet seç; önerileri ona göre dizelim.</Text>
+      <ScrollView contentContainerStyle={styles.wrap} showsVerticalScrollIndicator={false}>
+        <StatusBar style="light" />
+        <LinearGradient colors={gradients.hero} style={[styles.hero, { paddingTop: insets.top + 14 }]}>
+          <View style={styles.head}>
+            <View style={styles.logoTile}>
+              <BrandLogo size={34} />
+            </View>
+            <Pressable
+              style={styles.skipBtn}
+              onPress={() => void finish('skip')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Atla">
+              <Text style={styles.skip}>Atla</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.h}>Bugün canın{'\n'}ne çekiyor?</Text>
+          <Text style={styles.sub}>Bir ya da birkaç niyet seç; önerileri ona göre dizelim.</Text>
+        </LinearGradient>
         <View style={styles.grid}>
           {INTENTS.map((i) => {
             const on = picked.includes(i);
@@ -95,7 +104,7 @@ export default function Onboarding() {
                 accessibilityState={{ checked: on }}
                 accessibilityLabel={intentLabel(i)}>
                 <Image source={INTENT_PHOTOS[i]} style={StyleSheet.absoluteFill} contentFit="cover" />
-                <LinearGradient colors={['rgba(4,56,43,0.05)', 'rgba(4,56,43,0.78)']} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={gradients.photo} style={StyleSheet.absoluteFill} />
                 {on ? (
                   <View style={styles.check}>
                     <Ionicons name="checkmark" size={16} color={colors.white} />
@@ -126,12 +135,37 @@ export default function Onboarding() {
 
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
-  wrap: { paddingHorizontal: 20, paddingBottom: 24 },
+  wrap: { paddingBottom: 24 },
+  hero: { paddingHorizontal: 20, paddingBottom: 28, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  skip: { color: colors.muted, fontFamily: fonts.sansBold, fontSize: 15, padding: 8 },
-  h: { fontFamily: fonts.display, fontSize: 34, lineHeight: 40, color: colors.ink, marginTop: 20 },
-  sub: { color: colors.muted, marginBottom: 20, fontSize: 16, lineHeight: 22, marginTop: 8, fontFamily: fonts.sans },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+  logoTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skipBtn: {
+    minHeight: 44,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    justifyContent: 'center',
+    backgroundColor: colors.glassLight,
+    borderWidth: 1,
+    borderColor: colors.glassLine,
+  },
+  skip: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
+  h: { fontFamily: fonts.display, fontSize: 34, lineHeight: 40, color: colors.white, marginTop: 22 },
+  sub: { color: colors.onDarkMuted, fontSize: 16, lineHeight: 22, marginTop: 8, fontFamily: fonts.sans },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+    paddingHorizontal: 20,
+    marginTop: 20,
+  },
   tile: {
     width: '48.2%',
     height: 124,
@@ -143,7 +177,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'transparent',
   },
-  tileOn: { borderColor: colors.coral },
+  tileOn: { borderColor: colors.accent },
   check: {
     position: 'absolute',
     top: 8,
@@ -151,7 +185,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.coral,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -160,9 +194,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     gap: 10,
-    backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    ...shadows.sheet,
   },
   footRow: { flexDirection: 'row', gap: 10 },
   half: { flex: 1 },

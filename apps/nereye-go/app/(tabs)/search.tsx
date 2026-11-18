@@ -1,5 +1,6 @@
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { GeoSuggestGroup } from '@/components/GeoSuggestRow';
 import { VenueCardSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
@@ -11,19 +12,17 @@ import { geoChip, type GeoHit } from '@/lib/geo-hit';
 import { haptic } from '@/lib/haptics';
 import { clearRecentSearches, loadRecentSearches, pushRecentSearch, removeRecentSearch } from '@/lib/recent-searches';
 import { debounceMs, shouldSearch } from '@/lib/search-query';
-import { colors, fonts, INTENT_ICONS, INTENT_PASTELS } from '@/lib/theme';
+import { colors, fonts, INTENT_ICONS, INTENT_PASTELS, shadows } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View , type TextInputInstance } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const IDEAS = ['Kahvaltı', 'Sahil', 'Tatlı', 'Canlı müzik', 'Kitap kafe', 'Manzara'];
 
 export default function Search() {
-  const insets = useSafeAreaInsets();
   const filters = useFilters();
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string }>();
@@ -93,10 +92,11 @@ export default function Search() {
 
   return (
     <View style={styles.bg}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.h}>Ara</Text>
+      <ScreenHeader title="Ara" subtitle={`${filters.label} çevresinde mekan, semt ya da durak`} overlap={28} />
+      {/* Arama kutusu yeşil başlığın kavisli kenarına taşar (ana sayfayla aynı). */}
+      <View style={styles.searchWrap}>
         <View style={styles.search}>
-          <Ionicons name="search" size={18} color={colors.muted} />
+          <Ionicons name="search" size={18} color={colors.coral} />
           <TextInput
             ref={inputRef}
             style={styles.input}
@@ -246,20 +246,19 @@ export default function Search() {
 
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: 20, paddingBottom: 12 },
-  h: { fontFamily: fonts.display, fontSize: 32, color: colors.ink, marginBottom: 12 },
+  searchWrap: { paddingHorizontal: 20, marginTop: -30, zIndex: 3 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    minHeight: 56,
+    ...shadows.float,
   },
   input: { flex: 1, paddingVertical: 14, color: colors.ink, fontSize: 16, minHeight: 48, fontFamily: fonts.sans },
-  wrap: { padding: 20, paddingTop: 8, paddingBottom: 48 },
+  wrap: { padding: 20, paddingTop: 20, paddingBottom: 48 },
   bleed: { marginHorizontal: -20, marginBottom: 12 },
   block: { marginBottom: 24 },
   kickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

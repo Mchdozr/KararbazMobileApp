@@ -6,7 +6,7 @@ import { vibeText } from '@/lib/constants';
 import { friendlyError } from '@/lib/empty';
 import { relativeDate } from '@/lib/reviews';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, shadows } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import type { MyReview } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -131,7 +131,7 @@ export default function MyReviews() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   wrap: { padding: 20, gap: 12, flexGrow: 1 },
-  card: { backgroundColor: colors.surface, borderRadius: 18, borderWidth: 1, borderColor: colors.line, padding: 16, gap: 8 },
+  card: { backgroundColor: colors.surface, borderRadius: 20, padding: 16, gap: 8, ...shadows.card },
   head: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { fontFamily: fonts.display, fontSize: 19, color: colors.ink },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },

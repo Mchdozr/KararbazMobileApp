@@ -1,24 +1,23 @@
+import { EmptyState } from '@/components/EmptyState';
 import { colors } from '@/lib/theme';
-import { Link, Stack } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 export default function NotFoundScreen() {
+  const router = useRouter();
   return (
-    <>
-      <Stack.Screen options={{ title: 'Yok' }} />
-      <View style={styles.container}>
-        <Text style={styles.title}>Bu ekran yok.</Text>
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Ana sayfa</Text>
-        </Link>
-      </View>
-    </>
+    <View style={styles.container}>
+      <EmptyState
+        icon="map-outline"
+        title="Bu sayfa yok"
+        body="Bağlantı eski olabilir ya da mekan kaldırılmış olabilir."
+        action="Ana sayfaya dön"
+        onAction={() => router.replace('/(tabs)')}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: colors.bg },
-  title: { fontSize: 20, fontWeight: 'bold', color: colors.ink },
-  link: { marginTop: 15, paddingVertical: 15 },
-  linkText: { fontSize: 14, color: colors.coral, fontWeight: '700' },
+  container: { flex: 1, justifyContent: 'center', backgroundColor: colors.bg, paddingBottom: 80 },
 });

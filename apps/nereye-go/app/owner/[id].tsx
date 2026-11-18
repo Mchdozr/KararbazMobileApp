@@ -7,7 +7,7 @@ import { friendlyError } from '@/lib/empty';
 import { haptic } from '@/lib/haptics';
 import { relativeDate } from '@/lib/reviews';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, shadows } from '@/lib/theme';
 import { promoContactUrl } from '@/lib/promo-contact';
 import { toast } from '@/lib/toast';
 import type { PromotionItem, ReviewItem } from '@/lib/types';
@@ -263,7 +263,7 @@ export default function Owner() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   wrap: { padding: 16, gap: 14 },
-  card: { backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 18 },
+  card: { backgroundColor: colors.surface, borderRadius: 24, padding: 20, ...shadows.card },
   cardBody: { gap: 12, marginTop: 14 },
   h: { fontSize: 22, fontFamily: fonts.display, color: colors.ink },
   sub: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20, marginTop: 4 },

@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/Skeleton';
 import { api } from '@/lib/api';
 import { friendlyError } from '@/lib/empty';
 import { MAP_ATTRIBUTION } from '@/lib/map-config';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, shadows } from '@/lib/theme';
 import type { Legal as LegalData } from '@/lib/types';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -48,7 +48,6 @@ export default function Legal() {
         </View>
       ) : (
         <>
-          <Text style={styles.h}>{page.title}</Text>
           <Text style={styles.lead}>{page.lead}</Text>
           {page.sections.map((s) => (
             <View key={s.title} style={styles.card}>
@@ -72,11 +71,10 @@ const styles = StyleSheet.create({
   lead: { color: colors.muted, fontSize: 15, lineHeight: 22, fontFamily: fonts.sans, marginBottom: 4 },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 16,
+    borderRadius: 20,
+    padding: 18,
     gap: 6,
+    ...shadows.card,
   },
   title: { fontFamily: fonts.sansBold, color: colors.ink, fontSize: 15 },
   body: { color: colors.ink, opacity: 0.86, fontSize: 14, lineHeight: 21, fontFamily: fonts.sans },

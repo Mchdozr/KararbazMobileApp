@@ -1,5 +1,6 @@
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { FilterSheet } from '@/components/FilterSheet';
 import { VenueGridSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
@@ -13,7 +14,8 @@ import { haptic } from '@/lib/haptics';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { radiusLabel } from '@/lib/radius';
 import { activeFilterCount, sortCards, SORTS, type SortKey } from '@/lib/sort';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, gradients } from '@/lib/theme';
+import { isEvening } from '@/lib/copy';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -134,42 +136,40 @@ export default function Discover() {
 
   const header = (
     <View>
-      <View style={styles.head}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.h}>{intentLabel(intent)}</Text>
-          <Text style={styles.where} numberOfLines={1}>
-            {filters.label} · {radiusLabel(radiusMeters)} çevresi
-          </Text>
-        </View>
-        <Pressable
-          style={[styles.filter, badge > 0 && styles.filterOn]}
-          onPress={() => setSheet(true)}
-          accessibilityRole="button"
-          accessibilityLabel={badge > 0 ? `Filtre, ${badge} etkin` : 'Filtre'}>
-          <Ionicons name="options" size={18} color={badge > 0 ? colors.white : colors.ink} />
-          {badge > 0 ? <Text style={styles.badge}>{badge}</Text> : null}
-        </Pressable>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        {INTENTS.map((i) => {
-          const on = intent === i;
-          return (
-            <Pressable
-              key={i}
-              onPress={() => {
-                haptic.tap();
-                filters.setIntent(i);
-              }}
-              style={[styles.chip, on && styles.chipOn]}
-              accessibilityRole="button"
-              accessibilityLabel={intentLabel(i)}
-              accessibilityState={{ selected: on }}>
-              <Image source={INTENT_PHOTOS[i]} style={styles.chipImg} />
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>{intentLabel(i)}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <ScreenHeader
+        title={intentLabel(intent)}
+        subtitle={`${filters.label} · ${radiusLabel(radiusMeters)} çevresi`}
+        right={
+          <Pressable
+            style={[styles.filter, badge > 0 && styles.filterOn]}
+            onPress={() => setSheet(true)}
+            accessibilityRole="button"
+            accessibilityLabel={badge > 0 ? `Filtre, ${badge} etkin` : 'Filtre'}>
+            <Ionicons name="options" size={18} color={badge > 0 ? colors.coral : colors.white} />
+            {badge > 0 ? <Text style={styles.badge}>{badge}</Text> : null}
+          </Pressable>
+        }>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipBleed}>
+          {INTENTS.map((i) => {
+            const on = intent === i;
+            return (
+              <Pressable
+                key={i}
+                onPress={() => {
+                  haptic.tap();
+                  filters.setIntent(i);
+                }}
+                style={[styles.chip, on && styles.chipOn]}
+                accessibilityRole="button"
+                accessibilityLabel={intentLabel(i)}
+                accessibilityState={{ selected: on }}>
+                <Image source={INTENT_PHOTOS[i]} style={styles.chipImg} />
+                <Text style={[styles.chipText, on && styles.chipTextOn]}>{intentLabel(i)}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </ScreenHeader>
       <View style={styles.sortRow} accessibilityRole="radiogroup" accessibilityLabel="Sıralama">
         {SORTS.map((s) => {
           const on = sort === s.key;
@@ -195,6 +195,8 @@ export default function Discover() {
 
   return (
     <View style={styles.bg}>
+      {/* Durum çubuğu arkası: yeşil başlık kayınca saat ve pil ikonları okunur kalsın. */}
+      <View style={{ height: insets.top, backgroundColor: (isEvening() ? gradients.evening : gradients.hero)[0] }} />
       <FlatList
         data={first ? [] : sorted}
         keyExtractor={(c) => c.placeId}
@@ -205,7 +207,7 @@ export default function Discover() {
         windowSize={7}
         removeClippedSubviews
         columnWrapperStyle={styles.column}
-        contentContainerStyle={[styles.wrap, { paddingTop: insets.top + 8 }]}
+        contentContainerStyle={styles.wrap}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={header}
         renderItem={({ item }) => (
@@ -247,45 +249,55 @@ export default function Discover() {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   wrap: { paddingBottom: 48 },
-  head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12, gap: 12 },
-  h: { fontFamily: fonts.display, fontSize: 32, color: colors.ink },
-  where: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, marginTop: 2 },
   filter: {
     minWidth: 44,
     height: 44,
     borderRadius: 22,
     paddingHorizontal: 13,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glassLight,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.glassLine,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 6,
   },
-  filterOn: { backgroundColor: colors.coral, borderColor: colors.coral },
-  badge: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
-  chips: { paddingHorizontal: 20, gap: 8, paddingBottom: 12 },
+  filterOn: { backgroundColor: colors.surface, borderColor: colors.surface },
+  badge: { color: colors.coral, fontFamily: fonts.sansBold, fontSize: 13 },
+  chipBleed: { marginHorizontal: -20, marginTop: 16 },
+  chips: { paddingHorizontal: 20, gap: 8 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glassLight,
     paddingRight: 14,
     paddingLeft: 4,
     paddingVertical: 4,
     minHeight: 44,
     borderRadius: 999,
     borderWidth: 1,
+    borderColor: colors.glassLine,
+  },
+  chipOn: { backgroundColor: colors.surface, borderColor: colors.surface },
+  chipImg: { width: 32, height: 32, borderRadius: 16 },
+  chipText: { fontFamily: fonts.sansMed, color: colors.white, fontSize: 14 },
+  chipTextOn: { fontFamily: fonts.sansBold, color: colors.coral },
+  // Sıralama: beyaz zemin üstünde bölümlü düğme.
+  sortRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 16,
+    padding: 4,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
     borderColor: colors.line,
   },
-  chipOn: { borderColor: colors.coral, backgroundColor: colors.coralSoft },
-  chipImg: { width: 32, height: 32, borderRadius: 16 },
-  chipText: { fontFamily: fonts.sansMed, color: colors.ink, fontSize: 14 },
-  chipTextOn: { fontFamily: fonts.sansBold, color: colors.espresso },
-  sortRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, marginBottom: 16 },
-  sort: { minHeight: 36, paddingHorizontal: 12, borderRadius: 18, justifyContent: 'center' },
-  sortOn: { backgroundColor: colors.espresso },
+  sort: { flex: 1, minHeight: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  sortOn: { backgroundColor: colors.coral },
   sortText: { color: colors.muted, fontFamily: fonts.sansMed, fontSize: 13 },
   sortTextOn: { color: colors.white, fontFamily: fonts.sansBold },
   column: { paddingHorizontal: 20, gap: 12, marginBottom: 16 },

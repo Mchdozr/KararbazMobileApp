@@ -1,5 +1,6 @@
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { BackButton } from '@/components/BackButton';
+import { gradientHeader } from '@/components/ScreenHeader';
 import { SessionProvider } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 import { ToastHost } from '@/lib/toast';
@@ -76,30 +77,25 @@ export default function RootLayout() {
               options={{
                 title: 'Yorumun',
                 presentation: 'modal',
-                headerBackVisible: false,
-                headerLeft: () => <BackButton />,
+                header: gradientHeader('Deneyimini paylaş'),
               }}
             />
             <Stack.Screen
               name="owner/[id]"
               options={{
                 title: 'İşletme',
-                headerBackVisible: false,
-                headerLeft: () => <BackButton />,
+                header: gradientHeader('Mekanını yönet'),
               }}
             />
             {[
-              ['favorites', 'Kaydedilenler'],
-              ['my-reviews', 'Yorumlarım'],
-              ['account', 'Hesap'],
-              ['legal', 'Gizlilik ve KVKK'],
-            ].map(([name, title]) => (
-              <Stack.Screen
-                key={name}
-                name={name}
-                options={{ title, headerBackVisible: false, headerLeft: () => <BackButton /> }}
-              />
+              ['favorites', 'Kaydedilenler', 'Kalbe dokunduğun mekanlar'],
+              ['my-reviews', 'Yorumlarım', 'Yazdıkların ve puanların'],
+              ['account', 'Hesap', 'Profil, şifre ve gizlilik'],
+              ['legal', 'Gizlilik ve KVKK', 'Verilerin nasıl işlenir'],
+            ].map(([name, title, subtitle]) => (
+              <Stack.Screen key={name} name={name} options={{ title, header: gradientHeader(subtitle) }} />
             ))}
+            <Stack.Screen name="+not-found" options={{ title: 'Sayfa bulunamadı', header: gradientHeader() }} />
           </Stack>
           <ToastHost />
         </ThemeProvider>

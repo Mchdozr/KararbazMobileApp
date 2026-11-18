@@ -7,7 +7,7 @@ import { haptic } from '@/lib/haptics';
 import { getOnboardedAt, markOnboarded } from '@/lib/onboard';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, gradients, shadows } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { emailProblem, nameProblem, passwordProblem, passwordStrength } from '@/lib/validation';
 import { Ionicons } from '@expo/vector-icons';
@@ -138,7 +138,7 @@ export default function AuthScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={[styles.hero, { paddingTop: insets.top + 16 }]}>
           <Image source={INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-          <LinearGradient colors={['rgba(4,56,43,0.25)', 'rgba(4,56,43,0.9)']} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={[colors.scrimSoft, gradients.hero[1]]} style={StyleSheet.absoluteFill} />
           <Pressable
             style={[styles.close, { top: insets.top + 8 }]}
             onPress={() => void leave()}
@@ -320,30 +320,31 @@ const styles = StyleSheet.create({
   close: {
     position: 'absolute',
     right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassLine,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: { fontFamily: fonts.display, color: colors.white, fontSize: 30, marginTop: 14 },
-  sub: { marginTop: 6, color: colors.coralSoft, fontSize: 15, lineHeight: 21, fontFamily: fonts.sans },
+  sub: { marginTop: 6, color: colors.onDarkMuted, fontSize: 15, lineHeight: 21, fontFamily: fonts.sans },
   card: {
     marginHorizontal: 16,
     marginTop: -24,
     backgroundColor: colors.surface,
     borderRadius: 24,
-    padding: 18,
+    padding: 20,
     gap: 12,
-    borderWidth: 1,
-    borderColor: colors.line,
+    ...shadows.float,
   },
   tabs: { flexDirection: 'row', backgroundColor: colors.bg, borderRadius: 14, padding: 4, marginBottom: 4 },
   tab: { flex: 1, minHeight: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  tabOn: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  tabOn: { backgroundColor: colors.coral },
   tabText: { fontFamily: fonts.sansMed, color: colors.muted, fontSize: 15 },
-  tabTextOn: { fontFamily: fonts.sansBold, color: colors.ink },
+  tabTextOn: { fontFamily: fonts.sansBold, color: colors.white },
   meter: { flexDirection: 'row', gap: 6, marginTop: -6 },
   meterBar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.line },
   meterWeak: { backgroundColor: colors.gold },

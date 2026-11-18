@@ -23,8 +23,11 @@ export function EmptyState({
 }) {
   return (
     <View style={styles.wrap}>
-      <View style={styles.icon}>
-        <Ionicons name={icon} size={26} color={colors.sage} />
+      {/* Halka içinde ikon: boş ekran bile markanın parçası gibi dursun. */}
+      <View style={styles.halo}>
+        <View style={styles.icon}>
+          <Ionicons name={icon} size={30} color={colors.coral} />
+        </View>
       </View>
       <Text style={styles.title}>{title}</Text>
       {body ? <Text style={styles.body}>{body}</Text> : null}
@@ -35,17 +38,25 @@ export function EmptyState({
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 32, paddingVertical: 28, alignItems: 'center', gap: 8 },
-  icon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.coralSoft,
+  wrap: { paddingHorizontal: 32, paddingVertical: 32, alignItems: 'center', gap: 8 },
+  halo: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  title: { color: colors.ink, fontSize: 16, lineHeight: 23, fontFamily: fonts.sansMed, textAlign: 'center' },
-  body: { color: colors.muted, fontSize: 14, lineHeight: 20, fontFamily: fonts.sans, textAlign: 'center' },
-  btn: { marginTop: 8, alignSelf: 'center' },
+  icon: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { color: colors.ink, fontSize: 20, lineHeight: 26, fontFamily: fonts.display, textAlign: 'center' },
+  body: { color: colors.muted, fontSize: 14, lineHeight: 21, fontFamily: fonts.sans, textAlign: 'center', maxWidth: 300 },
+  btn: { marginTop: 12, alignSelf: 'center', minWidth: 160 },
 });

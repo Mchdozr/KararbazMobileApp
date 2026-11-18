@@ -4,7 +4,7 @@ import { api } from '@/lib/api';
 import { friendlyError } from '@/lib/empty';
 import { haptic } from '@/lib/haptics';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, shadows } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { nameProblem, passwordProblem } from '@/lib/validation';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -279,9 +279,9 @@ export default function Account() {
 
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
-  wrap: { padding: 16, gap: 14 },
-  card: { backgroundColor: colors.surface, borderRadius: 22, borderWidth: 1, borderColor: colors.line, padding: 18, gap: 12 },
-  dangerCard: { borderColor: colors.dangerSoft },
+  wrap: { padding: 20, gap: 16 },
+  card: { backgroundColor: colors.surface, borderRadius: 24, padding: 20, gap: 12, ...shadows.card },
+  dangerCard: { borderWidth: 1, borderColor: colors.dangerSoft },
   h: { fontFamily: fonts.display, fontSize: 22, color: colors.ink },
   sub: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20 },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
