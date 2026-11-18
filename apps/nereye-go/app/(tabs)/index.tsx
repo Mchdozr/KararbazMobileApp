@@ -15,6 +15,7 @@ import { useFilters } from '@/lib/filters';
 import { recentAsCard, useRecentVenues } from '@/lib/recent-venues';
 import { api } from '@/lib/api';
 import { isOffline, offlineBanner, savedListName, toSaved, usableSaved, type SavedList } from '@/lib/offline';
+import { advancePage } from '@/lib/paging';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { getLargeJson, setLargeJson } from '@/lib/storage';
 import { colors, fonts } from '@/lib/theme';
@@ -41,6 +42,8 @@ export default function Home() {
   // Niyet ya da konum değişince önceki isteğin geç gelen cevabı yeni listeyi ezmesin
   // (ör. Yemek cevabı, Kültür seçildikten sonra gelip Kültür başlığı altına yemek mekanı koymasın).
   const seq = useRef(0);
+  // Sunucudan şimdiye kadar alınan kayıt sayısı (filtreden önce). "Daha fazla" buradan devam eder.
+  const offset = useRef(0);
   const favorites = useFavorites();
 
   const load = useCallback(async () => {
@@ -64,6 +67,7 @@ export default function Home() {
       const next = cached.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems(next);
       setHasMore(cached.hasMore);
+      offset.current = cached.items.length;
       setLoading(false);
     } else {
       setLoading(true);
@@ -82,9 +86,10 @@ export default function Home() {
       if (n !== seq.current) {
         return;
       }
-      const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
-      setItems(next);
-      setHasMore(res.hasMore);
+      const page = advancePage(0, res, filters.minRating);
+      offset.current = page.nextSkip;
+      setItems(page.cards);
+      setHasMore(page.hasMore);
       if (res.items.length > 0) {
         void setLargeJson(savedListName(filters.intent), toSaved(filters.intent, filters.label, res.items));
       }
@@ -146,18 +151,19 @@ export default function Home() {
         filters.openNow,
         filters.vibes,
         filters.radiusMeters,
-        items.length,
+        offset.current,
         20,
       );
       if (n !== seq.current) {
         return;
       }
-      const extra = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
+      const page = advancePage(offset.current, res, filters.minRating);
+      offset.current = page.nextSkip;
       setItems((prev) => {
         const seen = new Set(prev.map((c) => c.placeId));
-        return [...prev, ...extra.filter((c) => !seen.has(c.placeId))];
+        return [...prev, ...page.cards.filter((c) => !seen.has(c.placeId))];
       });
-      setHasMore(res.hasMore);
+      setHasMore(page.hasMore);
     } catch (e) {
       setError(friendlyError(e));
     } finally {

@@ -112,13 +112,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
       },
       signOut: async () => {
-        const token = session?.refreshToken;
-        if (token) {
-          try {
-            await api.logout(token);
-          } catch {
-            /* ignore */
-          }
+        try {
+          await api.logout();
+        } catch {
+          /* çıkış yerelde yine tamamlanır */
         }
         applySession(null);
         setSession(null);

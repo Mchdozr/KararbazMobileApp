@@ -36,3 +36,13 @@ test('a feature the server switched off shows its Turkish reason, other 5xx stay
   const unverified = { name: 'ApiError', status: 403, kind: 'http', message: 'Yorum yazmak için önce e-posta adresini doğrula.' };
   assert.equal(friendlyError(unverified), 'Yorum yazmak için önce e-posta adresini doğrula.');
 });
+
+test('logout never refreshes with the token it is revoking', () => {
+  const api = read('./api.ts');
+  assert.match(api, /if \(!refreshToken \|\| signingOut\) \{/);
+  const logout = api.slice(api.indexOf('  logout: async () => {'));
+  // Sürmekte olan yenileme beklenir, token bellekten çıkarılır, sonra çıkış isteği gider.
+  assert.ok(logout.indexOf('await refreshWait') < logout.indexOf('refreshToken = null'));
+  assert.ok(logout.indexOf('refreshToken = null') < logout.indexOf("'/api/auth/logout'"));
+  assert.match(read('./session.tsx'), /await api\.logout\(\);/);
+});

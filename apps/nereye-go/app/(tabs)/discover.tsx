@@ -4,6 +4,7 @@ import { FilterSheet } from '@/components/FilterSheet';
 import { VenueGridSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { api } from '@/lib/api';
+import { advancePage } from '@/lib/paging';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { INTENTS, intentLabel } from '@/lib/constants';
 import { emptyDiscover, friendlyError } from '@/lib/empty';
@@ -43,11 +44,8 @@ export default function Discover() {
   const fetchPage = useCallback(
     async (skip: number) => {
       const res = await api.recommend(lat, lng, intent, openNow, vibes, radiusMeters, skip, PAGE);
-      return {
-        cards: res.items.filter((c) => !minRating || (c.nereyeRating ?? 0) >= minRating),
-        hasMore: res.hasMore,
-        fetched: res.items.length,
-      };
+      const page = advancePage(skip, res, minRating);
+      return { cards: page.cards, hasMore: page.hasMore, fetched: res.items.length };
     },
     [lat, lng, intent, openNow, vibes, radiusMeters, minRating],
   );

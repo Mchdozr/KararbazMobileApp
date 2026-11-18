@@ -87,11 +87,16 @@ public sealed class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Refresh(RefreshRequest request, CancellationToken ct) =>
         Ok(await _auth.RefreshAsync(request.RefreshToken, ct));
 
-    [Authorize]
+    /// <summary>
+    /// Bu cihazın refresh token'ını iptal eder. Erişim token'ı gerekmez: süresi dolmuş olsa bile istemci,
+    /// çıkış için aynı refresh token'la önce /refresh çağırmak zorunda kalmasın. Token'ı bilen onu iptal edebilir.
+    /// </summary>
+    [EnableRateLimiting("auth")]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(RefreshRequest request, CancellationToken ct)
     {
-        await _auth.LogoutAsync(User.Id(), request.RefreshToken, ct);
+        Guid? userId = User.Identity?.IsAuthenticated == true ? User.Id() : null;
+        await _auth.LogoutAsync(userId, request.RefreshToken, ct);
         return NoContent();
     }
 

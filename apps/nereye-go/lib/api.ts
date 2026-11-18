@@ -27,6 +27,8 @@ let apiBase = DEFAULT_API;
 let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let refreshWait: Promise<boolean> | null = null;
+// Çıkış sürerken bu token'la /api/auth/refresh atılmaz (sunucuda dönmüş token'ın tekrar gelmesi hırsızlık sayılır).
+let signingOut = false;
 let authEvents: { onRefreshed?: (session: Session) => void; onCleared?: () => void } = {};
 
 const EMPTY_PREFS: Preferences = { defaultRadiusMeters: 5000, intents: [], vibes: [] };
@@ -141,7 +143,7 @@ function jwtExpired(token: string, skewMs = 15_000): boolean {
 }
 
 async function refreshAccess(): Promise<boolean> {
-  if (!refreshToken) {
+  if (!refreshToken || signingOut) {
     return false;
   }
   if (refreshWait) {
@@ -291,8 +293,30 @@ export const api = {
   resendVerification: () => request('/api/auth/verify-email', { method: 'POST' }),
   /** Gizlilik ve koşullar metni sunucudan gelir (tek kaynak: /gizlilik ve /kosullar sayfalarıyla aynı). */
   legal: () => request<Legal>('/api/legal', {}, { skipAuth: true }),
-  logout: (token: string) =>
-    request('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: token }) }, { optional: true }),
+  /**
+   * Bu cihazın oturumunu kapatır. Sürmekte olan yenileme bitince güncel token alınır ve hemen bellekten
+   * silinir: çıkış isteği 401 alsa bile aynı refresh token'la yenileme denenmez. Sunucu, erişim token'ı
+   * süresi dolmuş olsa da refresh token'ın kendisiyle çıkışı kabul eder.
+   */
+  logout: async () => {
+    if (refreshWait) {
+      await refreshWait.catch(() => false);
+    }
+    const token = refreshToken;
+    signingOut = true;
+    refreshToken = null;
+    try {
+      if (token) {
+        await request(
+          '/api/auth/logout',
+          { method: 'POST', body: JSON.stringify({ refreshToken: token }) },
+          { optional: true },
+        );
+      }
+    } finally {
+      signingOut = false;
+    }
+  },
   recommend: async (
     lat: number,
     lng: number,

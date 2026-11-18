@@ -156,10 +156,18 @@ public sealed class AuthService : IAuthService
 
         if (stored.Revoked)
         {
-            var concurrent = stored.ReplacedByTokenId is not null && stored.RevokedAt > now - ConcurrentRefreshGrace;
+            // Yerine token verilmemiş iptal (çıkış, şifre değişikliği, toplu iptal): token zaten ölü, yalnızca 401.
+            // Bu durumda herkesi düşürmek, bir cihazdan çıkışın diğer cihazları da kapatmasına yol açardı.
+            if (stored.ReplacedByTokenId is null)
+            {
+                throw new UnauthorizedAccessException("Refresh geçersiz.");
+            }
+
+            var concurrent = stored.RevokedAt > now - ConcurrentRefreshGrace;
             if (!concurrent)
             {
-                // Kullanılmış token yeniden geldi: token çalınmış olabilir. Bu kullanıcının bütün oturumları düşer.
+                // Yenilemeyle değiştirilmiş (kullanılmış) token tekrar geldi: çalınmış olabilir.
+                // Bu kullanıcının bütün oturumları düşer.
                 await RevokeAllAsync(stored.UserId, cancellationToken);
                 throw new UnauthorizedAccessException("Güvenliğin için oturumların kapatıldı. Tekrar giriş yap.");
             }
@@ -192,7 +200,7 @@ public sealed class AuthService : IAuthService
         return await IssueAsync(user, cancellationToken, nextId);
     }
 
-    public async Task LogoutAsync(Guid userId, string refreshToken, CancellationToken cancellationToken = default)
+    public async Task LogoutAsync(Guid? userId, string refreshToken, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
@@ -201,7 +209,7 @@ public sealed class AuthService : IAuthService
 
         var hash = Hash(refreshToken);
         var stored = await _db.RefreshTokens.FirstOrDefaultAsync(
-            t => t.UserId == userId && t.TokenHash == hash,
+            t => t.TokenHash == hash && (userId == null || t.UserId == userId),
             cancellationToken);
         if (stored is not null && !stored.Revoked)
         {

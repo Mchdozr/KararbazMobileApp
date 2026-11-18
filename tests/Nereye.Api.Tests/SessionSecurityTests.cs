@@ -100,4 +100,38 @@ public sealed class SessionSecurityTests : IClassFixture<ClockApiFactory>
         client.DefaultRequestHeaders.Authorization = null;
         Assert.Equal(HttpStatusCode.Unauthorized, (await Refresh(client, refresh)).StatusCode);
     }
+
+    [Fact]
+    public async Task Replaying_a_logged_out_token_does_not_close_other_devices()
+    {
+        using var client = _factory.CreateClient();
+        var (email, _) = await Signup(client);
+        async Task<JsonElement> Login() => JsonDocument.Parse(await (await client.PostAsJsonAsync("/api/auth/login",
+            new { email, password = "kahve1234" })).Content.ReadAsStringAsync()).RootElement;
+        var phone = await Login();
+        var tablet = await Login();
+
+        using var phoneClient = _factory.CreateClient();
+        phoneClient.DefaultRequestHeaders.Authorization = new("Bearer", phone.GetProperty("accessToken").GetString());
+        var phoneRefresh = phone.GetProperty("refreshToken").GetString()!;
+        Assert.Equal(HttpStatusCode.NoContent, (await phoneClient.PostAsJsonAsync("/api/auth/logout", new { refreshToken = phoneRefresh })).StatusCode);
+
+        // Çıkış yapılan token yeniden gelir (ör. çıkış sırasında gecikmiş bir yenileme): yalnızca 401.
+        _factory.Clock.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Refresh(client, phoneRefresh)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Refresh(client, phoneRefresh)).StatusCode);
+
+        // Diğer cihaz oturumunu korur.
+        var other = await Refresh(client, tablet.GetProperty("refreshToken").GetString()!);
+        Assert.Equal(HttpStatusCode.OK, other.StatusCode);
+    }
+
+    [Fact]
+    public async Task Logout_works_with_only_the_refresh_token()
+    {
+        using var client = _factory.CreateClient();
+        var (_, refresh) = await Signup(client);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/logout", new { refreshToken = refresh })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Refresh(client, refresh)).StatusCode);
+    }
 }

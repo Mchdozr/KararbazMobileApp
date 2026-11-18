@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { advancePage } from './paging.ts';
 import { isOffline, offlineBanner, savedListName, toSaved, usableSaved } from './offline.ts';
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -44,4 +45,20 @@ test('large cached data never goes to SecureStore (2 KB limit)', () => {
   assert.match(storage, /export async function setLargeJson/);
   const large = storage.slice(storage.indexOf('export async function setLargeJson'));
   assert.doesNotMatch(large, /SecureStore/);
+});
+
+test('"more" advances by what the server returned, not by cards left after the rating filter', () => {
+  const page = Array.from({ length: 20 }, (_, i) => ({ placeId: `p${i}`, nereyeRating: i < 8 ? 2 : 4.5 }) as never);
+  const first = advancePage(0, { items: page, hasMore: true }, 4);
+  assert.equal(first.cards.length, 12);
+  assert.equal(first.nextSkip, 20);
+  assert.equal(first.hasMore, true);
+  const second = advancePage(first.nextSkip, { items: page, hasMore: true }, 4);
+  assert.equal(second.nextSkip, 40);
+  const empty = advancePage(40, { items: [], hasMore: true }, 4);
+  assert.equal(empty.hasMore, false);
+  assert.equal(empty.nextSkip, 40);
+  const home = read('../app/(tabs)/index.tsx');
+  assert.doesNotMatch(home, /items\.length,\s*\n\s*20,/);
+  assert.match(home, /offset\.current,\s*\n\s*20,/);
 });
