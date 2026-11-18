@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Nereye.Application.Auth;
+using Nereye.Application.Common;
 
 namespace Nereye.Api.Controllers;
 
@@ -10,13 +11,69 @@ namespace Nereye.Api.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
+    private readonly IConfiguration _config;
+    private readonly IHostEnvironment _env;
+    private readonly ILogger<AuthController> _log;
 
-    public AuthController(IAuthService auth) => _auth = auth;
+    public AuthController(IAuthService auth, IConfiguration config, IHostEnvironment env, ILogger<AuthController> log)
+    {
+        _auth = auth;
+        _config = config;
+        _env = env;
+        _log = log;
+    }
 
     [EnableRateLimiting("auth")]
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct) =>
-        Ok(await _auth.RegisterAsync(request, ct));
+    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct)
+    {
+        var session = await _auth.RegisterAsync(request, ct);
+        // Doğrulama e-postası gönderilemezse kayıt yine başarılıdır; kullanıcı sonra yeniden isteyebilir.
+        var baseUrl = PublicPages.BaseUrl(HttpContext, _config, _env);
+        if (baseUrl is not null)
+        {
+            try
+            {
+                await _auth.SendVerificationAsync(session.UserId, (id, token) => EmailLinksController.VerifyLink(baseUrl, id, token), ct);
+            }
+            catch (Exception ex) when (ex is ServiceUnavailableException or HttpRequestException or InvalidOperationException)
+            {
+                _log.LogWarning(ex, "Doğrulama e-postası gönderilemedi");
+            }
+        }
+
+        return Ok(session);
+    }
+
+    /// <summary>Doğrulama bağlantısını yeniden gönderir. Sağlayıcı ya da genel adres yoksa 503.</summary>
+    [Authorize]
+    [EnableRateLimiting("auth")]
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> ResendVerification(CancellationToken ct)
+    {
+        var baseUrl = PublicPages.BaseUrl(HttpContext, _config, _env)
+                      ?? throw new ServiceUnavailableException("E-posta doğrulama şu an kapalı.");
+        await _auth.SendVerificationAsync(User.Id(), (id, token) => EmailLinksController.VerifyLink(baseUrl, id, token), ct);
+        return NoContent();
+    }
+
+    public sealed record ForgotRequest(string? Email);
+
+    public const string ForgotAccepted = "Bu adres kayıtlıysa birkaç dakika içinde şifre sıfırlama bağlantısı gelecek.";
+
+    /// <summary>
+    /// Kayıtlı olsun olmasın aynı yanıt (hangi adresin kayıtlı olduğu sızmasın).
+    /// Sağlayıcı ya da genel adres yoksa 503 "Şifre sıfırlama şu an kapalı."
+    /// </summary>
+    [EnableRateLimiting("auth")]
+    [HttpPost("forgot")]
+    public async Task<IActionResult> Forgot(ForgotRequest request, CancellationToken ct)
+    {
+        var baseUrl = PublicPages.BaseUrl(HttpContext, _config, _env)
+                      ?? throw new ServiceUnavailableException("Şifre sıfırlama şu an kapalı.");
+        await _auth.RequestPasswordResetAsync(request.Email ?? "", (id, token) => EmailLinksController.ResetLink(baseUrl, id, token), ct);
+        return Accepted(new { message = ForgotAccepted });
+    }
 
     [EnableRateLimiting("auth")]
     [HttpPost("login")]

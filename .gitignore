@@ -22,3 +22,6 @@ coverage/
 *.log
 .cursor/
 app.json.*
+
+# Çalışırken yüklenen kullanıcı dosyaları
+src/Nereye.Api/wwwroot/media/uploads/*

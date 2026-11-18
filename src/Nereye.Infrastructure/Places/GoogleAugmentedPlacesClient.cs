@@ -9,7 +9,7 @@ namespace Nereye.Infrastructure.Places;
 /// Katalog OpenStreetMap'tir. Google Places anahtarı varsa aynı dairedeki güncel
 /// telefon, saat, puan ve fotoğraf OSM kaydının üstüne yazılır; OSM'de olmayanlar eklenir.
 /// </summary>
-public sealed class GoogleAugmentedPlacesClient : IPlacesClient
+public sealed class GoogleAugmentedPlacesClient : IPlacesClient, IRichPlaceDetails
 {
     private readonly IPlacesClient _osm;
     private readonly IPlacesClient _google;
@@ -123,11 +123,33 @@ public sealed class GoogleAugmentedPlacesClient : IPlacesClient
         }
     }
 
+    /// <summary>Kart düzeyi: OSM kaydı ya da Google'ın kart alanları. Zengin içerik istemez.</summary>
     public async Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default)
     {
         if (placeId.StartsWith("g:", StringComparison.Ordinal))
         {
             var direct = await _google.DetailsAsync(placeId[2..], cancellationToken);
+            return direct is null ? null : direct with { PlaceId = placeId };
+        }
+
+        var osm = await _osm.DetailsAsync(placeId, cancellationToken);
+        if (osm is not null || string.IsNullOrWhiteSpace(_options.ApiKey) || placeId.StartsWith("osm:", StringComparison.OrdinalIgnoreCase))
+        {
+            return osm;
+        }
+
+        return await _google.DetailsAsync(placeId, cancellationToken);
+    }
+
+    /// <summary>Yalnızca detay sayfası: OSM kaydına Google'daki karşılığının özetini, yorumlarını ve galerisini ekler.</summary>
+    public async Task<PlaceSnapshot?> RichDetailsAsync(string placeId, CancellationToken cancellationToken = default)
+    {
+        var rich = _google as IRichPlaceDetails;
+        if (placeId.StartsWith("g:", StringComparison.Ordinal))
+        {
+            var direct = rich is null
+                ? await _google.DetailsAsync(placeId[2..], cancellationToken)
+                : await rich.RichDetailsAsync(placeId[2..], cancellationToken);
             return direct is null ? null : direct with { PlaceId = placeId };
         }
 
@@ -139,9 +161,14 @@ public sealed class GoogleAugmentedPlacesClient : IPlacesClient
 
         if (osm is null)
         {
-            return placeId.StartsWith("osm:", StringComparison.OrdinalIgnoreCase)
-                ? null
-                : await _google.DetailsAsync(placeId, cancellationToken);
+            if (placeId.StartsWith("osm:", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return rich is null
+                ? await _google.DetailsAsync(placeId, cancellationToken)
+                : await rich.RichDetailsAsync(placeId, cancellationToken);
         }
 
         return await EnrichAsync(osm, cancellationToken);

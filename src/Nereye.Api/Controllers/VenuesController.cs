@@ -33,11 +33,15 @@ public sealed class VenuesController : ControllerBase
     }
 
     [HttpGet("{placeId}/reviews")]
-    public async Task<ActionResult<IReadOnlyList<ReviewDto>>> Reviews(string placeId, CancellationToken ct) =>
-        Ok(await _reviews.ListAsync(placeId, ct));
+    public async Task<ActionResult<IReadOnlyList<ReviewDto>>> Reviews(string placeId, CancellationToken ct)
+    {
+        Guid? viewer = User.Identity?.IsAuthenticated == true ? User.Id() : null;
+        return Ok(await _reviews.ListAsync(placeId, viewer, ct));
+    }
 
     [Authorize]
     [EnableRateLimiting("write")]
+    [VerifiedEmail]
     [HttpPost("{placeId}/reviews")]
     public async Task<ActionResult<ReviewDto>> Write(string placeId, WriteReviewRequest request, CancellationToken ct) =>
         Ok(await _reviews.WriteAsync(placeId, User.Id(), request, ct));
@@ -76,7 +80,7 @@ public sealed class VenuesController : ControllerBase
     [HttpPost("{placeId}/reports")]
     public async Task<IActionResult> Report(string placeId, [FromBody] ReportBody body, CancellationToken ct)
     {
-        await _reviews.ReportAsync(placeId, User.Id(), body.Reason ?? "", body.ReviewId, ct);
+        await _reviews.ReportAsync(placeId, User.Id(), body.Reason ?? "", body.ReviewId, body.PhotoUrl, ct);
         return NoContent();
     }
 
@@ -87,6 +91,7 @@ public sealed class VenuesController : ControllerBase
         Ok(await _claims.SubmitAsync(placeId, User.Id(), request, ct));
 
     [Authorize(Roles = RoleNames.VenueOwner)]
+    [VerifiedEmail]
     [HttpPost("reviews/{reviewId:guid}/reply")]
     public async Task<IActionResult> Reply(Guid reviewId, [FromBody] ReplyBody body, CancellationToken ct)
     {
@@ -103,6 +108,7 @@ public sealed class VenuesController : ControllerBase
     }
 
     [Authorize(Roles = RoleNames.VenueOwner)]
+    [VerifiedEmail]
     [HttpPost("{placeId}/photos")]
     [RequestSizeLimit(3_000_000)]
     public async Task<ActionResult<object>> Photo(string placeId, AvatarUploadRequest body, CancellationToken ct)
@@ -116,7 +122,7 @@ public sealed class VenuesController : ControllerBase
         return Ok(new { url });
     }
 
-    public sealed record ReportBody(string? Reason, Guid? ReviewId);
+    public sealed record ReportBody(string? Reason, Guid? ReviewId, string? PhotoUrl = null);
     public sealed record ReplyBody(string? Text);
     public sealed record OwnerUpdateBody(string? DisplayName, string? Description);
 }

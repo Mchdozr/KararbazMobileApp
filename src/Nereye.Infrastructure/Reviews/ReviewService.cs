@@ -28,7 +28,7 @@ public sealed class ReviewService : IReviewService
         _clock = clock;
     }
 
-    public async Task<IReadOnlyList<ReviewDto>> ListAsync(string placeId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ReviewDto>> ListAsync(string placeId, Guid? viewerId = null, CancellationToken cancellationToken = default)
     {
         var venue = await _db.Venues.FirstOrDefaultAsync(v => v.GooglePlaceId == placeId, cancellationToken);
         if (venue is null)
@@ -45,6 +45,18 @@ public sealed class ReviewService : IReviewService
             .Where(r => r.VenueId == venue.Id && !r.IsHidden)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
+
+        if (viewerId is { } viewer)
+        {
+            var blocked = await _db.UserBlocks
+                .Where(b => b.BlockerUserId == viewer)
+                .Select(b => b.BlockedUserId)
+                .ToListAsync(cancellationToken);
+            if (blocked.Count > 0)
+            {
+                reviews = reviews.Where(r => !blocked.Contains(r.UserId)).ToList();
+            }
+        }
 
         var userIds = reviews.Select(r => r.UserId).Distinct().ToList();
         var authors = userIds.Count == 0
@@ -300,16 +312,28 @@ public sealed class ReviewService : IReviewService
         return items;
     }
 
-    public async Task ReportAsync(string placeId, Guid userId, string reason, Guid? reviewId, CancellationToken cancellationToken = default)
+    public async Task ReportAsync(
+        string placeId,
+        Guid userId,
+        string reason,
+        Guid? reviewId,
+        string? photoUrl = null,
+        CancellationToken cancellationToken = default)
     {
         var clean = ReviewRules.CleanText(reason, ReviewRules.MaxReasonLength)
                     ?? throw new ValidationException("Şikayet nedeni gerekli.");
+        var photo = string.IsNullOrWhiteSpace(photoUrl) ? null : photoUrl.Trim();
+        if (photo is not null && !ReviewRules.IsOwnUpload(photo))
+        {
+            throw new ValidationException("Bildirilen fotoğraf bulunamadı.");
+        }
+
         var venue = await _db.Venues.FirstOrDefaultAsync(v => v.GooglePlaceId == placeId, cancellationToken);
         var venueId = venue?.Id;
 
         // Aynı kullanıcı aynı hedefi tekrar tekrar bildirirse kuyruğu şişirmesin.
         var already = await _db.Reports.AnyAsync(
-            r => r.ReporterUserId == userId && !r.IsResolved && r.VenueId == venueId && r.ReviewId == reviewId,
+            r => r.ReporterUserId == userId && !r.IsResolved && r.VenueId == venueId && r.ReviewId == reviewId && r.PhotoUrl == photo,
             cancellationToken);
         if (already)
         {
@@ -322,11 +346,50 @@ public sealed class ReviewService : IReviewService
             ReporterUserId = userId,
             VenueId = venueId,
             ReviewId = reviewId,
+            PhotoUrl = photo,
             Reason = clean,
             CreatedAt = _clock.UtcNow
         });
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task BlockAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken = default)
+    {
+        if (blockerId == blockedId)
+        {
+            throw new ValidationException("Kendini engelleyemezsin.");
+        }
+
+        if (!await _db.Users.AnyAsync(u => u.Id == blockedId, cancellationToken))
+        {
+            throw new NotFoundException("Kullanıcı bulunamadı.");
+        }
+
+        if (!await _db.UserBlocks.AnyAsync(b => b.BlockerUserId == blockerId && b.BlockedUserId == blockedId, cancellationToken))
+        {
+            _db.UserBlocks.Add(new UserBlock { BlockerUserId = blockerId, BlockedUserId = blockedId, CreatedAt = _clock.UtcNow });
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task UnblockAsync(Guid blockerId, Guid blockedId, CancellationToken cancellationToken = default)
+    {
+        var row = await _db.UserBlocks.FirstOrDefaultAsync(
+            b => b.BlockerUserId == blockerId && b.BlockedUserId == blockedId,
+            cancellationToken);
+        if (row is not null)
+        {
+            _db.UserBlocks.Remove(row);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task<IReadOnlyList<BlockedUserDto>> BlockedAsync(Guid blockerId, CancellationToken cancellationToken = default) =>
+        await _db.UserBlocks
+            .Where(b => b.BlockerUserId == blockerId)
+            .OrderByDescending(b => b.CreatedAt)
+            .Join(_db.Users, b => b.BlockedUserId, u => u.Id, (b, u) => new BlockedUserDto(u.Id, u.DisplayName))
+            .ToListAsync(cancellationToken);
 
     public async Task ReplyAsync(Guid reviewId, Guid ownerUserId, string text, CancellationToken cancellationToken = default)
     {

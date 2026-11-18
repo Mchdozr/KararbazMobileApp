@@ -100,7 +100,7 @@ public sealed class OverpassPlacesClient : IPlacesClient
                 {
                     Content = new StringContent(query, System.Text.Encoding.UTF8, "text/plain")
                 };
-                request.Headers.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
+                request.Headers.TryAddWithoutValidation("User-Agent", HttpIdentity.UserAgent);
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 var budget = i == 0 ? primaryBudgetSeconds : 8;
                 cts.CancelAfter(TimeSpan.FromSeconds(budget));

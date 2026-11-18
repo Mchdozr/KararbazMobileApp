@@ -24,4 +24,6 @@ public sealed record MyReviewDto(
     string? OwnerReply,
     DateTime CreatedAt);
 
+public sealed record BlockedUserDto(Guid UserId, string DisplayName);
+
 public sealed record WriteReviewRequest(int Stars, string? Text, IReadOnlyList<VibeTag>? Tags, IReadOnlyList<string>? PhotoUrls);

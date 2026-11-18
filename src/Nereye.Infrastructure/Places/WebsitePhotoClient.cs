@@ -20,7 +20,7 @@ public sealed class WebsitePhotoClient
         _http.Timeout = TimeSpan.FromSeconds(5);
         if (!_http.DefaultRequestHeaders.UserAgent.Any())
         {
-            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", HttpIdentity.UserAgent);
         }
 
         if (!_http.DefaultRequestHeaders.Accept.Any())

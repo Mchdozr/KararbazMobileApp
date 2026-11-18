@@ -4,7 +4,7 @@ using Nereye.Domain.Places;
 
 namespace Nereye.Infrastructure.Places;
 
-public sealed class FakePlacesClient : IPlacesClient
+public sealed class FakePlacesClient : IPlacesClient, IRichPlaceDetails
 {
     // Lazy: aşağıdaki statik sözlükler hazır olduktan sonra kurulur (alan başlatma sırasına bağlı kalmasın).
     private static readonly Lazy<IReadOnlyList<PlaceSnapshot>> Catalog = new(CreateIstanbul);
@@ -28,6 +28,12 @@ public sealed class FakePlacesClient : IPlacesClient
     }
 
     public Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Istanbul.FirstOrDefault(p => p.PlaceId == placeId) is { } p
+            // Kart düzeyi: zengin alanlar yalnızca RichDetailsAsync'te (Google'daki ayrımla aynı).
+            ? p with { Summary = null, Reviews = null, Features = null }
+            : null);
+
+    public Task<PlaceSnapshot?> RichDetailsAsync(string placeId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Istanbul.FirstOrDefault(p => p.PlaceId == placeId));
 
     public Task<IReadOnlyList<PlaceSnapshot>> TextSearchAsync(

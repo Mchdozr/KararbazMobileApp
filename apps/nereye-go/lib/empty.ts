@@ -50,6 +50,10 @@ export function friendlyError(reason: unknown) {
     if (api.status === 403 && !api.message) {
       return 'Bu işlem için yetkin yok.';
     }
+    // 503: sunucu bir özelliği bilerek kapattı ("Şifre sıfırlama şu an kapalı."); Türkçe nedeni göster.
+    if (api.status === 503 && api.message && api.message.length <= 160) {
+      return api.message;
+    }
     if ((api.status ?? 0) >= 500) {
       return 'Sunucuda bir sorun var. Biraz sonra tekrar dene.';
     }

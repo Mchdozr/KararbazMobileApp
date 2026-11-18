@@ -17,7 +17,7 @@ public sealed class MapillaryPhotoClient
         _http.Timeout = TimeSpan.FromSeconds(8);
         if (!_http.DefaultRequestHeaders.UserAgent.Any())
         {
-            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", HttpIdentity.UserAgent);
         }
 
         _token = string.IsNullOrWhiteSpace(options.Value.Token)

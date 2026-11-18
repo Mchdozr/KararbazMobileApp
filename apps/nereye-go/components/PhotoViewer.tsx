@@ -10,10 +10,13 @@ export function PhotoViewer({
   uris,
   index,
   onClose,
+  onReport,
 }: {
   uris: string[];
   index: number | null;
   onClose: () => void;
+  /** Kullanıcı fotoğrafıysa: o anki kareyi bildirme (Play UGC politikası). */
+  onReport?: (index: number) => void;
 }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -47,9 +50,21 @@ export function PhotoViewer({
           <Text style={styles.count}>
             {at + 1} / {uris.length}
           </Text>
-          <Pressable style={styles.close} onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Kapat">
-            <Ionicons name="close" size={22} color={colors.white} />
-          </Pressable>
+          <View style={styles.actions}>
+            {onReport ? (
+              <Pressable
+                style={styles.close}
+                onPress={() => onReport(at)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Bu fotoğrafı bildir">
+                <Ionicons name="flag-outline" size={20} color={colors.white} />
+              </Pressable>
+            ) : null}
+            <Pressable style={styles.close} onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Kapat">
+              <Ionicons name="close" size={22} color={colors.white} />
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -58,6 +73,7 @@ export function PhotoViewer({
 
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)' },
+  actions: { flexDirection: 'row', gap: 10 },
   top: {
     position: 'absolute',
     top: 0,

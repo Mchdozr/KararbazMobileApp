@@ -8,6 +8,7 @@ import { getOnboardedAt, markOnboarded } from '@/lib/onboard';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
+import { toast } from '@/lib/toast';
 import { emailProblem, nameProblem, passwordProblem, passwordStrength } from '@/lib/validation';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -37,7 +38,8 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [kvkk, setKvkk] = useState(false);
+  // Kullanım koşulları kabulü: ayrı, önceden işaretsiz kutu. Aydınlatma metni onay gerektirmez, yalnızca bağlantıdır.
+  const [terms, setTerms] = useState(false);
   const [base, setBaseField] = useState(apiBase);
   const [showServer, setShowServer] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -68,19 +70,19 @@ export default function AuthScreen() {
       haptic.warn();
       return;
     }
-    if (register && !kvkk) {
-      setError('Devam etmek için aydınlatma metnini onayla.');
+    if (register && !terms) {
+      setError('Devam etmek için kullanım koşullarını kabul et.');
       haptic.warn();
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      if (showServer && base.trim() && base.trim() !== apiBase) {
+      if (__DEV__ && showServer && base.trim() && base.trim() !== apiBase) {
         await setBase(base.trim().replace(/\/$/, ''));
       }
       const session = register
-        ? await api.register(email.trim(), password, name.trim(), kvkk)
+        ? await api.register(email.trim(), password, name.trim(), terms)
         : await api.login(email.trim(), password);
       await signIn(session);
       haptic.success();
@@ -89,6 +91,30 @@ export default function AuthScreen() {
       } else {
         await leave();
       }
+    } catch (e) {
+      haptic.warn();
+      setError(friendlyError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Şifremi unuttum: bağlantı e-postayla gelir, yeni şifre sunucudaki sayfada belirlenir.
+  // Kayıtlı olsun olmasın aynı yanıt döner; sağlayıcı yoksa sunucu "şifre sıfırlama şu an kapalı" der.
+  async function forgot() {
+    if (emailErr) {
+      setTouched(true);
+      setError('Şifre sıfırlama bağlantısı için önce e-postanı yaz.');
+      haptic.warn();
+      emailRef.current?.focus();
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api.forgotPassword(email.trim());
+      haptic.success();
+      toast.success(res?.message || 'Bu adres kayıtlıysa şifre sıfırlama bağlantısı gelecek.');
     } catch (e) {
       haptic.warn();
       setError(friendlyError(e));
@@ -123,7 +149,10 @@ export default function AuthScreen() {
           </Pressable>
           <Pressable
             onPress={() => {
-              // Geliştirici kısayolu: logoya beş kez dokununca sunucu adresi alanı açılır.
+              // Geliştirici kısayolu (yalnızca __DEV__): logoya beş kez dokununca sunucu adresi alanı açılır.
+              if (!__DEV__) {
+                return;
+              }
               taps.current += 1;
               if (taps.current >= 5) {
                 taps.current = 0;
@@ -208,30 +237,50 @@ export default function AuthScreen() {
               ))}
             </View>
           ) : null}
-
-          {register ? (
+          {!register ? (
             <Pressable
-              style={styles.kvkk}
-              onPress={() => {
-                haptic.tap();
-                setKvkk((v) => !v);
-              }}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: kvkk }}
-              accessibilityLabel="KVKK aydınlatma metnini okudum ve kabul ediyorum">
-              <View style={[styles.box, kvkk && styles.boxOn]}>
-                {kvkk ? <Ionicons name="checkmark" size={16} color={colors.white} /> : null}
-              </View>
-              <Text style={styles.kvkkText}>
-                <Text style={styles.link} onPress={() => router.push('/legal')}>
-                  KVKK aydınlatma metnini
-                </Text>{' '}
-                okudum, kişisel verilerimin işlenmesini kabul ediyorum.
-              </Text>
+              style={styles.forgot}
+              onPress={() => void forgot()}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Şifremi unuttum: e-postama sıfırlama bağlantısı gönder"
+              hitSlop={8}>
+              <Text style={styles.forgotText}>Şifremi unuttum</Text>
             </Pressable>
           ) : null}
 
-          {showServer ? (
+          {register ? (
+            <>
+              <Text style={styles.kvkkText}>
+                Kişisel verilerinin nasıl işlendiğini{' '}
+                <Text style={styles.link} onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })}>
+                  KVKK aydınlatma metninde
+                </Text>{' '}
+                okuyabilirsin.
+              </Text>
+              <Pressable
+                style={styles.kvkk}
+                onPress={() => {
+                  haptic.tap();
+                  setTerms((v) => !v);
+                }}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: terms }}
+                accessibilityLabel="Kullanım koşullarını okudum ve kabul ediyorum">
+                <View style={[styles.box, terms && styles.boxOn]}>
+                  {terms ? <Ionicons name="checkmark" size={16} color={colors.white} /> : null}
+                </View>
+                <Text style={styles.kvkkText}>
+                  <Text style={styles.link} onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}>
+                    Kullanım koşullarını
+                  </Text>{' '}
+                  okudum ve kabul ediyorum. Yorum ve fotoğraflarımın bu koşullara uyacağını biliyorum.
+                </Text>
+              </Pressable>
+            </>
+          ) : null}
+
+          {__DEV__ && showServer ? (
             <TextField
               label="Sunucu adresi (geliştirici)"
               icon="server-outline"
@@ -313,6 +362,8 @@ const styles = StyleSheet.create({
   boxOn: { backgroundColor: colors.coral, borderColor: colors.coral },
   kvkkText: { flex: 1, color: colors.muted, fontSize: 13, lineHeight: 19, fontFamily: fonts.sans },
   link: { color: colors.coral, fontFamily: fonts.sansBold, textDecorationLine: 'underline' },
+  forgot: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
+  forgotText: { color: colors.coral, fontFamily: fonts.sansBold, fontSize: 14 },
   err: {
     flexDirection: 'row',
     alignItems: 'center',

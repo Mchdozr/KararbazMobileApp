@@ -1,5 +1,6 @@
 // Sunucudaki AccountRules ile aynı kurallar: kullanıcı hatayı göndermeden önce görsün.
 export const MIN_PASSWORD = 8;
+export const MAX_PASSWORD = 128;
 export const MAX_NAME = 40;
 
 export function emailProblem(email: string): string | null {
@@ -16,6 +17,9 @@ export function emailProblem(email: string): string | null {
 export function passwordProblem(password: string): string | null {
   if (password.length < MIN_PASSWORD) {
     return `Şifre en az ${MIN_PASSWORD} karakter olmalı.`;
+  }
+  if (password.length > MAX_PASSWORD) {
+    return 'Şifre çok uzun.';
   }
   if (!/\p{L}/u.test(password) || !/\d/.test(password)) {
     return 'Şifrede en az bir harf ve bir rakam olmalı.';

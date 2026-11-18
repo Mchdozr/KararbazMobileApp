@@ -159,7 +159,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("Granted")
                         .HasColumnType("boolean");
@@ -185,10 +185,10 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("EndsAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("StartsAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -213,7 +213,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("UserId", "VenueId");
 
@@ -235,7 +235,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
@@ -260,19 +260,19 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("DailyBudget")
                         .HasColumnType("numeric");
 
                     b.Property<DateTime>("EndAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("StartAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -304,7 +304,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("Tapped")
                         .HasColumnType("boolean");
@@ -324,13 +324,20 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("Revoked")
+                        .IsConcurrencyToken()
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -355,10 +362,14 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsResolved")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -387,7 +398,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsHidden")
                         .HasColumnType("boolean");
@@ -440,7 +451,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
@@ -480,7 +491,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -506,6 +517,22 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("SavedPlaces");
+                });
+
+            modelBuilder.Entity("Nereye.Domain.Entities.UserBlock", b =>
+                {
+                    b.Property<Guid>("BlockerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BlockedUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("BlockerUserId", "BlockedUserId");
+
+                    b.ToTable("UserBlocks");
                 });
 
             modelBuilder.Entity("Nereye.Domain.Entities.UserPreference", b =>
@@ -558,7 +585,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Geohash")
                         .HasMaxLength(16)
@@ -602,7 +629,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Message")
                         .IsRequired()
@@ -629,7 +656,7 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UploadedByUserId")
                         .HasColumnType("uuid");
@@ -678,10 +705,10 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp without time zone");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()

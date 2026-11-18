@@ -1,3 +1,4 @@
+import { File, Paths } from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -61,4 +62,40 @@ export async function getJson<T>(key: string): Promise<T | null> {
 
 export function setJson(key: string, value: unknown) {
   return setItem(key, JSON.stringify(value));
+}
+
+/**
+ * Büyük ve gizli olmayan veri (ör. son öneri listesi). SecureStore değer başına ~2 KB ile sınırlıdır;
+ * bu yüzden native'de uygulamanın belge klasöründe dosya, web'de localStorage kullanılır. Hiç fırlatmaz.
+ * Oturum token'ı gibi sırlar buraya yazılmaz.
+ */
+export async function getLargeJson<T>(name: string): Promise<T | null> {
+  try {
+    const raw = web ? (local()?.getItem(`large:${name}`) ?? null) : await readFile(name);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setLargeJson(name: string, value: unknown): Promise<void> {
+  try {
+    const raw = JSON.stringify(value);
+    if (web) {
+      local()?.setItem(`large:${name}`, raw);
+      return;
+    }
+    const file = new File(Paths.document, `${name}.json`);
+    if (!file.exists) {
+      file.create();
+    }
+    await file.write(raw);
+  } catch {
+    /* disk dolu ya da kapalı: yalnızca önbellek, yok say */
+  }
+}
+
+async function readFile(name: string): Promise<string | null> {
+  const file = new File(Paths.document, `${name}.json`);
+  return file.exists ? await file.text() : null;
 }

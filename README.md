@@ -23,11 +23,15 @@ Android emülatör: `EXPO_PUBLIC_API_URL=http://10.0.2.2:5079`
 ## Test
 
 ```powershell
-dotnet test Nereye.slnx
+dotnet test tests/Nereye.Domain.Tests
+dotnet test tests/Nereye.Api.Tests
 cd apps/nereye-go
+npm ci
 npm test
 npm run typecheck
 ```
+
+`PostgresMigrationTests` gerçek Postgres ister: `NEREYE_TEST_PG="Host=localhost;Port=5432;Username=postgres;Password=postgres"` verilmezse "atlandı" görünür. CI bu değişkeni bir Postgres servisiyle verir (`.github/workflows/ci.yml`).
 
 ## Claude Code
 
@@ -61,20 +65,34 @@ Google Cloud Console'da:
 - **Places API (New)** etkin olmalı; anahtarı yalnızca bu API'ye ve mümkünse sunucunun IP'sine kısıtla.
 - **Kotalar:** Nearby Search, Text Search, Place Details ve Place Photo için günlük sınırlar ayrı ayrıdır. Sınır doluysa o uç Pasifik gece yarısına kadar devre dışı kalır ve uygulama OSM ile devam eder (log: `Google Places 429 …`). Zengin içeriğin her mekanda görünmesi için bu sınırları kullanımına göre yükselt.
 
+## Veritabanı şeması
+
+Açılışta migration yalnızca geliştirmede çalışır. Yayında şema ayrı, tek seferlik bir adımla güncellenir; ayrıntı `docs/veritabani-guncelleme.md`.
+
+```bash
+dotnet ef database update --project src/Nereye.Infrastructure --startup-project src/Nereye.Api
+# ya da yayımlanmış imajda:
+dotnet Nereye.Api.dll migrate
+```
+
+Bekleyen migration varken API ve yönetim paneli açılmaz (hata mesajı hangi migration'ın beklediğini yazar).
+
 ## Prod notları
 
 - `JWT_SIGNING_KEY` (en az 32 karakter) zorunlu; varsayılan anahtarla Production açılmaz
 - `ADMIN_PASSWORD` verilmezse Production'da admin hesabı oluşturulmaz
+- **Yönetim paneli (`src/Nereye.Admin`) herkese açık internete konmaz.** Ayrı bir host, VPN ya da IP kısıtı (ters vekil/güvenlik duvarı) insan tarafından kurulur; kod bunu yapmaz. Panelde 5 hatalı girişte hesap kilitlenir.
 - Ters vekil arkasındaysa `Proxy__TrustForwardedHeaders=true` (hız sınırı gerçek IP'yi görsün)
 - Hız sınırı istemci başına: arama/öneri 90/dk, giriş uçları 12/dk, yazma 30/dk; 5 hatalı girişte hesap 5 dk kilitlenir
-- `apps/nereye-go/app/legal.tsx` içindeki KVKK metni ve iletişim adresi yayın öncesi hukukçuya gösterilmeli
+- Gizlilik ve koşullar metni `src/Nereye.Api/LegalTexts.cs` içindedir (uygulama `/api/legal`'dan okur, web'de `/gizlilik`, `/kosullar`). Taslaktır; yayın öncesi hukukçu onayı gerekir. İletişim adresi `Legal:Contact` ayarı insan tarafından verilmezse "İletişim adresi tanımlanmadı" yazar.
+- E-posta (doğrulama, şifre sıfırlama, hesap silme): `Email__Provider` (resend|postmark), `Email__ApiKey`, `Email__From` ortam değişkenleri ve `Api__PublicBaseUrl` (https). Biri eksikse bu akışlar 503 ile kapalı kalır.
 
 - `Database:UseInMemory=false` + PostgreSQL
 - Redis
 - `Places:UseFake=false` (OSM/Nominatim; Google key yok)
 - JWT signing key env
 - OSM rate limit (`osm` policy)
-- `timestamp` kolonları Npgsql legacy switch ile duruyor; timestamptz ayrı migration
+- Zaman sütunları `timestamptz` (UTC); `TimestampTz` migration'ı eski değerleri UTC kabul ederek dönüştürür
 
 ## Docker (API + Admin)
 

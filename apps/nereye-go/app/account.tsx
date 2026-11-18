@@ -17,10 +17,13 @@ export default function Account() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
+  // null: henüz bilinmiyor (kart gösterilmez).
+  const [verified, setVerified] = useState<boolean | null>(null);
   const [name, setName] = useState(session?.displayName ?? '');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [marketing, setMarketing] = useState(false);
+  const [blocked, setBlocked] = useState<{ userId: string; displayName: string }[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [passError, setPassError] = useState<string | null>(null);
 
@@ -33,9 +36,11 @@ export default function Account() {
       if (p) {
         setEmail(p.email);
         setName(p.displayName);
+        setVerified(p.emailVerified ?? false);
       }
     });
     void api.consents().then((c) => setMarketing(Boolean(c.marketing)));
+    void api.blocks().then(setBlocked);
     // Yalnızca ekran açılırken: oturum yenilenince kullanıcının yazdığını ezmeyelim.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -46,6 +51,19 @@ export default function Account() {
 
   const nameErr = nameProblem(name);
   const nameChanged = name.trim() !== session.displayName;
+
+  async function sendVerification() {
+    setBusy('verify');
+    try {
+      await api.resendVerification();
+      haptic.success();
+      toast.success('Doğrulama bağlantısı e-postana gönderildi.');
+    } catch (e) {
+      toast.error(friendlyError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function saveName() {
     setBusy('name');
@@ -133,6 +151,22 @@ export default function Account() {
           <Button label="Adı kaydet" compact disabled={!nameChanged || Boolean(nameErr)} loading={busy === 'name'} onPress={() => void saveName()} />
         </View>
 
+        {verified === false ? (
+          <View style={styles.card}>
+            <Text style={styles.h}>E-postanı doğrula</Text>
+            <Text style={styles.sub}>
+              Yorum yazmak ve fotoğraf yüklemek için e-posta adresini doğrulaman gerekiyor. Gelen bağlantıyı açman yeterli.
+            </Text>
+            <Button
+              label="Doğrulama bağlantısı gönder"
+              compact
+              icon="mail-unread-outline"
+              loading={busy === 'verify'}
+              onPress={() => void sendVerification()}
+            />
+          </View>
+        ) : null}
+
         <View style={styles.card}>
           <Text style={styles.h}>Şifre</Text>
           <TextField
@@ -157,6 +191,33 @@ export default function Account() {
           />
           <Button label="Şifreyi değiştir" compact variant="outline" loading={busy === 'pass'} onPress={() => void savePassword()} />
         </View>
+
+        {blocked.length ? (
+          <View style={styles.card}>
+            <Text style={styles.h}>Engellediğin kullanıcılar</Text>
+            <Text style={styles.sub}>Bu kişilerin yorumlarını görmüyorsun.</Text>
+            {blocked.map((b) => (
+              <View key={b.userId} style={styles.toggle}>
+                <Text style={[styles.toggleTitle, { flex: 1 }]} numberOfLines={1}>
+                  {b.displayName}
+                </Text>
+                <Button
+                  label="Engeli kaldır"
+                  variant="outline"
+                  compact
+                  onPress={() => {
+                    const before = blocked;
+                    setBlocked(blocked.filter((x) => x.userId !== b.userId));
+                    api.unblock(b.userId).catch((e) => {
+                      setBlocked(before);
+                      toast.error(friendlyError(e));
+                    });
+                  }}
+                />
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.card}>
           <Text style={styles.h}>Gizlilik</Text>

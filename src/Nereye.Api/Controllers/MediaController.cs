@@ -59,7 +59,8 @@ public sealed class MediaController : ControllerBase
             await _cache.SetAsync(key, PlacesCacheTtl.PhotoUri, uri, ct);
         }
 
-        Response.Headers.CacheControl = "public, max-age=43200";
+        // Yönlendirme, sunucudaki fotoğraf adresi önbelleğinden uzun yaşamasın.
+        Response.Headers.CacheControl = $"public, max-age={(int)PlacesCacheTtl.PhotoUri.TotalSeconds}";
         return Redirect(uri);
     }
 }

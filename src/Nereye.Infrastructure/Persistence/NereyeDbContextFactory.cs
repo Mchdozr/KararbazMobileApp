@@ -7,7 +7,6 @@ public sealed class NereyeDbContextFactory : IDesignTimeDbContextFactory<NereyeD
 {
     public NereyeDbContext CreateDbContext(string[] args)
     {
-        AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
         var options = new DbContextOptionsBuilder<NereyeDbContext>()
             .UseNpgsql("Host=localhost;Database=nereye;Username=postgres;Password=postgres")
             .Options;

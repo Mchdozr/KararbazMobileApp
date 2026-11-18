@@ -1,3 +1,5 @@
+import { resolveApiUrl } from '@/lib/release-config';
+
 export const ACCENT = '#064e3b';
 export const KADIKOY = { lat: 40.9885, lng: 29.025 };
 
@@ -58,7 +60,8 @@ export const RADIUS_OPTIONS = [
   { meters: 50000, label: '50 km', sub: 'Bölge' },
 ] as const;
 
-export const DEFAULT_API = process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.1.248:5079';
-
-/** Geliştirme sırasında denenecek diğer adresler (Android emülatörü, aynı makine). */
-export const FALLBACK_APIS = ['http://10.0.2.2:5079', 'http://localhost:5079'];
+/**
+ * API adresi. `process.env.EXPO_PUBLIC_API_URL` derlemede gömülür (Expo yalnızca bu yazımı tanır).
+ * Yayında yalnızca https kabul edilir; LAN adresi ve emülatör adresleri yalnızca __DEV__'de.
+ */
+export const DEFAULT_API = resolveApiUrl(__DEV__, process.env.EXPO_PUBLIC_API_URL);

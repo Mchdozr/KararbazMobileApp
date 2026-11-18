@@ -22,6 +22,11 @@ public sealed class PromotionsController : ControllerBase
     public async Task<ActionResult<PromotionDto>> Create(CreatePromotionRequest request, CancellationToken ct) =>
         Ok(await _promotions.CreateAsync(User.Id(), request, ct));
 
+    /// <summary>
+    /// Sandbox ödeme: v1'de uygulama içi tahsilat yok. Yayında (Production) bu rota yoktur;
+    /// kampanyalar admin panelden açılır.
+    /// </summary>
+    [DevelopmentOnly]
     [HttpPost("{id:guid}/checkout")]
     public async Task<ActionResult<PromotionDto>> Checkout(Guid id, CancellationToken ct) =>
         Ok(await _promotions.CheckoutAsync(User.Id(), id, ct));

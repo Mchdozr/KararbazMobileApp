@@ -17,7 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, UrlTile, type Region } from '@/components/Map';
+import MapView, { Marker, type MapRef, type Region } from '@/components/Map';
+import { MAP_ATTRIBUTION } from '@/lib/map-config';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function inRegion(card: VenueCard, region: Region) {
@@ -33,7 +34,7 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const filters = useFilters();
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapRef>(null);
   const [items, setItems] = useState<VenueCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -181,9 +182,11 @@ export default function MapScreen() {
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
+        // Üstteki düğmeler ve alttaki sayfa Google logosunu örtmesin; atıf alt sayfada yazılı.
+        mapPadding={{ top: insets.top + 64, right: 0, bottom: 340, left: 0 }}
+        showAttribution={false}
         onRegionChangeComplete={setRegion}
         onPress={() => setPicked(null)}>
-        <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
         <Marker coordinate={{ latitude: filters.lat, longitude: filters.lng }} title="Sen" pinColor={colors.coral} />
         {visible.map((card) => (
           <Marker
@@ -244,7 +247,7 @@ export default function MapScreen() {
             </View>
           ))}
         </ScrollView>
-        <Text style={styles.attr}>© OpenStreetMap</Text>
+        <Text style={styles.attr}>{MAP_ATTRIBUTION}</Text>
       </View>
       <FilterSheet visible={sheet} onClose={() => setSheet(false)} />
       <SearchingOverlay visible={loading} intent={filters.intent} />

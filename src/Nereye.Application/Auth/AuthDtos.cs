@@ -1,6 +1,8 @@
 namespace Nereye.Application.Auth;
 
-public sealed record RegisterRequest(string Email, string Password, string DisplayName, bool AcceptPrivacy = false);
+/// <param name="AcceptTerms">Kullanım koşullarının kabulü: kayıt için zorunlu (Play UGC politikası).</param>
+/// <param name="AcceptPrivacy">Eski istemcilerle uyum için; aydınlatma metni onay gerektirmez.</param>
+public sealed record RegisterRequest(string Email, string Password, string DisplayName, bool AcceptPrivacy = false, bool AcceptTerms = false);
 
 public sealed record LoginRequest(string Email, string Password);
 
@@ -25,4 +27,5 @@ public sealed record ProfileDto(
     DateTime CreatedAt,
     int ReviewCount,
     int FavoriteCount,
-    int SavedPlaceCount);
+    int SavedPlaceCount,
+    bool EmailVerified = false);

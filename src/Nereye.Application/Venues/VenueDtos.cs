@@ -25,7 +25,7 @@ public sealed record GoogleVenueBlock(
     IReadOnlyList<string>? Features = null);
 
 /// <summary>Dış kaynaktan (Google) gelen yorum; Nereye yorumlarından ayrı bir bölümde gösterilir.</summary>
-public sealed record ExternalReviewDto(string Author, int Rating, string? Text, string? When, string? AuthorPhotoUrl);
+public sealed record ExternalReviewDto(string Author, int Rating, string? Text, string? When, string? AuthorPhotoUrl, string? AuthorUri = null);
 
 public sealed record NereyeVenueBlock(
     Guid? VenueId,

@@ -53,11 +53,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     (async () => {
       try {
-        const savedBase = await getItem('apiBase');
+        // Kayıtlı (elle girilmiş) adres yalnızca geliştirmede okunur; yayında derlemedeki https adres esastır.
+        const savedBase = __DEV__ ? await getItem('apiBase') : null;
         const base = await pickReachableApiBase(savedBase);
         setApiBase(base);
         setApiBaseState(base);
-        await save('apiBase', base);
+        if (__DEV__) {
+          await save('apiBase', base);
+        }
         const raw = await getItem('session');
         if (raw) {
           const parsed = JSON.parse(raw) as Session;
@@ -91,6 +94,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       ready,
       apiBase,
       setBase: async (url: string) => {
+        if (!__DEV__) {
+          return;
+        }
         setApiBase(url);
         setApiBaseState(url);
         await save('apiBase', url);

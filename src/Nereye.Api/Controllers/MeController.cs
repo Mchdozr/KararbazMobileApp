@@ -63,6 +63,26 @@ public sealed class MeController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<MyReviewDto>>> Reviews(CancellationToken ct) =>
         Ok(await _reviews.ListMineAsync(User.Id(), ct));
 
+    /// <summary>Engellenen kullanıcılar: yorumları bu kullanıcıya gösterilmez.</summary>
+    [HttpGet("blocks")]
+    public async Task<ActionResult<IReadOnlyList<BlockedUserDto>>> Blocks(CancellationToken ct) =>
+        Ok(await _reviews.BlockedAsync(User.Id(), ct));
+
+    [HttpPost("blocks/{userId:guid}")]
+    [EnableRateLimiting("write")]
+    public async Task<IActionResult> Block(Guid userId, CancellationToken ct)
+    {
+        await _reviews.BlockAsync(User.Id(), userId, ct);
+        return NoContent();
+    }
+
+    [HttpDelete("blocks/{userId:guid}")]
+    public async Task<IActionResult> Unblock(Guid userId, CancellationToken ct)
+    {
+        await _reviews.UnblockAsync(User.Id(), userId, ct);
+        return NoContent();
+    }
+
     [HttpGet("preferences")]
     public async Task<ActionResult<PreferenceDto>> Get(CancellationToken ct) =>
         Ok(await _preferences.GetAsync(User.Id(), ct));
@@ -140,6 +160,7 @@ public sealed class MeController : ControllerBase
         return NoContent();
     }
 
+    [VerifiedEmail]
     [HttpPost("avatar")]
     [EnableRateLimiting("write")]
     [RequestSizeLimit(3_000_000)]
@@ -165,6 +186,7 @@ public sealed class MeController : ControllerBase
         }
     }
 
+    [VerifiedEmail]
     [HttpPost("photos")]
     [EnableRateLimiting("write")]
     [RequestSizeLimit(3_000_000)]

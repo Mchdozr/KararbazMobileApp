@@ -109,7 +109,7 @@ public sealed class VenueQueryService : IVenueQueryService
 
         var note = PlaceBlurb.Compose(place, 0, overlay?.Tags.Select(t => t.Tag).ToList());
         var external = place.Reviews?
-            .Select(r => new ExternalReviewDto(r.Author, r.Rating, r.Text, r.When, r.AuthorPhotoUrl))
+            .Select(r => new ExternalReviewDto(r.Author, r.Rating, r.Text, r.When, r.AuthorPhotoUrl, r.AuthorUri))
             .ToList();
         return new VenueDetailDto(placeId, google, nereye, events, note, PlaceAmenityChips.From(place), external);
     }
@@ -125,7 +125,8 @@ public sealed class VenueQueryService : IVenueQueryService
             var rich = await _cache.GetOrSetAsync(
                 PlacesCacheKey.Rich(placeId),
                 PlacesCacheTtl.Rich,
-                ct => _places.DetailsAsync(placeId, ct),
+                // Zengin (Atmosphere) alanlar yalnızca burada, tek mekan detayında istenir.
+                ct => _places is IRichPlaceDetails rich ? rich.RichDetailsAsync(placeId, ct) : _places.DetailsAsync(placeId, ct),
                 cancellationToken);
             if (rich is not null)
             {

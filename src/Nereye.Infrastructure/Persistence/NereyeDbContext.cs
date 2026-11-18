@@ -31,6 +31,17 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<ConsentLog> ConsentLogs => Set<ConsentLog>();
     public DbSet<SavedPlace> SavedPlaces => Set<SavedPlace>();
+    public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
+
+    /// <summary>
+    /// Her DateTime UTC'dir: yazarken türü belirsiz değer UTC sayılır, yerel saat UTC'ye çevrilir; okurken Kind=Utc.
+    /// Npgsql timestamptz sütununa yalnızca UTC kabul eder; bu dönüştürücü yanlış türdeki bir değerin yazmayı düşürmesini önler.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcDateTimeConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -69,6 +80,8 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
             .HasForeignKey(x => x.VenueId);
 
         builder.Entity<RefreshToken>().HasIndex(x => x.TokenHash);
+        // UPDATE ... WHERE "Revoked" = false: aynı token'la gelen iki yenilemeden yalnızca biri kazanır.
+        builder.Entity<RefreshToken>().Property(x => x.Revoked).IsConcurrencyToken();
         // Sık çalışan sorguların taradığı sütunlar: "yorumlarım", oturum temizliği, trend kayıtlar,
         // açık şikayet kontrolü ve etkin kampanya araması.
         builder.Entity<RefreshToken>().HasIndex(x => x.UserId);
@@ -77,6 +90,8 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
         builder.Entity<Report>().HasIndex(x => new { x.ReporterUserId, x.IsResolved });
         builder.Entity<PromotionCampaign>().HasIndex(x => new { x.Status, x.TargetIntent, x.EndAt });
         builder.Entity<ConsentLog>().HasIndex(x => x.UserId);
+        builder.Entity<UserBlock>().HasKey(x => new { x.BlockerUserId, x.BlockedUserId });
+        builder.Entity<Report>().Property(x => x.PhotoUrl).HasMaxLength(200);
         builder.Entity<SavedPlace>(e =>
         {
             e.HasIndex(x => x.UserId);

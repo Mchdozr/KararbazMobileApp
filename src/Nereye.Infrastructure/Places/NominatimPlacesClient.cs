@@ -8,16 +8,22 @@ namespace Nereye.Infrastructure.Places;
 
 public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
 {
+    private static readonly TimeSpan SuggestWait = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan SearchWait = TimeSpan.FromSeconds(10);
     private readonly HttpClient _http;
+    private readonly NominatimGate _gate;
+    private readonly IPlacesCache _cache;
 
-    public NominatimPlacesClient(HttpClient http)
+    public NominatimPlacesClient(HttpClient http, NominatimGate gate, IPlacesCache cache)
     {
         _http = http;
+        _gate = gate;
+        _cache = cache;
         _http.BaseAddress ??= new Uri("https://nominatim.openstreetmap.org/");
         _http.Timeout = TimeSpan.FromSeconds(12);
         if (!_http.DefaultRequestHeaders.UserAgent.Any())
         {
-            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", HttpIdentity.UserAgent);
         }
 
         if (!_http.DefaultRequestHeaders.AcceptLanguage.Any())
@@ -51,7 +57,7 @@ public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
             "relation" => "R",
             _ => "N"
         };
-        var json = await GetJsonAsync($"lookup?osm_ids={prefix}{id}&format=json&addressdetails=1&extratags=1", cancellationToken);
+        var json = await GetJsonAsync($"lookup?osm_ids={prefix}{id}&format=json&addressdetails=1&extratags=1", SearchWait, cancellationToken);
         return NominatimPlaceMapper.ParseArray(json, 0, 0, SearchRadius.MaxMeters).FirstOrDefault();
     }
 
@@ -78,10 +84,19 @@ public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
             return [];
         }
 
-        var path =
-            $"search?q={Uri.EscapeDataString(q)}&format=json&limit=20&addressdetails=1&dedupe=1&countrycodes=tr";
-        var json = await GetJsonAsync(path, cancellationToken);
-        return GeoSuggestMapper.Parse(json);
+        // Nominatim politikası sonuçların önbelleğe alınmasını ister: aynı yazım ikinci kez dışarı gitmez.
+        // Önbellekten dönen liste paylaşılır; değiştirilmez.
+        return await _cache.GetOrSetAsync<IReadOnlyList<GeoHit>>(
+            PlacesCacheKey.Suggest(q),
+            PlacesCacheTtl.Suggest,
+            async ct =>
+            {
+                var path =
+                    $"search?q={Uri.EscapeDataString(q)}&format=json&limit=20&addressdetails=1&dedupe=1&countrycodes=tr";
+                var json = await GetJsonAsync(path, SuggestWait, ct);
+                return GeoSuggestMapper.Parse(json).ToList();
+            },
+            cancellationToken);
     }
 
     private async Task<IReadOnlyList<PlaceSnapshot>> SearchAsync(
@@ -94,16 +109,21 @@ public sealed class NominatimPlacesClient : IPlacesClient, IGeoSuggest
         var viewbox = NominatimViewBox.Format(latitude, longitude, radiusMeters);
         var path =
             $"search?q={Uri.EscapeDataString(query)}&format=json&limit=50&bounded=1&addressdetails=1&extratags=1&viewbox={viewbox}";
-        var json = await GetJsonAsync(path, cancellationToken);
+        var json = await GetJsonAsync(path, SearchWait, cancellationToken);
         return NominatimPlaceMapper.ParseArray(json, latitude, longitude, radiusMeters);
     }
 
-    private async Task<JsonElement> GetJsonAsync(string path, CancellationToken cancellationToken)
-    {
-        using var response = await _http.GetAsync(path, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
-    }
+    /// <summary>Her Nominatim isteği aynı süreç kapısından geçer (saniyede en fazla bir).</summary>
+    private Task<JsonElement> GetJsonAsync(string path, TimeSpan maxWait, CancellationToken cancellationToken) =>
+        _gate.RunAsync(
+            async ct =>
+            {
+                using var response = await _http.GetAsync(path, ct);
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+            },
+            maxWait,
+            cancellationToken);
 
     private static bool TryParseOsmId(string placeId, out string type, out string id)
     {

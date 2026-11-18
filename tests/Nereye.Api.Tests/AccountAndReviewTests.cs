@@ -12,14 +12,19 @@ public sealed class AccountAndReviewTests
 
     public AccountAndReviewTests(NereyeApiFactory factory) => _factory = factory;
 
-    private async Task<(HttpClient Client, JsonElement Auth, string Email)> Signup(string name = "Deneme", string password = "kahve1234")
+    private async Task<(HttpClient Client, JsonElement Auth, string Email)> Signup(string name = "Deneme", string password = "kahve1234", bool verified = true)
     {
         var client = _factory.CreateClient();
         var email = $"t{Guid.NewGuid():N}@nereye.test";
-        var res = await client.PostAsJsonAsync("/api/auth/register", new { email, password, displayName = name });
+        var res = await client.PostAsJsonAsync("/api/auth/register", new { acceptTerms = true, email, password, displayName = name });
         var raw = await res.Content.ReadAsStringAsync();
         Assert.True(res.IsSuccessStatusCode, raw);
         var auth = JsonDocument.Parse(raw).RootElement;
+        if (verified)
+        {
+            await _factory.VerifyEmailAsync(email);
+        }
+
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", auth.GetProperty("accessToken").GetString());
         return (client, auth, email);
@@ -41,16 +46,16 @@ public sealed class AccountAndReviewTests
     {
         using var client = _factory.CreateClient();
         var email = $"w{Guid.NewGuid():N}@nereye.test";
-        var weak = await client.PostAsJsonAsync("/api/auth/register", new { email, password = "kisa", displayName = "A" });
+        var weak = await client.PostAsJsonAsync("/api/auth/register", new { acceptTerms = true, email, password = "kisa", displayName = "A" });
         Assert.Equal(HttpStatusCode.BadRequest, weak.StatusCode);
         Assert.Contains("8 karakter", await Error(weak));
 
-        var bad = await client.PostAsJsonAsync("/api/auth/register", new { email = "eposta-degil", password = "kahve1234", displayName = "A" });
+        var bad = await client.PostAsJsonAsync("/api/auth/register", new { acceptTerms = true, email = "eposta-degil", password = "kahve1234", displayName = "A" });
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
         Assert.Contains("e-posta", await Error(bad));
 
-        (await client.PostAsJsonAsync("/api/auth/register", new { email, password = "kahve1234", displayName = "A" })).EnsureSuccessStatusCode();
-        var dup = await client.PostAsJsonAsync("/api/auth/register", new { email = email.ToUpperInvariant(), password = "kahve1234", displayName = "A" });
+        (await client.PostAsJsonAsync("/api/auth/register", new { acceptTerms = true, email, password = "kahve1234", displayName = "A" })).EnsureSuccessStatusCode();
+        var dup = await client.PostAsJsonAsync("/api/auth/register", new { acceptTerms = true, email = email.ToUpperInvariant(), password = "kahve1234", displayName = "A" });
         Assert.Equal(HttpStatusCode.BadRequest, dup.StatusCode);
         Assert.Contains("zaten kayıtlı", await Error(dup));
     }

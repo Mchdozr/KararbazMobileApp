@@ -1,11 +1,13 @@
 import { ApiError, serverMessage } from '@/lib/api-error';
 import { isFresh, shareVenueRequest } from '@/lib/venue-cache';
 import { venuePhotoUrls } from '@/lib/venue-photos';
-import { DEFAULT_API, FALLBACK_APIS } from '@/lib/constants';
+import { DEFAULT_API } from '@/lib/constants';
+import { apiCandidates } from '@/lib/release-config';
 import { photoBatchIds } from '@/lib/photo-batch';
 import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
+  Legal,
   MyReview,
   Preferences,
   Profile,
@@ -68,6 +70,10 @@ async function flushPlacePhotos() {
 }
 
 export function setApiBase(url: string) {
+  // Yayında adres değiştirilemez: derlemeye verilen https adres sabittir.
+  if (!__DEV__) {
+    return;
+  }
   apiBase = url.replace(/\/$/, '');
 }
 
@@ -90,10 +96,8 @@ async function probe(base: string): Promise<string> {
  * açılış ekranı adayların toplam zaman aşımı kadar değil, en fazla tek bir zaman aşımı kadar bekler.
  */
 export async function pickReachableApiBase(saved?: string | null) {
-  const pool = __DEV__ ? [saved, DEFAULT_API, ...FALLBACK_APIS] : [DEFAULT_API];
-  const candidates = pool
-    .map((u) => u?.replace(/\/$/, '') ?? '')
-    .filter((u, i, all) => u.startsWith('http') && all.indexOf(u) === i);
+  // Yayında yalnızca derlemeye verilen https adres; kayıtlı adres ve LAN yalnızca __DEV__.
+  const candidates = apiCandidates(__DEV__, DEFAULT_API, saved);
   try {
     apiBase = await Promise.any(candidates.map(probe));
   } catch {
@@ -249,14 +253,26 @@ async function request<T>(
     }
     throw new ApiError(result.status, serverMessage(result.text));
   }
-  return result.text ? (JSON.parse(result.text) as T) : (undefined as T);
+  if (!result.text) {
+    return undefined as T;
+  }
+  try {
+    return JSON.parse(result.text) as T;
+  } catch {
+    // JSON yerine HTML geldi (yanlış adres, vekil hata sayfası): ham ayrıştırma hatası kullanıcıya gitmesin.
+    if (opts.optional) {
+      return undefined as T;
+    }
+    throw new ApiError(502, '');
+  }
 }
 
 export const api = {
-  register: (email: string, password: string, displayName: string, acceptPrivacy = false) =>
+  /** acceptTerms: kullanım koşulları kabulü, kayıt için zorunlu. Aydınlatma metni onay gerektirmez. */
+  register: (email: string, password: string, displayName: string, acceptTerms: boolean) =>
     request<Session>(
       '/api/auth/register',
-      { method: 'POST', body: JSON.stringify({ email, password, displayName, acceptPrivacy }) },
+      { method: 'POST', body: JSON.stringify({ email, password, displayName, acceptTerms }) },
       { skipAuth: true },
     ),
   login: (email: string, password: string) =>
@@ -265,6 +281,16 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ email, password }) },
       { skipAuth: true },
     ),
+  /** Kayıtlı olsun olmasın aynı yanıt; sağlayıcı yoksa 503 "Şifre sıfırlama şu an kapalı." */
+  forgotPassword: (email: string) =>
+    request<{ message?: string }>(
+      '/api/auth/forgot',
+      { method: 'POST', body: JSON.stringify({ email }) },
+      { skipAuth: true },
+    ),
+  resendVerification: () => request('/api/auth/verify-email', { method: 'POST' }),
+  /** Gizlilik ve koşullar metni sunucudan gelir (tek kaynak: /gizlilik ve /kosullar sayfalarıyla aynı). */
+  legal: () => request<Legal>('/api/legal', {}, { skipAuth: true }),
   logout: (token: string) =>
     request('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: token }) }, { optional: true }),
   recommend: async (
@@ -366,11 +392,17 @@ export const api = {
     );
     return Boolean(data?.saved);
   },
-  report: (placeId: string, reason: string, reviewId?: string) =>
+  report: (placeId: string, reason: string, reviewId?: string, photoUrl?: string) =>
     request(`/api/venues/${encodeURIComponent(placeId)}/reports`, {
       method: 'POST',
-      body: JSON.stringify({ reason, reviewId: reviewId ?? null }),
+      body: JSON.stringify({ reason, reviewId: reviewId ?? null, photoUrl: photoUrl ?? null }),
     }),
+  blocks: async () => {
+    const data = await request<{ userId: string; displayName: string }[] | undefined>('/api/me/blocks', {}, { optional: true });
+    return data ?? [];
+  },
+  block: (userId: string) => request(`/api/me/blocks/${userId}`, { method: 'POST' }),
+  unblock: (userId: string) => request(`/api/me/blocks/${userId}`, { method: 'DELETE' }),
   favorites: async () => {
     const data = await request<VenueCard[] | undefined>('/api/me/favorites', {}, { optional: true });
     return data ?? [];
@@ -412,8 +444,6 @@ export const api = {
     }),
   replyReview: (reviewId: string, text: string) =>
     request(`/api/venues/reviews/${reviewId}/reply`, { method: 'POST', body: JSON.stringify({ text }) }),
-  createPromotion: (body: object) => request<{ id: string; status: string }>('/api/promotions', { method: 'POST', body: JSON.stringify(body) }),
-  checkout: (id: string) => request<{ status: string }>(`/api/promotions/${id}/checkout`, { method: 'POST' }),
   myPromotions: async () => {
     const data = await request<PromotionItem[] | undefined>('/api/promotions/mine', {}, { optional: true });
     return data ?? [];

@@ -8,6 +8,9 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "preview"
       }
     },
     "production": {
@@ -16,7 +19,7 @@
       },
       "autoIncrement": false,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://doctrine-basis-mrs-caribbean.trycloudflare.com"
+        "APP_VARIANT": "production"
       }
     }
   },

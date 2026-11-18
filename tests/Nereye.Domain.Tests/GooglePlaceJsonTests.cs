@@ -35,7 +35,7 @@ public sealed class GooglePlaceJsonTests
       "parkingOptions": { "freeStreetParking": true, "paidParkingLot": false },
       "reviews": [
         { "rating": 5, "text": { "text": "  Harika kahvaltı.  " }, "relativePublishTimeDescription": "2 hafta önce",
-          "authorAttribution": { "displayName": "Elif", "photoUri": "https://lh3.googleusercontent.com/a/x" } },
+          "authorAttribution": { "displayName": "Elif", "photoUri": "https://lh3.googleusercontent.com/a/x", "uri": "https://www.google.com/maps/contrib/1" } },
         { "rating": 4, "authorAttribution": { "displayName": "Yorumsuz" } },
         { "rating": 3.6, "text": { "text": "İdare eder." }, "authorAttribution": { "photoUri": "javascript:alert(1)" } }
       ]
@@ -96,7 +96,8 @@ public sealed class GooglePlaceJsonTests
     {
         var r = Parsed().Reviews!;
         Assert.Equal(2, r.Count);
-        Assert.Equal(new PlaceReview("Elif", 5, "Harika kahvaltı.", "2 hafta önce", "https://lh3.googleusercontent.com/a/x"), r[0]);
+        Assert.Equal(new PlaceReview("Elif", 5, "Harika kahvaltı.", "2 hafta önce", "https://lh3.googleusercontent.com/a/x", "https://www.google.com/maps/contrib/1"), r[0]);
+        Assert.Null(r[1].AuthorUri);
         Assert.Equal("Google kullanıcısı", r[1].Author);
         Assert.Equal(4, r[1].Rating);
         Assert.Null(r[1].AuthorPhotoUrl);

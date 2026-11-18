@@ -2,12 +2,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nereye.Application.Admin;
 using Nereye.Application.Auth;
 using Nereye.Application.Claims;
 using Nereye.Application.Common;
+using Nereye.Application.Email;
 using Nereye.Application.Payments;
 using Nereye.Application.Places;
 using Nereye.Application.Preferences;
@@ -19,6 +21,7 @@ using Nereye.Application.Venues;
 using Nereye.Infrastructure.Admin;
 using Nereye.Infrastructure.Auth;
 using Nereye.Infrastructure.Claims;
+using Nereye.Infrastructure.Email;
 using Nereye.Infrastructure.Identity;
 using Nereye.Infrastructure.Payments;
 using Nereye.Infrastructure.Persistence;
@@ -35,6 +38,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddNereyeInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // Dış servislere giden User-Agent'taki iletişim bilgisi: insan `Places:Contact` olarak verir.
+        HttpIdentity.Configure(configuration["Places:Contact"] ?? Environment.GetEnvironmentVariable("NEREYE_CONTACT"));
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.Section));
         services.Configure<GooglePlacesOptions>(configuration.GetSection(GooglePlacesOptions.Section));
         services.PostConfigure<GooglePlacesOptions>(o =>
@@ -61,7 +66,7 @@ public static class DependencyInjection
         }
         else
         {
-            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+            // Zamanlar timestamptz (UTC) olarak tutulur; eski "legacy timestamp" anahtarı TimestampTz migration'ıyla kalktı.
             services.AddDbContext<NereyeDbContext>(o => o.UseNpgsql(cs));
         }
 
@@ -97,7 +102,23 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddMemoryCache();
         services.AddSingleton<IPlacesCache, DistributedPlacesCache>();
-        services.AddScoped<IPaymentGateway, SandboxPaymentGateway>();
+        // Sandbox ödeme yalnızca geliştirme ve testte. Başka ortamda tahsilat denemesi açıkça başarısız olur.
+        services.AddScoped<IPaymentGateway>(sp =>
+        {
+            var env = sp.GetRequiredService<IHostEnvironment>();
+            return env.IsDevelopment() || env.IsEnvironment("Testing")
+                ? new SandboxPaymentGateway()
+                : new UnavailablePaymentGateway();
+        });
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.Section));
+        services.AddHttpClient<HttpEmailSender>();
+        services.AddScoped<IEmailSender>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<EmailOptions>>().Value;
+            return options.Complete ? sp.GetRequiredService<HttpEmailSender>() : new DisabledEmailSender();
+        });
+        // Hesap silme, şifre sıfırlama ve e-posta doğrulama bağlantıları kısa ömürlü.
+        services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(2));
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
         services.AddScoped<IVenueQueryService, VenueQueryService>();
@@ -113,6 +134,8 @@ public static class DependencyInjection
         services.AddSingleton<FakePlacesClient>();
         services.AddHttpClient<GooglePlacesClient>();
         services.AddHttpClient<OverpassPlacesClient>();
+        // Public Nominatim: süreç genelinde saniyede en fazla bir istek (kullanım politikası).
+        services.AddSingleton<NominatimGate>();
         services.AddHttpClient<NominatimPlacesClient>();
         services.AddHttpClient<WikimediaPhotoClient>();
         services.AddHttpClient<WebsitePhotoClient>();
@@ -133,7 +156,8 @@ public static class DependencyInjection
             var overpass = sp.GetRequiredService<OverpassPlacesClient>();
             var nominatim = sp.GetRequiredService<NominatimPlacesClient>();
             var google = sp.GetRequiredService<GooglePlacesClient>();
-            var osm = new FallbackPlacesClient(overpass, nominatim, fallbackOnEmpty: true, log);
+            var cache = sp.GetRequiredService<IPlacesCache>();
+            var osm = new FallbackPlacesClient(new CachedOsmPlacesClient(overpass, cache), nominatim, fallbackOnEmpty: true, log);
             var nearby = new GoogleAugmentedPlacesClient(
                 osm,
                 google,

@@ -14,13 +14,17 @@ import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
 import { recentAsCard, useRecentVenues } from '@/lib/recent-venues';
 import { api } from '@/lib/api';
+import { isOffline, offlineBanner, savedListName, toSaved, usableSaved, type SavedList } from '@/lib/offline';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
+import { getLargeJson, setLargeJson } from '@/lib/storage';
 import { colors, fonts } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+
+const NO_CARDS: VenueCard[] = [];
 
 export default function Home() {
   const filters = useFilters();
@@ -31,6 +35,8 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  // Ağ yokken son başarılı liste gösteriliyorsa bandın metni.
+  const [offline, setOffline] = useState<string | null>(null);
   const recents = useRecentVenues();
   // Niyet ya da konum değişince önceki isteğin geç gelen cevabı yeni listeyi ezmesin
   // (ör. Yemek cevabı, Kültür seçildikten sonra gelip Kültür başlığı altına yemek mekanı koymasın).
@@ -40,6 +46,7 @@ export default function Home() {
   const load = useCallback(async () => {
     const n = ++seq.current;
     setError(null);
+    setOffline(null);
     setShowAll(false);
     const cached = peekRecommend(
       recommendCacheKey({
@@ -78,9 +85,30 @@ export default function Home() {
       const next = res.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating);
       setItems(next);
       setHasMore(res.hasMore);
+      if (res.items.length > 0) {
+        void setLargeJson(savedListName(filters.intent), toSaved(filters.intent, filters.label, res.items));
+      }
     } catch (e) {
       if (n !== seq.current) {
         return;
+      }
+      if (isOffline(e)) {
+        // Ağ yok: bu niyetin son başarılı listesi varsa onu bantla göster. Yoksa hata; veri uydurulmaz.
+        const saved = cached ? null : usableSaved(await getLargeJson<SavedList>(savedListName(filters.intent)), filters.intent);
+        if (n !== seq.current) {
+          return;
+        }
+        if (saved) {
+          setItems(saved.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating));
+          setHasMore(false);
+          setOffline(offlineBanner(saved));
+          return;
+        }
+        if (cached) {
+          setOffline('Çevrimdışısın. Son yüklenen liste gösteriliyor; bilgiler güncel olmayabilir.');
+          setHasMore(false);
+          return;
+        }
       }
       if (!cached) {
         setError(friendlyError(e));
@@ -92,7 +120,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [filters.lat, filters.lng, filters.intent, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
+  }, [filters.lat, filters.lng, filters.intent, filters.label, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
 
   useEffect(() => {
     void load();
@@ -148,110 +176,132 @@ export default function Home() {
   return (
     <View style={styles.bg}>
       <HomeHeader />
-      <ScrollView
+      <FlatList
+        data={showAll ? organic : NO_CARDS}
+        keyExtractor={(card) => `feed-${card.placeId}`}
+        renderItem={({ item }) => (
+          <View style={styles.listItem}>
+            <VenueProductCard card={item} intent={filters.intent} loadPhoto />
+          </View>
+        )}
+        // Uzun "Daha fazla" listesi pencerelenir: ekranda olmayan kartlar çizilmez, ana sayfa donmaz.
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={7}
+        removeClippedSubviews
+        onEndReachedThreshold={0.6}
+        onEndReached={() => {
+          if (showAll && hasMore && !loadingMore && !offline) {
+            void expand();
+          }
+        }}
         contentContainerStyle={styles.wrap}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={loading && !first} onRefresh={() => void load()} tintColor={colors.coral} colors={[colors.coral]} />
-        }>
-        {isEvening() ? (
-          <Pressable
-            style={styles.eve}
-            onPress={() => {
-              filters.setOpenNow(true);
-              goDiscover(filters.intent);
-            }}
-            accessibilityRole="button">
-            <Ionicons name="moon" size={16} color={colors.gold} />
-            <Text style={styles.eveText}>Akşam oldu — şu an açık yerlere bak</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.white} />
-          </Pressable>
-        ) : null}
-        <CategoryGrid selected={filters.intent} onSelect={goDiscover} />
-        {sponsored.length > 0 ? (
-          <PromoBanner
-            onOpenNow={() => {
-              filters.setOpenNow(true);
-              goDiscover(filters.intent);
-            }}
-          />
-        ) : null}
-        {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
-        {first ? (
-          <View accessibilityLabel="Öneriler yükleniyor">
-            <View style={styles.feat}>
-              <Text style={styles.gridTitle}>Sana özel</Text>
-              <VenueCardSkeleton photoHeight={210} />
-            </View>
-            <View style={styles.skelRow}>
-              <VenueRowSkeleton />
-            </View>
-          </View>
-        ) : null}
-        {featured ? (
-          <View style={styles.feat}>
-            <Text style={styles.gridTitle}>Sana özel</Text>
-            <VenueProductCard card={featured} featured intent={filters.intent} loadPhoto />
-          </View>
-        ) : null}
-        <HorizontalVenueRow
-          title={`${intentLabel(filters.intent)} · ${filters.label}`}
-          subtitle="Kısa liste"
-          items={special.slice(featured ? 1 : 0)}
-          onSeeAll={() => void expand()}
-          intent={filters.intent}
-        />
-        <HorizontalVenueRow
-          title="Şu an açık"
-          subtitle="Kapıya git, otur"
-          items={open}
-          onSeeAll={() => {
-            filters.setOpenNow(true);
-            goDiscover(filters.intent);
-          }}
-          intent={filters.intent}
-        />
-        {!loading && organic.length === 0 && !error ? (
-          <EmptyState
-            icon="map-outline"
-            title={emptyNearby(filters.intent, filters.label)}
-            action="Yarıçapı büyüt"
-            onAction={() => {
-              filters.setRadius(filters.radiusMeters * 2);
-            }}
-            secondary="Konumu değiştir"
-            onSecondary={() => router.push('/places')}
-          />
-        ) : null}
-        <HorizontalVenueRow
-          title="Kaydettiklerin"
-          items={favorites.cards}
-          onSeeAll={() => router.push('/favorites')}
-          compact
-        />
-        <HorizontalVenueRow title="Son baktıkların" items={recentCards} compact />
-        {showAll ? (
-          <View style={styles.list}>
-            <Text style={styles.gridTitle}>Yakındakiler</Text>
-            {organic.map((card) => (
-              <View key={`feed-${card.placeId}`} style={styles.listItem}>
-                <VenueProductCard card={card} intent={filters.intent} loadPhoto />
+        }
+        ListHeaderComponent={
+          <>
+            {offline ? (
+              <View style={styles.offline} accessibilityRole="alert">
+                <Ionicons name="cloud-offline-outline" size={18} color={colors.ink} />
+                <Text style={styles.offlineText}>{offline}</Text>
               </View>
-            ))}
-          </View>
-        ) : null}
-        {organic.length > 0 && (!showAll || hasMore) ? (
-          <Pressable
-            style={styles.more}
-            onPress={() => void expand()}
-            disabled={loadingMore}
-            accessibilityRole="button">
-            <Text style={styles.moreText}>
-              {loadingMore ? 'Yükleniyor…' : `Daha fazla ${intentLabel(filters.intent).toLowerCase()}`}
-            </Text>
-          </Pressable>
-        ) : null}
-      </ScrollView>
+            ) : null}
+            {isEvening() ? (
+              <Pressable
+                style={styles.eve}
+                onPress={() => {
+                  filters.setOpenNow(true);
+                  goDiscover(filters.intent);
+                }}
+                accessibilityRole="button">
+                <Ionicons name="moon" size={16} color={colors.gold} />
+                <Text style={styles.eveText}>Akşam oldu — şu an açık yerlere bak</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.white} />
+              </Pressable>
+            ) : null}
+            <CategoryGrid selected={filters.intent} onSelect={goDiscover} />
+            {sponsored.length > 0 ? (
+              <PromoBanner
+                onOpenNow={() => {
+                  filters.setOpenNow(true);
+                  goDiscover(filters.intent);
+                }}
+              />
+            ) : null}
+            {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
+            {first ? (
+              <View accessibilityLabel="Öneriler yükleniyor">
+                <View style={styles.feat}>
+                  <Text style={styles.gridTitle}>Sana özel</Text>
+                  <VenueCardSkeleton photoHeight={210} />
+                </View>
+                <View style={styles.skelRow}>
+                  <VenueRowSkeleton />
+                </View>
+              </View>
+            ) : null}
+            {featured ? (
+              <View style={styles.feat}>
+                <Text style={styles.gridTitle}>Sana özel</Text>
+                <VenueProductCard card={featured} featured intent={filters.intent} loadPhoto />
+              </View>
+            ) : null}
+            <HorizontalVenueRow
+              title={`${intentLabel(filters.intent)} · ${filters.label}`}
+              subtitle="Kısa liste"
+              items={special.slice(featured ? 1 : 0)}
+              onSeeAll={() => void expand()}
+              intent={filters.intent}
+            />
+            <HorizontalVenueRow
+              title="Şu an açık"
+              subtitle="Kapıya git, otur"
+              items={open}
+              onSeeAll={() => {
+                filters.setOpenNow(true);
+                goDiscover(filters.intent);
+              }}
+              intent={filters.intent}
+            />
+            {!loading && organic.length === 0 && !error ? (
+              <EmptyState
+                icon="map-outline"
+                title={emptyNearby(filters.intent, filters.label)}
+                action="Yarıçapı büyüt"
+                onAction={() => {
+                  filters.setRadius(filters.radiusMeters * 2);
+                }}
+                secondary="Konumu değiştir"
+                onSecondary={() => router.push('/places')}
+              />
+            ) : null}
+            <HorizontalVenueRow
+              title="Kaydettiklerin"
+              items={favorites.cards}
+              onSeeAll={() => router.push('/favorites')}
+              compact
+            />
+            <HorizontalVenueRow title="Son baktıkların" items={recentCards} compact />
+            {showAll && organic.length > 0 ? <Text style={[styles.gridTitle, styles.listTitle]}>Yakındakiler</Text> : null}
+          </>
+        }
+        ListFooterComponent={
+          organic.length > 0 && (!showAll || hasMore) && !offline ? (
+            <Pressable
+              style={styles.more}
+              onPress={() => void expand()}
+              disabled={loadingMore}
+              accessibilityRole="button"
+              accessibilityLabel={`Daha fazla ${intentLabel(filters.intent).toLowerCase()} göster`}>
+              <Text style={styles.moreText}>
+                {loadingMore ? 'Yükleniyor…' : `Daha fazla ${intentLabel(filters.intent).toLowerCase()}`}
+              </Text>
+            </Pressable>
+          ) : undefined
+        }
+      />
       <SearchingOverlay visible={loading && !first} intent={filters.intent} />
     </View>
   );
@@ -283,6 +333,20 @@ const styles = StyleSheet.create({
   },
   more: { marginHorizontal: 20, marginTop: 20, alignItems: 'center', padding: 14, minHeight: 44 },
   moreText: { color: colors.coral, fontFamily: fonts.sansBold, fontSize: 15 },
-  list: { paddingHorizontal: 20, marginTop: 20 },
-  listItem: { marginBottom: 16 },
+  listTitle: { paddingHorizontal: 20, marginTop: 20 },
+  listItem: { paddingHorizontal: 20, marginBottom: 16 },
+  offline: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  offlineText: { flex: 1, color: colors.ink, fontFamily: fonts.sans, fontSize: 13, lineHeight: 18 },
 });

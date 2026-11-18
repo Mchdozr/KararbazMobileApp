@@ -8,7 +8,7 @@ namespace Nereye.Api.Controllers;
 
 [ApiController]
 [Route("api/geo")]
-[EnableRateLimiting("osm")]
+[EnableRateLimiting("geo")]
 public sealed class GeoController : ControllerBase{
     private readonly IGeoSuggest _geo;
 

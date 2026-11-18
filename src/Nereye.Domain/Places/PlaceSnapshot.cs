@@ -37,4 +37,5 @@ public sealed record PlaceReview(
     int Rating,
     string? Text,
     string? When,
-    string? AuthorPhotoUrl = null);
+    string? AuthorPhotoUrl = null,
+    string? AuthorUri = null);

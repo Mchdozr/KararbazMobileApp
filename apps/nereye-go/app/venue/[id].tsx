@@ -13,7 +13,7 @@ import { friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
 import { haptic } from '@/lib/haptics';
 import { parseOpeningHours } from '@/lib/hours';
-import { openDirections } from '@/lib/maps';
+import { openDirections, placeUrl } from '@/lib/maps';
 import { photoSource } from '@/lib/photos';
 import { rememberVenue } from '@/lib/recent-venues';
 import { relativeDate, summarizeRatings } from '@/lib/reviews';
@@ -42,10 +42,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import MapView, { Marker, Polyline, UrlTile } from '@/components/Map';
+import MapView, { Marker, Polyline } from '@/components/Map';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HERO = 320;
+
+/** Tam ekran görüntüleyici. Yorum fotoğrafıysa reviewId ve sunucu yolları (bildirim için) taşır. */
+type ViewerState = { uris: string[]; index: number; reviewId?: string; paths?: string[] };
 
 function Action({
   icon,
@@ -100,7 +103,7 @@ export default function Venue() {
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [photoIx, setPhotoIx] = useState(0);
-  const [viewer, setViewer] = useState<{ uris: string[]; index: number } | null>(null);
+  const [viewer, setViewer] = useState<ViewerState | null>(null);
   const [walk, setWalk] = useState<RouteResult | null>(null);
   const [drive, setDrive] = useState<RouteResult | null>(null);
   const [mode, setMode] = useState<RouteMode>('foot');
@@ -214,7 +217,7 @@ export default function Venue() {
     router.push({ pathname: '/review/[id]', params: { id: id! } });
   }
 
-  function report(reviewId?: string) {
+  function report(reviewId?: string, authorId?: string, authorName?: string) {
     if (!session) {
       toast.info('Bildirmek için giriş yap', { label: 'Giriş', onPress: () => router.push('/auth') });
       return;
@@ -225,12 +228,62 @@ export default function Venue() {
         .then(() => toast.success('Bildirimin alındı. Teşekkürler.'))
         .catch((e) => toast.error(friendlyError(e)));
     };
-    Alert.alert(reviewId ? 'Yorumu bildir' : 'Mekanı bildir', 'Neden bildiriyorsun?', [
+    const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
       { text: 'Vazgeç', style: 'cancel' },
       { text: 'Yanlış bilgi', onPress: () => send('yanlis-bilgi') },
       { text: 'Uygunsuz içerik', onPress: () => send('uygunsuz') },
+    ];
+    if (authorId && authorId !== userId) {
+      buttons.push({ text: 'Kullanıcıyı engelle', style: 'destructive', onPress: () => block(authorId, authorName) });
+    }
+    Alert.alert(reviewId ? 'Yorumu bildir' : 'Mekanı bildir', 'Neden bildiriyorsun?', buttons);
+  }
+
+  function block(authorId: string, authorName?: string) {
+    Alert.alert(
+      'Kullanıcıyı engelle',
+      `${authorName || 'Bu kullanıcı'} yazdıklarını artık görmeyeceksin. Engeli Hesap ve güvenlik ekranından kaldırabilirsin.`,
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Engelle',
+          style: 'destructive',
+          onPress: () => {
+            const before = reviews;
+            setReviews(reviews.filter((r) => r.userId !== authorId));
+            api
+              .block(authorId)
+              .then(() => toast.success('Kullanıcı engellendi'))
+              .catch((e) => {
+                setReviews(before);
+                toast.error(friendlyError(e));
+              });
+          },
+        },
+      ],
+    );
+  }
+
+  function reportPhoto(path: string) {
+    if (!session) {
+      toast.info('Bildirmek için giriş yap', { label: 'Giriş', onPress: () => router.push('/auth') });
+      return;
+    }
+    Alert.alert('Fotoğrafı bildir', 'Bu fotoğraf uygunsuz mu?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Bildir',
+        style: 'destructive',
+        onPress: () => {
+          api
+            .report(id!, 'uygunsuz-fotograf', viewer?.reviewId, path)
+            .then(() => toast.success('Bildirimin alındı. Teşekkürler.'))
+            .catch((e) => toast.error(friendlyError(e)));
+        },
+      },
     ]);
   }
+
 
   function removeMine() {
     if (!mine) {
@@ -294,7 +347,7 @@ export default function Venue() {
   const photoUris = photos.map((p) => p.uri);
   const week = parseOpeningHours(detail.openingHours);
   const today = week[(new Date().getDay() + 6) % 7];
-  const osm = `https://www.openstreetmap.org/?mlat=${detail.latitude}&mlon=${detail.longitude}#map=18/${detail.latitude}/${detail.longitude}`;
+  const mapLink = detail.mapsUri || placeUrl(detail.latitude, detail.longitude);
   const route = mode === 'foot' ? walk : drive;
   const slides: (string | null)[] = photos.length ? photos.map((p) => p.raw) : [null];
   // Bir kare listeden düşünce gösterge son karenin ötesinde kalmasın.
@@ -311,7 +364,7 @@ export default function Venue() {
             <View style={styles.headRight}>
               <Pressable
                 style={styles.glass}
-                onPress={() => void shareVenue(detail.name, detail.address, detail.latitude, detail.longitude)}
+                onPress={() => void shareVenue(detail.placeId, detail.name, detail.address)}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Paylaş">
@@ -431,11 +484,11 @@ export default function Venue() {
                 onPress={() => void open(/^https?:\/\//i.test(detail.website!) ? detail.website! : `https://${detail.website}`)}
               />
             ) : null}
-            <Action icon="map-outline" label="Harita" onPress={() => void open(detail.mapsUri || osm)} />
+            <Action icon="map-outline" label="Harita" onPress={() => void open(mapLink)} />
             <Action
               icon="share-social-outline"
               label="Paylaş"
-              onPress={() => void shareVenue(detail.name, detail.address, detail.latitude, detail.longitude)}
+              onPress={() => void shareVenue(detail.placeId, detail.name, detail.address)}
             />
           </View>
 
@@ -585,7 +638,6 @@ export default function Venue() {
                       latitudeDelta: Math.max(0.01, Math.abs(detail.latitude - lat) * 1.8),
                       longitudeDelta: Math.max(0.01, Math.abs(detail.longitude - lng) * 1.8),
                     }}>
-                    <UrlTile urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maximumZ={19} />
                     <Polyline coordinates={route.points} strokeColor={colors.coral} strokeWidth={4} />
                     <Marker coordinate={{ latitude: lat, longitude: lng }} pinColor={colors.sage} />
                     <Marker coordinate={{ latitude: detail.latitude, longitude: detail.longitude }} pinColor={colors.espresso} />
@@ -646,7 +698,12 @@ export default function Venue() {
                     <Text style={styles.when}>{relativeDate(r.createdAt)}</Text>
                   </View>
                 </View>
-                <Pressable onPress={() => report(r.id)} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Yorumu bildir">
+                <Pressable
+                  onPress={() => report(r.id, r.userId, r.authorName ?? undefined)}
+                  hitSlop={8}
+                  style={styles.iconBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Yorumu bildir ya da yazarı engelle">
                   <Ionicons name="flag-outline" size={17} color={colors.muted} />
                 </Pressable>
               </View>
@@ -702,22 +759,38 @@ export default function Venue() {
         <Button label={mine ? 'Düzenle' : 'Yorum yaz'} icon="create-outline" variant="outline" onPress={writeReview} />
       </View>
 
-      <PhotoViewer uris={viewer?.uris ?? []} index={viewer?.index ?? null} onClose={() => setViewer(null)} />
+      <PhotoViewer
+        uris={viewer?.uris ?? []}
+        index={viewer?.index ?? null}
+        onClose={() => setViewer(null)}
+        onReport={viewer?.paths && viewer.reviewId !== mine?.id ? (i) => reportPhoto(viewer.paths![i]) : undefined}
+      />
     </View>
   );
 }
 
 function ExternalReviewCard({ review }: { review: ExternalReview }) {
-  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const body = clip(review.text ?? '', 220);
   return (
     <View style={styles.review}>
       <View style={styles.reviewHead}>
         <Avatar name={review.author} url={review.authorPhotoUrl} size={36} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.author} numberOfLines={1}>
-            {review.author}
-          </Text>
+          {review.authorUri ? (
+            <Text
+              style={[styles.author, styles.authorLink]}
+              numberOfLines={1}
+              onPress={() => void open(review.authorUri!)}
+              accessibilityRole="link"
+              accessibilityHint="Yazarın Google profilini açar">
+              {review.author}
+            </Text>
+          ) : (
+            <Text style={styles.author} numberOfLines={1}>
+              {review.author}
+            </Text>
+          )}
           <View style={styles.reviewMeta}>
             <Stars value={review.rating} size={12} />
             {review.when ? <Text style={styles.when}>{review.when}</Text> : null}
@@ -726,12 +799,12 @@ function ExternalReviewCard({ review }: { review: ExternalReview }) {
       </View>
       {review.text ? (
         <Pressable
-          onPress={() => setOpen((v) => !v)}
+          onPress={() => setExpanded((v) => !v)}
           disabled={!body.clipped}
           accessibilityRole={body.clipped ? 'button' : 'text'}
           accessibilityHint={body.clipped ? 'Yorumun tamamını gösterir' : undefined}>
-          <Text style={styles.reviewText}>{open ? review.text : body.text}</Text>
-          {body.clipped ? <Text style={[styles.link, styles.readMore]}>{open ? 'Kısalt' : 'Devamını oku'}</Text> : null}
+          <Text style={styles.reviewText}>{expanded ? review.text : body.text}</Text>
+          {body.clipped ? <Text style={[styles.link, styles.readMore]}>{expanded ? 'Kısalt' : 'Devamını oku'}</Text> : null}
         </Pressable>
       ) : null}
     </View>
@@ -743,10 +816,11 @@ function ReviewBody({
   onPhoto,
 }: {
   review: ReviewItem;
-  onPhoto: (v: { uris: string[]; index: number }) => void;
+  onPhoto: (v: ViewerState) => void;
 }) {
   // Aynı fotoğraf iki kez eklenmişse bir kez göster (anahtar da URI).
-  const uris = uniqueStrings((review.photoUrls ?? []).map((u) => mediaUrl(u)));
+  const paths = [...new Set((review.photoUrls ?? []).filter((u) => mediaUrl(u)))];
+  const uris = uniqueStrings(paths.map((u) => mediaUrl(u)));
   return (
     <>
       {review.text ? <Text style={styles.reviewText}>{review.text}</Text> : null}
@@ -762,7 +836,11 @@ function ReviewBody({
       {uris.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewPhotos}>
           {uris.map((uri, i) => (
-            <Pressable key={uri} onPress={() => onPhoto({ uris, index: i })} accessibilityRole="imagebutton" accessibilityLabel="Yorum fotoğrafı, büyüt">
+            <Pressable
+              key={uri}
+              onPress={() => onPhoto({ uris, index: i, reviewId: review.id, paths })}
+              accessibilityRole="imagebutton"
+              accessibilityLabel="Yorum fotoğrafı, büyüt">
               <Image source={{ uri }} style={styles.reviewPhoto} contentFit="cover" transition={150} />
             </Pressable>
           ))}
@@ -913,6 +991,7 @@ const styles = StyleSheet.create({
   mine: { borderWidth: 1.5, borderColor: colors.coralSoft, backgroundColor: colors.surface },
   reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   author: { fontFamily: fonts.sansBold, color: colors.ink, fontSize: 14 },
+  authorLink: { textDecorationLine: 'underline' },
   reviewMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
   when: { color: colors.muted, fontSize: 12, fontFamily: fonts.sans },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },

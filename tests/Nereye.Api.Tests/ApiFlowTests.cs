@@ -3,12 +3,36 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Nereye.Application.Email;
 
 namespace Nereye.Api.Tests;
 
-public sealed class NereyeApiFactory : WebApplicationFactory<Program>
+public class NereyeApiFactory : WebApplicationFactory<Program>
 {
+    /// <summary>Gönderilen e-postalar burada toplanır; testler bağlantıları buradan okur.</summary>
+    public CapturingEmailSender Mail { get; } = new();
+
+    /// <summary>Kayıtta gelen doğrulama e-postasındaki bağlantıyı açar (yorum ve fotoğraf için şart).</summary>
+    public async Task VerifyEmailAsync(string email)
+    {
+        var mail = Mail.Sent.LastOrDefault(m => string.Equals(m.To, email, StringComparison.OrdinalIgnoreCase)
+                                               && m.Text.Contains("/eposta-dogrula?", StringComparison.Ordinal))
+                   ?? throw new InvalidOperationException("Doğrulama e-postası gelmedi: " + email);
+        var link = System.Text.RegularExpressions.Regex.Match(mail.Text, @"https?://\S+").Value;
+        using var client = CreateClient();
+        var res = await client.GetAsync(new Uri(link).PathAndQuery);
+        res.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Alt sınıflar test servislerini değiştirebilir (ör. kısa token ömrü).</summary>
+    protected virtual void ConfigureExtraServices(IServiceCollection services)
+    {
+    }
+
     private readonly string _dbName = "nereye-tests-" + Guid.NewGuid().ToString("N");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -31,6 +55,12 @@ public sealed class NereyeApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Database:Name", _dbName);
         builder.UseSetting("Redis:UseMemory", "true");
         builder.UseSetting("Places:UseFake", "true");
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Mail);
+            ConfigureExtraServices(services);
+        });
         builder.ConfigureAppConfiguration((_, cfg) =>
         {
             cfg.AddInMemoryCollection(new Dictionary<string, string?>
@@ -129,10 +159,12 @@ public sealed class ApiFlowTests
         var email = $"u{Guid.NewGuid():N}@nereye.test";
         var auth = await Post<JsonElement>("/api/auth/register", new
         {
+            acceptTerms = true,
             email,
             password = "Passw0rd!",
             displayName = "Test"
         });
+        await _factory.VerifyEmailAsync(email);
         var token = auth.GetProperty("accessToken").GetString();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -167,6 +199,7 @@ public sealed class ApiFlowTests
         var email = $"fav{Guid.NewGuid():N}@nereye.test";
         var register = await client.PostAsJsonAsync("/api/auth/register", new
         {
+            acceptTerms = true,
             email,
             password = "Passw0rd!",
             displayName = "Fav"
@@ -285,6 +318,7 @@ public sealed class ApiFlowTests
         var email = $"r{Guid.NewGuid():N}@nereye.test";
         var register = await client.PostAsJsonAsync("/api/auth/register", new
         {
+            acceptTerms = true,
             email,
             password = "Passw0rd!",
             displayName = "Refresh"
@@ -318,6 +352,7 @@ public sealed class ApiFlowTests
 
         var ownerAuth = await Post("/api/auth/register", new
         {
+            acceptTerms = true,
             email,
             password = "Passw0rd!",
             displayName = "Owner"
@@ -366,11 +401,13 @@ public sealed class ApiFlowTests
         var email = $"loc{Guid.NewGuid():N}@nereye.test";
         var register = await client.PostAsJsonAsync("/api/auth/register", new
         {
+            acceptTerms = true,
             email,
             password = "Passw0rd!",
             displayName = "Lok"
         });
         register.EnsureSuccessStatusCode();
+        await _factory.VerifyEmailAsync(email);
         using var auth = JsonDocument.Parse(await register.Content.ReadAsStringAsync());
         Assert.True(auth.RootElement.TryGetProperty("avatarUrl", out var avatarProp));
         Assert.Equal(JsonValueKind.Null, avatarProp.ValueKind);
@@ -399,8 +436,8 @@ public sealed class ApiFlowTests
         using var places = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
         Assert.Equal(1, places.RootElement.GetArrayLength());
 
-        var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01 }
-            .Concat(new byte[48]).ToArray();
+        // Sunucu görseli çözüp yeniden kodlar: gerçek bir JPEG gerekir.
+        var jpeg = TestImages.JpegWithExif(900, 600, 1);
         var up = await client.PostAsJsonAsync("/api/me/avatar", new
         {
             base64 = Convert.ToBase64String(jpeg),
@@ -441,6 +478,7 @@ public sealed class ApiFlowTests
         var email = $"c{Guid.NewGuid():N}@nereye.test";
         var register = await client.PostAsJsonAsync("/api/auth/register", new
         {
+            acceptTerms = true,
             email,
             password = "Passw0rd!",
             displayName = "Consent",
@@ -472,6 +510,7 @@ public sealed class ApiFlowTests
         var email = $"own{Guid.NewGuid():N}@nereye.test";
         var register = await client.PostAsJsonAsync("/api/auth/register", new
         {
+            acceptTerms = true,
             email,
             password = "Passw0rd!",
             displayName = "Owner"
@@ -531,5 +570,30 @@ public sealed class ApiFlowTests
         }
 
         throw new DirectoryNotFoundException("wwwroot/media/venues");
+    }
+}
+
+
+/// <summary>Test e-posta sağlayıcısı: göndermez, kaydeder.</summary>
+public sealed class CapturingEmailSender : IEmailSender
+{
+    private readonly System.Collections.Concurrent.ConcurrentQueue<EmailMessage> _sent = new();
+
+    public bool IsConfigured { get; set; } = true;
+
+    public IReadOnlyList<EmailMessage> Sent => _sent.ToList();
+
+    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
+    {
+        _sent.Enqueue(message);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Bu adrese gönderilen son e-postadaki ilk http(s) bağlantısı.</summary>
+    public string? LastLinkTo(string to)
+    {
+        var mail = _sent.LastOrDefault(m => string.Equals(m.To, to, StringComparison.OrdinalIgnoreCase));
+        var match = mail is null ? null : System.Text.RegularExpressions.Regex.Match(mail.Text, @"https?://\S+");
+        return match is { Success: true } ? match.Value : null;
     }
 }

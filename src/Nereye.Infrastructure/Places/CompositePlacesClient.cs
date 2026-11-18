@@ -3,7 +3,7 @@ using Nereye.Domain.Places;
 
 namespace Nereye.Infrastructure.Places;
 
-public sealed class CompositePlacesClient : IPlacesClient
+public sealed class CompositePlacesClient : IPlacesClient, IRichPlaceDetails
 {
     private readonly IPlacesClient _nearby;
     private readonly IPlacesClient _search;
@@ -40,5 +40,13 @@ public sealed class CompositePlacesClient : IPlacesClient
         }
 
         return await _search.DetailsAsync(placeId, cancellationToken);
+    }
+
+    public async Task<PlaceSnapshot?> RichDetailsAsync(string placeId, CancellationToken cancellationToken = default)
+    {
+        var found = _details is IRichPlaceDetails rich
+            ? await rich.RichDetailsAsync(placeId, cancellationToken)
+            : await _details.DetailsAsync(placeId, cancellationToken);
+        return found ?? await _search.DetailsAsync(placeId, cancellationToken);
     }
 }

@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Nereye.Application;
 using Nereye.Application.Auth;
 using Nereye.Application.Common;
+using Nereye.Application.Email;
 using Nereye.Domain.Accounts;
 using Nereye.Infrastructure.Identity;
 using Nereye.Infrastructure.Persistence;
@@ -33,9 +34,17 @@ public sealed class AuthService : IAuthService
     private readonly JwtOptions _jwt;
     private readonly IClock _clock;
     private readonly AvatarStorage _avatars;
+    private readonly IEmailSender _email;
 
-    public AuthService(UserManager<AppUser> users, NereyeDbContext db, IOptions<JwtOptions> jwt, IClock clock, AvatarStorage avatars)
+    public AuthService(
+        UserManager<AppUser> users,
+        NereyeDbContext db,
+        IOptions<JwtOptions> jwt,
+        IClock clock,
+        AvatarStorage avatars,
+        IEmailSender email)
     {
+        _email = email;
         _users = users;
         _db = db;
         _jwt = jwt.Value;
@@ -50,6 +59,11 @@ public sealed class AuthService : IAuthService
         if (AccountRules.PasswordProblem(request.Password) is { } problem)
         {
             throw new ValidationException(problem);
+        }
+
+        if (!request.AcceptTerms)
+        {
+            throw new ValidationException("Devam etmek için kullanım koşullarını kabul et.");
         }
 
         var user = new AppUser
@@ -67,6 +81,14 @@ public sealed class AuthService : IAuthService
         }
 
         await _users.AddToRoleAsync(user, RoleNames.User);
+        _db.ConsentLogs.Add(new ConsentLog
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            Purpose = "terms",
+            Granted = true,
+            CreatedAt = _clock.UtcNow
+        });
         if (request.AcceptPrivacy)
         {
             _db.ConsentLogs.Add(new ConsentLog
@@ -77,8 +99,9 @@ public sealed class AuthService : IAuthService
                 Granted = true,
                 CreatedAt = _clock.UtcNow
             });
-            await _db.SaveChangesAsync(cancellationToken);
         }
+
+        await _db.SaveChangesAsync(cancellationToken);
 
         return await IssueAsync(user, cancellationToken);
     }
@@ -110,6 +133,12 @@ public sealed class AuthService : IAuthService
         return await IssueAsync(user, cancellationToken);
     }
 
+    /// <summary>
+    /// Aynı token'la neredeyse aynı anda gelen ikinci yenileme (ör. iki sekme) hırsızlık sayılmaz: yalnızca reddedilir.
+    /// Bu sürenin dışında iptal edilmiş bir token tekrar gelirse kullanıcının tüm oturumları kapanır.
+    /// </summary>
+    public static readonly TimeSpan ConcurrentRefreshGrace = TimeSpan.FromSeconds(10);
+
     public async Task<AuthResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(refreshToken))
@@ -117,22 +146,50 @@ public sealed class AuthService : IAuthService
             throw new UnauthorizedAccessException("Refresh geçersiz.");
         }
 
+        var now = _clock.UtcNow;
         var hash = Hash(refreshToken);
-        var stored = await _db.RefreshTokens.FirstOrDefaultAsync(
-            t => t.TokenHash == hash && !t.Revoked && t.ExpiresAt > _clock.UtcNow,
-            cancellationToken) ?? throw new UnauthorizedAccessException("Refresh geçersiz.");
+        var stored = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash, cancellationToken);
+        if (stored is null || stored.ExpiresAt <= now)
+        {
+            throw new UnauthorizedAccessException("Refresh geçersiz.");
+        }
 
-        stored.Revoked = true;
+        if (stored.Revoked)
+        {
+            var concurrent = stored.ReplacedByTokenId is not null && stored.RevokedAt > now - ConcurrentRefreshGrace;
+            if (!concurrent)
+            {
+                // Kullanılmış token yeniden geldi: token çalınmış olabilir. Bu kullanıcının bütün oturumları düşer.
+                await RevokeAllAsync(stored.UserId, cancellationToken);
+                throw new UnauthorizedAccessException("Güvenliğin için oturumların kapatıldı. Tekrar giriş yap.");
+            }
+
+            throw new UnauthorizedAccessException("Refresh geçersiz.");
+        }
+
         var user = await _users.FindByIdAsync(stored.UserId.ToString())
                    ?? throw new UnauthorizedAccessException("Kullanıcı yok.");
+        var nextId = Guid.NewGuid();
+        stored.Revoked = true;
+        stored.RevokedAt = now;
+        stored.ReplacedByTokenId = user.IsBanned || user.DeletedAt is not null ? null : nextId;
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Aynı token'ı başka bir istek az önce yeniledi; onun token'ı geçerli kalır.
+            throw new UnauthorizedAccessException("Refresh geçersiz.");
+        }
+
         if (user.IsBanned || user.DeletedAt is not null)
         {
             // Engellenen hesap elindeki refresh token ile oturumunu uzatamasın.
-            await _db.SaveChangesAsync(cancellationToken);
             throw new UnauthorizedAccessException("Hesap kullanılamıyor.");
         }
 
-        return await IssueAsync(user, cancellationToken);
+        return await IssueAsync(user, cancellationToken, nextId);
     }
 
     public async Task LogoutAsync(Guid userId, string refreshToken, CancellationToken cancellationToken = default)
@@ -146,9 +203,10 @@ public sealed class AuthService : IAuthService
         var stored = await _db.RefreshTokens.FirstOrDefaultAsync(
             t => t.UserId == userId && t.TokenHash == hash,
             cancellationToken);
-        if (stored is not null)
+        if (stored is not null && !stored.Revoked)
         {
             stored.Revoked = true;
+            stored.RevokedAt = _clock.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
         }
     }
@@ -211,10 +269,27 @@ public sealed class AuthService : IAuthService
         _avatars.Delete(userId);
         await _users.UpdateAsync(user);
 
-        var reviews = await _db.Reviews.Where(r => r.UserId == userId).ToListAsync(cancellationToken);
+        // Yorumun puanı anonim kalır (mekan ortalaması bozulmasın); metni ve fotoğrafları silinir.
+        var reviews = await _db.Reviews.Include(r => r.Photos).Where(r => r.UserId == userId).ToListAsync(cancellationToken);
         foreach (var review in reviews)
         {
             review.Text = null;
+            foreach (var photo in review.Photos.ToList())
+            {
+                _avatars.DeleteUpload(photo.Url);
+                _db.ReviewPhotos.Remove(photo);
+            }
+        }
+
+        // Engelleme kayıtları iki yönde de kişiseldir.
+        _db.UserBlocks.RemoveRange(await _db.UserBlocks
+            .Where(b => b.BlockerUserId == userId || b.BlockedUserId == userId)
+            .ToListAsync(cancellationToken));
+
+        // Öne çıkan kart gösterim/tıklama kayıtları sayım için kalır, kullanıcıyla bağı kopar.
+        foreach (var impression in await _db.PromotionImpressions.Where(i => i.UserId == userId).ToListAsync(cancellationToken))
+        {
+            impression.UserId = null;
         }
 
         // KVKK veri minimizasyonu: kişisel tercih ve konum kayıtları hesapla birlikte gider.
@@ -232,6 +307,167 @@ public sealed class AuthService : IAuthService
         await RevokeAllAsync(userId, cancellationToken);
     }
 
+    public const string DeletePurpose = "delete-account";
+
+    public async Task RequestDeletionAsync(string email, Func<Guid, string, string> link, CancellationToken cancellationToken = default)
+    {
+        if (!_email.IsConfigured)
+        {
+            throw new ServiceUnavailableException("Hesap silme bağlantısı şu an gönderilemiyor.");
+        }
+
+        var normalized = AccountRules.NormalizeEmail(email);
+        var user = normalized is null ? null : await _users.FindByEmailAsync(normalized);
+        if (user is null || user.DeletedAt is not null)
+        {
+            return;
+        }
+
+        var token = await _users.GenerateUserTokenAsync(user, TokenOptions.DefaultProvider, DeletePurpose);
+        var url = link(user.Id, token);
+        var safe = System.Net.WebUtility.HtmlEncode(url);
+        await _email.SendAsync(
+            new EmailMessage(
+                user.Email!,
+                "Nereye hesabını silme onayı",
+                $"<p>Merhaba,</p><p>Nereye hesabının silinmesi istendi. Onaylamak için aşağıdaki bağlantıyı aç ve sayfadaki düğmeye bas:</p>" +
+                $"<p><a href=\"{safe}\">Hesabımı silmeyi onayla</a></p>" +
+                "<p>Bağlantı 2 saat geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin; hesabın silinmez.</p>",
+                $"Nereye hesabının silinmesi istendi. Onaylamak için bağlantıyı aç ve sayfadaki düğmeye bas:\n{url}\n\n" +
+                "Bağlantı 2 saat geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin."),
+            cancellationToken);
+    }
+
+    public async Task<bool> ConfirmDeletionAsync(Guid userId, string token, CancellationToken cancellationToken = default)
+    {
+        var user = await _users.FindByIdAsync(userId.ToString());
+        if (user is null || user.DeletedAt is not null || string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        if (!await _users.VerifyUserTokenAsync(user, TokenOptions.DefaultProvider, DeletePurpose, token))
+        {
+            return false;
+        }
+
+        await DeleteMeAsync(userId, cancellationToken);
+        return true;
+    }
+
+    public async Task SendVerificationAsync(Guid userId, Func<Guid, string, string> link, CancellationToken cancellationToken = default)
+    {
+        if (!_email.IsConfigured)
+        {
+            throw new ServiceUnavailableException("E-posta doğrulama şu an kapalı.");
+        }
+
+        var user = await RequireUserAsync(userId);
+        if (user.EmailConfirmed)
+        {
+            return;
+        }
+
+        var token = await _users.GenerateEmailConfirmationTokenAsync(user);
+        var url = link(user.Id, token);
+        var safe = System.Net.WebUtility.HtmlEncode(url);
+        await _email.SendAsync(
+            new EmailMessage(
+                user.Email!,
+                "Nereye e-posta adresini doğrula",
+                "<p>Merhaba,</p><p>Nereye'de yorum yazabilmek ve fotoğraf yükleyebilmek için e-posta adresini doğrula:</p>" +
+                $"<p><a href=\"{safe}\">E-postamı doğrula</a></p>" +
+                "<p>Bağlantı 2 saat geçerlidir. Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin.</p>",
+                $"Nereye'de yorum yazabilmek ve fotoğraf yükleyebilmek için e-posta adresini doğrula:\n{url}\n\n" +
+                "Bağlantı 2 saat geçerlidir. Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin."),
+            cancellationToken);
+    }
+
+    public async Task<bool> ConfirmEmailAsync(Guid userId, string token, CancellationToken cancellationToken = default)
+    {
+        var user = await _users.FindByIdAsync(userId.ToString());
+        if (user is null || user.DeletedAt is not null || string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return true;
+        }
+
+        return (await _users.ConfirmEmailAsync(user, token)).Succeeded;
+    }
+
+    public async Task<bool> IsEmailVerifiedAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await _db.Users.AnyAsync(u => u.Id == userId && u.EmailConfirmed && u.DeletedAt == null, cancellationToken);
+
+    public async Task RequestPasswordResetAsync(string email, Func<Guid, string, string> link, CancellationToken cancellationToken = default)
+    {
+        if (!_email.IsConfigured)
+        {
+            throw new ServiceUnavailableException(ResetClosed);
+        }
+
+        var normalized = AccountRules.NormalizeEmail(email);
+        var user = normalized is null ? null : await _users.FindByEmailAsync(normalized);
+        if (user is null || user.DeletedAt is not null || user.IsBanned)
+        {
+            return;
+        }
+
+        var token = await _users.GeneratePasswordResetTokenAsync(user);
+        var url = link(user.Id, token);
+        var safe = System.Net.WebUtility.HtmlEncode(url);
+        await _email.SendAsync(
+            new EmailMessage(
+                user.Email!,
+                "Nereye şifreni sıfırla",
+                "<p>Merhaba,</p><p>Nereye şifreni sıfırlamak için aşağıdaki bağlantıyı aç ve yeni şifreni yaz:</p>" +
+                $"<p><a href=\"{safe}\">Yeni şifre belirle</a></p>" +
+                "<p>Bağlantı 2 saat geçerlidir ve yalnızca bir kez kullanılabilir. Bu isteği sen yapmadıysan " +
+                "bu e-postayı yok sayabilirsin; şifren değişmez.</p>",
+                $"Nereye şifreni sıfırlamak için bağlantıyı aç ve yeni şifreni yaz:\n{url}\n\n" +
+                "Bağlantı 2 saat geçerlidir ve yalnızca bir kez kullanılabilir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin."),
+            cancellationToken);
+    }
+
+    public const string ResetClosed = "Şifre sıfırlama şu an kapalı.";
+
+    public async Task<bool> ResetPasswordAsync(Guid userId, string token, string newPassword, CancellationToken cancellationToken = default)
+    {
+        if (AccountRules.PasswordProblem(newPassword) is { } problem)
+        {
+            throw new ValidationException(problem);
+        }
+
+        var user = await _users.FindByIdAsync(userId.ToString());
+        if (user is null || user.DeletedAt is not null || user.IsBanned || string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        // Identity token'ı güvenlik damgasına bağlıdır: başarılı sıfırlama damgayı yeniler, aynı bağlantı ikinci kez çalışmaz.
+        var reset = await _users.ResetPasswordAsync(user, token, newPassword);
+        if (!reset.Succeeded)
+        {
+            if (reset.Errors.Any(e => e.Code == "InvalidToken"))
+            {
+                return false;
+            }
+
+            throw new ValidationException(Describe(reset));
+        }
+
+        // Bağlantı gelen kutusuna ulaştı: adres de doğrulanmış sayılır. Kilit ve açık oturumlar sıfırlanır.
+        user.EmailConfirmed = true;
+        await _users.UpdateAsync(user);
+        await _users.ResetAccessFailedCountAsync(user);
+        await _users.SetLockoutEndDateAsync(user, null);
+        await RevokeAllAsync(userId, cancellationToken);
+        return true;
+    }
+
     private const string BadLogin = "E-posta veya şifre hatalı.";
 
     private async Task<AppUser> RequireUserAsync(Guid userId)
@@ -247,13 +483,29 @@ public sealed class AuthService : IAuthService
 
     private async Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var tokens = await _db.RefreshTokens.Where(t => t.UserId == userId && !t.Revoked).ToListAsync(cancellationToken);
-        foreach (var token in tokens)
+        for (var attempt = 0; ; attempt++)
         {
-            token.Revoked = true;
-        }
+            var tokens = await _db.RefreshTokens.Where(t => t.UserId == userId && !t.Revoked).ToListAsync(cancellationToken);
+            foreach (var token in tokens)
+            {
+                token.Revoked = true;
+                token.RevokedAt = _clock.UtcNow;
+            }
 
-        await _db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex) when (attempt < 3)
+            {
+                // Bu sırada başka bir istek bir token'ı yeniledi: güncel hâli okuyup yeniden dene (yeni token da düşsün).
+                foreach (var entry in ex.Entries)
+                {
+                    await entry.ReloadAsync(cancellationToken);
+                }
+            }
+        }
     }
 
     private async Task<ProfileDto> ToProfileAsync(AppUser user, CancellationToken cancellationToken)
@@ -268,7 +520,8 @@ public sealed class AuthService : IAuthService
             user.CreatedAt,
             await _db.Reviews.CountAsync(r => r.UserId == user.Id && !r.IsHidden, cancellationToken),
             await _db.Favorites.CountAsync(f => f.UserId == user.Id, cancellationToken),
-            await _db.SavedPlaces.CountAsync(p => p.UserId == user.Id, cancellationToken));
+            await _db.SavedPlaces.CountAsync(p => p.UserId == user.Id, cancellationToken),
+            user.EmailConfirmed);
     }
 
     private static string Describe(IdentityResult result)
@@ -297,18 +550,19 @@ public sealed class AuthService : IAuthService
         return "İşlem tamamlanamadı. Bilgileri kontrol et.";
     }
 
-    private async Task<AuthResponse> IssueAsync(AppUser user, CancellationToken cancellationToken)
+    private async Task<AuthResponse> IssueAsync(AppUser user, CancellationToken cancellationToken, Guid? tokenId = null)
     {
         var roles = await _users.GetRolesAsync(user);
         var access = CreateAccessToken(user, roles);
         var refresh = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+        // Yalnızca süresi dolanlar silinir. İptal edilmiş ama süresi dolmamış token'lar yeniden kullanım tespiti için kalır.
         var stale = await _db.RefreshTokens
-            .Where(t => t.UserId == user.Id && (t.Revoked || t.ExpiresAt <= _clock.UtcNow))
+            .Where(t => t.UserId == user.Id && t.ExpiresAt <= _clock.UtcNow)
             .ToListAsync(cancellationToken);
         _db.RefreshTokens.RemoveRange(stale);
         _db.RefreshTokens.Add(new RefreshToken
         {
-            Id = Guid.NewGuid(),
+            Id = tokenId ?? Guid.NewGuid(),
             UserId = user.Id,
             TokenHash = Hash(refresh),
             CreatedAt = _clock.UtcNow,

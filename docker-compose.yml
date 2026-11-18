@@ -19,6 +19,20 @@ services:
     image: redis:7
     ports:
       - "6379:6379"
+  # Şema güncellemesi ayrı, tek seferlik adımdır: API ve panel açılışta migration çalıştırmaz.
+  migrate:
+    build:
+      context: .
+      dockerfile: src/Nereye.Api/Dockerfile
+    command: ["dotnet", "Nereye.Api.dll", "migrate"]
+    restart: "no"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Database=nereye;Username=postgres;Password=postgres
+      Redis__UseMemory: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
   api:
     build:
       context: .
@@ -31,6 +45,7 @@ services:
       JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-dev-only-change-me-32-chars-minimum!!}
       Redis__ConnectionString: redis:6379
       Database__UseInMemory: "false"
+      Database__MigrateOnStartup: "false"
       Redis__UseMemory: "false"
       Places__UseFake: "false"
       # Anahtarı repoya yazma: kök dizindeki .env dosyasına GOOGLE_PLACES_API_KEY=... olarak koy.
@@ -39,8 +54,8 @@ services:
       - media:/app/wwwroot/media/uploads
       - avatars:/app/wwwroot/media/avatars
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_started
   admin:
@@ -58,8 +73,10 @@ services:
       Redis__UseMemory: "false"
       Places__UseFake: "false"
     depends_on:
-      - postgres
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
 
 # Veritabanı ve kullanıcı yüklemeleri `docker compose down` sonrası da kalsın.
 volumes:

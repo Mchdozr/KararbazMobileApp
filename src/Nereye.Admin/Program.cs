@@ -20,7 +20,8 @@ builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
-await NereyeSeeder.SeedAsync(app.Services);
+// Yönetim paneli şemaya hiç dokunmaz: migration API'nin ayrı adımıdır. Bekleyen migration varsa açılmaz.
+await NereyeSeeder.SeedAsync(app.Services, migrate: false);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -51,7 +52,8 @@ app.MapPost("/account/login", async (HttpContext http, SignInManager<AppUser> si
         return Results.Redirect("/login?error=1");
     }
 
-    var result = await signIn.PasswordSignInAsync(user, password, true, false);
+    // Hatalı denemeler hesabı geçici kilitler (Identity lockout); kaba kuvvet denemesi yavaşlar.
+    var result = await signIn.PasswordSignInAsync(user, password, true, lockoutOnFailure: true);
     return result.Succeeded ? Results.Redirect("/") : Results.Redirect("/login?error=1");
 }).AllowAnonymous();
 

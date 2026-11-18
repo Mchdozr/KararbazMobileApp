@@ -21,7 +21,7 @@ public interface IRichPlaceSource
     Task<PlaceSnapshot?> FindRichAsync(PlaceSnapshot target, CancellationToken cancellationToken = default);
 }
 
-public sealed class GooglePlacesClient : IPlacesClient, IRichPlaceSource
+public sealed class GooglePlacesClient : IPlacesClient, IRichPlaceSource, IRichPlaceDetails
 {
     // Google kotayı uç bazında sayar (Nearby, Text Search, Details, Photo). Biri dolunca yalnızca o uç
     // Pasifik gece yarısına kadar susar; diğerleri çalışmaya devam eder.
@@ -85,7 +85,13 @@ public sealed class GooglePlacesClient : IPlacesClient, IRichPlaceSource
         return json is null ? [] : GooglePlaceJson.ParseList(json.Value);
     }
 
-    public async Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default)
+    public Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default) =>
+        DetailsAsync(placeId, GooglePlaceJson.DetailLeanMask, cancellationToken);
+
+    public Task<PlaceSnapshot?> RichDetailsAsync(string placeId, CancellationToken cancellationToken = default) =>
+        DetailsAsync(placeId, GooglePlaceJson.DetailMask, cancellationToken);
+
+    private async Task<PlaceSnapshot?> DetailsAsync(string placeId, string mask, CancellationToken cancellationToken)
     {
         if (!Ready(Details) || string.IsNullOrWhiteSpace(placeId))
         {
@@ -95,7 +101,7 @@ public sealed class GooglePlacesClient : IPlacesClient, IRichPlaceSource
         using var request = new HttpRequestMessage(
             HttpMethod.Get,
             $"v1/places/{Uri.EscapeDataString(placeId)}?languageCode=tr&regionCode=TR");
-        ApplyHeaders(request, GooglePlaceJson.DetailMask);
+        ApplyHeaders(request, mask);
         using var response = await _http.SendAsync(request, cancellationToken);
         if (!await Allow(response, Details, cancellationToken))
         {

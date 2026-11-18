@@ -45,6 +45,8 @@ export type ExternalReview = {
   text?: string | null;
   when?: string | null;
   authorPhotoUrl?: string | null;
+  /** Yazarın Google profili; yazar adı buna bağlanır. */
+  authorUri?: string | null;
 };
 
 export type VenueDetail = {
@@ -143,4 +145,10 @@ export type Profile = {
   reviewCount: number;
   favoriteCount: number;
   savedPlaceCount: number;
+  /** Yorum ve fotoğraf için e-posta doğrulaması şart. */
+  emailVerified?: boolean;
 };
+
+export type LegalSection = { title: string; body: string };
+export type LegalDocument = { title: string; lead: string; sections: LegalSection[] };
+export type Legal = { privacy: LegalDocument; terms: LegalDocument; contact: string | null; draft: string };

@@ -75,11 +75,7 @@ export default function Review() {
     if (room <= 0) {
       return;
     }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') {
-      setError('Fotoğraf eklemek için galeri izni gerekir.');
-      return;
-    }
+    // Sistem fotoğraf seçicisi izin istemez (Android PickVisualMedia); galeri izni pakette yok.
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.6,

@@ -24,7 +24,9 @@ builder.Services.PostConfigure<JwtOptions>(o =>
         o.SigningKey = envKey;
     }
 });
-builder.Services.AddControllers().AddJsonOptions(o =>
+// Sandbox ödeme gibi yalnızca geliştirmede anlamlı uçlar yayında hiç yönlendirilmez (404).
+var devSurface = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
+builder.Services.AddControllers(o => o.Conventions.Add(new DevelopmentOnlyConvention(devSurface))).AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
@@ -65,6 +67,14 @@ builder.Services.AddRateLimiter(o =>
         PermitLimit = 90,
         QueueLimit = 0
     }));
+    // Konum önerisi: sunucu Nominatim'e zaten saniyede en fazla bir istek gönderir ve sonucu önbelleğe alır;
+    // bu sınır tek bir istemcinin kuyruğu doldurmasını engeller.
+    o.AddPolicy("geo", ctx => RateLimitPartition.GetFixedWindowLimiter(ClientIp.Key(ctx), _ => new FixedWindowRateLimiterOptions
+    {
+        Window = TimeSpan.FromMinutes(1),
+        PermitLimit = 30,
+        QueueLimit = 0
+    }));
     o.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter("ip:" + ClientIp.Ip(ctx), _ => new FixedWindowRateLimiterOptions
     {
         Window = TimeSpan.FromMinutes(1),
@@ -89,7 +99,8 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     }
 
     var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
-                  ?? ["https://nereye.app"];
+                  // Mobil uygulama CORS kullanmaz; tarayıcıdan erişecek kökenleri insan `Cors:Origins` ile verir.
+                  ?? [];
     p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
 }));
 
@@ -123,7 +134,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
-await NereyeSeeder.SeedAsync(app.Services);
+if (args.Contains("migrate"))
+{
+    // Ayrı yayın adımı: şemayı güncelle ve çık (docs/veritabani-guncelleme.md).
+    await NereyeSeeder.MigrateAsync(app.Services);
+    return;
+}
+
+// Açılışta migration yalnızca geliştirmede; yayında ayrı adımdır (çoklu örnek yarışmasın).
+await NereyeSeeder.SeedAsync(app.Services, app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDevelopment()));
 
 if (app.Environment.IsDevelopment())
 {

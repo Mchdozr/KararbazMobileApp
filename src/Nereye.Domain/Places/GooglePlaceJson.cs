@@ -24,8 +24,11 @@ public static class GooglePlaceJson
         + "liveMusic,servesBreakfast,servesBrunch,servesCoffee,servesDessert,servesBeer,servesWine,servesCocktails,"
         + "servesVegetarianFood,goodForChildren,goodForGroups,allowsDogs,restroom,accessibilityOptions,paymentOptions,parkingOptions";
 
-    /// <summary>Tek mekan detayı: özet, yorumlar ve olanaklar dahil.</summary>
+    /// <summary>Tek mekan detayı: özet, yorumlar ve olanaklar dahil. Yalnızca detay sayfasında.</summary>
     public const string DetailMask = RichFields;
+
+    /// <summary>Kimliği bilinen tek mekanın kart düzeyindeki alanları (liste maskesinin "places." öneksiz hali).</summary>
+    public static readonly string DetailLeanMask = ListMask.Replace("places.", "", StringComparison.Ordinal);
 
     /// <summary>Metin aramasıyla tek mekanı zengin içerikle bulmak için.</summary>
     public static readonly string SearchRichMask =
@@ -228,10 +231,12 @@ public static class GooglePlaceJson
 
             string? author = null;
             string? photo = null;
+            string? profile = null;
             if (r.TryGetProperty("authorAttribution", out var who) && who.ValueKind == JsonValueKind.Object)
             {
                 author = Str(who, "displayName");
                 photo = Str(who, "photoUri");
+                profile = Str(who, "uri");
             }
 
             list.Add(new PlaceReview(
@@ -239,7 +244,9 @@ public static class GooglePlaceJson
                 Math.Clamp((int)Math.Round(Num(r, "rating") ?? 0), 0, 5),
                 text,
                 Str(r, "relativePublishTimeDescription"),
-                photo is not null && photo.StartsWith("https://", StringComparison.Ordinal) ? photo : null));
+                photo is not null && photo.StartsWith("https://", StringComparison.Ordinal) ? photo : null,
+                // Yazarın Google profiline bağlantı: yorumda yazar adı buna tıklanabilir.
+                profile is not null && profile.StartsWith("https://", StringComparison.Ordinal) ? profile : null));
             if (list.Count == MaxReviews)
             {
                 break;

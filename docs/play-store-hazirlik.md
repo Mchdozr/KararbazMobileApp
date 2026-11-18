@@ -1,5 +1,10 @@
 # Nereye — Google Play'e hazırlık promptu
 
+> **Uyarı (sonradan eklendi):** Bu dosyadaki alan adları (`nereye.app`, `api.nereye.app` vb.) ve test kullanıcısı
+> sayıları **örnektir**; gerçek bir host ya da gerçek testçi değildir, kaynak olarak kullanılmaz. Güncel durum ve
+> yapılacaklar: `docs/yayin-riskleri.md`, `docs/yayin-insan-gorevleri.md`, `docs/play-veri-guvenligi.md`,
+> `docs/play-magaza-kaydi.md`.
+
 > Bu dosya bir yapay zekâ kodlama ajanına (Claude Code, Cursor vb.) olduğu gibi verilmek üzere yazıldı.
 > Kod tabanının 13 Kasım 2026 tarihli hâline (`claude/adoring-ramanujan-1tepls`, `9d46ca9`) dayanır.
 > Politika ve sınır değerleri (hedef API seviyesi, test kullanıcısı sayısı, Google Maps şartları)
@@ -53,7 +58,7 @@ Bunlardan biri bile kalırsa uygulama ya reddedilir ya da yayından sonraki gün
   "sunucu adresi" alanı production derlemesinde hiç görünmüyor.
 
 **0.2 Harita döşemeleri ve OSM servis politikaları**
-- `app/(tabs)/map.tsx` ve `app/venue/[id].tsx` doğrudan `tile.openstreetmap.org` kullanıyor. OSM Tile Usage
+- `app/(tabs)/map.tsx` ve `app/venue/[id].tsx` doğrudan OSM'in public döşeme sunucusunu kullanıyor. OSM Tile Usage
   Policy ağır uygulama kullanımını yasaklar; yayında engellenme riski yüksek.
 - `NominatimPlacesClient.SuggestAsync` konum arama kutusunda her tuş vuruşunda (280 ms gecikmeyle) public
   Nominatim'e gidiyor. Nominatim Usage Policy saniyede en fazla 1 istek ister ve istemci tarafı otomatik
@@ -63,7 +68,7 @@ Bunlardan biri bile kalırsa uygulama ya reddedilir ya da yayından sonraki gün
   Google Maps (bkz. 0.3) seç. Otomatik tamamlama için Photon (komoot) ya da kendi barındırdığın bir geocoder
   kullan; sunucuda sonuçları önbelleğe al ve istemci başına hız sınırı uygula. Overpass için kendi örneğini
   barındırmayı ya da sonuçları uzun TTL ile önbelleklemeyi değerlendir.
-- Kabul: kodda `tile.openstreetmap.org` geçmiyor; sağlayıcı anahtarı sırlarda; atıf metni ("© OpenStreetMap
+- Kabul: kodda OSM'in public döşeme sunucusu geçmiyor; sağlayıcı anahtarı sırlarda; atıf metni ("© OpenStreetMap
   katkıcıları" + sağlayıcı) haritada görünüyor.
 
 **0.3 Google Maps Platform kullanım şartları**

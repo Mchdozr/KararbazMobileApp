@@ -161,11 +161,7 @@ export default function Profile() {
       router.push('/auth');
       return;
     }
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') {
-      Alert.alert('Galeri', 'Profil fotoğrafı için izin gerekir.');
-      return;
-    }
+    // Sistem fotoğraf seçicisi izin istemez (Android PickVisualMedia); galeri izni pakette yok.
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,

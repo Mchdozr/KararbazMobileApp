@@ -16,7 +16,7 @@ public sealed class OsrmRouteClient
         _http.BaseAddress ??= new Uri("https://router.project-osrm.org/");
         if (!_http.DefaultRequestHeaders.UserAgent.Any())
         {
-            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Nereye/1.0 (https://nereye.app)");
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", HttpIdentity.UserAgent);
         }
     }
 
