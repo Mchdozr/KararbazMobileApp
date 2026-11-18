@@ -33,13 +33,34 @@ export default function Review() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // null: henüz bilinmiyor. false: e-posta doğrulanmamış; sunucu yorumu ve fotoğrafı 403 ile reddeder.
+  const [verified, setVerified] = useState<boolean | null>(null);
   const userId = session?.userId;
+  const blocked = verified === false;
 
   useEffect(() => {
     if (ready && !session) {
       router.replace('/auth');
     }
   }, [ready, session, router]);
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+    let alive = true;
+    api
+      .profile()
+      .then((p) => {
+        if (alive && p) {
+          setVerified(p.emailVerified ?? false);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [userId]);
 
   // Daha önce yorum yazdıysa formu onunla doldur: gönderim yeni yorum değil, güncelleme olur.
   useEffect(() => {
@@ -71,6 +92,9 @@ export default function Review() {
   }, [id, userId]);
 
   async function pick() {
+    if (blocked) {
+      return;
+    }
     const room = REVIEW_MAX_PHOTOS - photos.length;
     if (room <= 0) {
       return;
@@ -118,6 +142,10 @@ export default function Review() {
           throw new Error('Fotoğraf yüklenemedi. Daha küçük bir fotoğraf dene.');
         }
         urls.push(up.url);
+        // Yüklenen adres tutulur: yorum yazımı hata verirse tekrar denemede aynı dosya kullanılır,
+        // fotoğraf ikinci kez yüklenmez ve sunucuda sahipsiz dosya birikmez.
+        const url = up.url;
+        setPhotos((prev) => prev.map((x) => (x.key === p.key ? { ...x, url, base64: undefined } : x)));
       }
       await api.writeReview(id!, stars, text.trim(), tags, urls);
       haptic.success();
@@ -143,6 +171,17 @@ export default function Review() {
     <KeyboardAvoidingView style={styles.bg} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={64}>
       <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text style={styles.h}>{editing ? 'Yorumunu güncelle' : 'Nasıldı?'}</Text>
+        {blocked ? (
+          <View style={styles.verify} accessibilityRole="alert">
+            <Ionicons name="mail-unread-outline" size={20} color={colors.ink} />
+            <View style={{ flex: 1, gap: 8 }}>
+              <Text style={styles.verifyText}>
+                Yorum yazmak ve fotoğraf eklemek için önce e-posta adresini doğrula.
+              </Text>
+              <Button label="Hesap ve güvenlik" compact variant="outline" onPress={() => router.push('/account')} />
+            </View>
+          </View>
+        ) : null}
         <StarInput value={stars} onChange={setStars} />
 
         <TextField
@@ -194,7 +233,7 @@ export default function Review() {
               </Pressable>
             </View>
           ))}
-          {photos.length < REVIEW_MAX_PHOTOS ? (
+          {photos.length < REVIEW_MAX_PHOTOS && !blocked ? (
             <Pressable style={[styles.thumb, styles.add]} onPress={() => void pick()} accessibilityRole="button" accessibilityLabel="Fotoğraf ekle">
               <Ionicons name="camera-outline" size={24} color={colors.coral} />
               <Text style={styles.addText}>Ekle</Text>
@@ -210,13 +249,28 @@ export default function Review() {
         ) : null}
       </ScrollView>
       <View style={[styles.foot, { paddingBottom: insets.bottom + 12 }]}>
-        <Button label={editing ? 'Güncelle' : 'Yorumu gönder'} onPress={() => void submit()} loading={busy} />
+        <Button
+          label={editing ? 'Güncelle' : 'Yorumu gönder'}
+          onPress={() => void submit()}
+          loading={busy}
+          disabled={blocked}
+        />
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  verify: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+  },
+  verifyText: { color: colors.ink, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20 },
   bg: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center' },
   wrap: { padding: 20, gap: 14, paddingBottom: 32 },

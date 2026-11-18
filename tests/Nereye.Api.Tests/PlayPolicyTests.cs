@@ -185,6 +185,88 @@ public sealed class PlayPolicyTests
         (await web.PostAsJsonAsync("/api/auth/login", new { email, password = "kahve1234" })).EnsureSuccessStatusCode();
     }
 
+    private async Task<string> UploadPhoto(HttpClient client)
+    {
+        var bytes = await File.ReadAllBytesAsync(Path.Combine(MediaRoot(), "venues", "petra.jpg"));
+        var upload = await client.PostAsJsonAsync("/api/me/photos", new { base64 = Convert.ToBase64String(bytes), contentType = "image/jpeg" });
+        var raw = await upload.Content.ReadAsStringAsync();
+        Assert.True(upload.IsSuccessStatusCode, raw);
+        var url = JsonDocument.Parse(raw).RootElement.GetProperty("url").GetString()!;
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(url)).StatusCode);
+        return url;
+    }
+
+    private string UploadFile(string url) => Path.Combine(MediaRoot(), "uploads", Path.GetFileName(url));
+
+    private async Task<Guid> PostReview(HttpClient client, string placeId, params string[] photos)
+    {
+        var res = await client.PostAsJsonAsync($"/api/venues/{placeId}/reviews", new { stars = 4, text = "Fotoğraflı yorum", photoUrls = photos });
+        var raw = await res.Content.ReadAsStringAsync();
+        Assert.True(res.IsSuccessStatusCode, raw);
+        return JsonDocument.Parse(raw).RootElement.GetProperty("id").GetGuid();
+    }
+
+    [Fact]
+    public async Task Deleting_a_review_removes_its_photo_files()
+    {
+        var (client, _, _) = await Signup();
+        using var _c = client;
+        var url = await UploadPhoto(client);
+        var id = await PostReview(client, "nereye:moda", url);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/venues/reviews/{id}")).StatusCode);
+        Assert.False(File.Exists(UploadFile(url)));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(url)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Replacing_a_review_photo_removes_the_old_file_and_keeps_the_new_one()
+    {
+        var (client, _, _) = await Signup();
+        using var _c = client;
+        var oldUrl = await UploadPhoto(client);
+        var keptUrl = await UploadPhoto(client);
+        await PostReview(client, "nereye:modern", oldUrl, keptUrl);
+        var newUrl = await UploadPhoto(client);
+        await PostReview(client, "nereye:modern", keptUrl, newUrl);
+
+        Assert.False(File.Exists(UploadFile(oldUrl)));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(oldUrl)).StatusCode);
+        Assert.True(File.Exists(UploadFile(keptUrl)));
+        Assert.True(File.Exists(UploadFile(newUrl)));
+        // Uzun süreli/immutable önbellek yok: silinen kare önbellekte yaşamasın.
+        var cache = (await client.GetAsync(newUrl)).Headers.CacheControl!;
+        Assert.True(cache.NoCache);
+        Assert.Null(cache.MaxAge);
+    }
+
+    [Fact]
+    public async Task Hiding_a_reported_photo_deletes_the_file_and_admin_sees_the_photo_url()
+    {
+        var (author, _, _) = await Signup("Fotoğrafçı");
+        var (reporter, _, _) = await Signup("Şikayetçi");
+        using var _a = author;
+        using var _r = reporter;
+        var url = await UploadPhoto(author);
+        var reviewId = await PostReview(author, "nereye:montag", url);
+        (await reporter.PostAsJsonAsync("/api/venues/nereye:montag/reports", new { reason = "Uygunsuz fotoğraf", reviewId, photoUrl = url }))
+            .EnsureSuccessStatusCode();
+
+        using var admin = _factory.CreateClient();
+        var login = JsonDocument.Parse(await (await admin.PostAsJsonAsync("/api/auth/login",
+            new { email = "admin@nereye.app", password = "Admin!12345" })).Content.ReadAsStringAsync()).RootElement;
+        admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.GetProperty("accessToken").GetString());
+        var reports = JsonDocument.Parse(await admin.GetStringAsync("/api/admin/reports")).RootElement;
+        var report = reports.EnumerateArray().Single(r => r.GetProperty("photoUrl").GetString() == url);
+
+        var hide = await admin.PostAsync($"/api/admin/reports/{report.GetProperty("id").GetGuid()}/resolve?hideReview=true", null);
+        Assert.True(hide.IsSuccessStatusCode, await hide.Content.ReadAsStringAsync());
+        Assert.False(File.Exists(UploadFile(url)));
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync(url)).StatusCode);
+        var listed = JsonDocument.Parse(await admin.GetStringAsync("/api/venues/nereye:montag/reviews")).RootElement;
+        Assert.DoesNotContain(listed.EnumerateArray().SelectMany(r => r.GetProperty("photoUrls").EnumerateArray()), p => p.GetString() == url);
+    }
+
     [Fact]
     public async Task The_emailed_link_deletes_the_account_and_its_review_photo_files()
     {

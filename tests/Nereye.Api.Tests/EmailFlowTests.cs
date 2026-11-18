@@ -133,12 +133,31 @@ public sealed class EmailFlowTests
         Assert.Equal(HttpStatusCode.Forbidden, avatar.StatusCode);
 
         // Yeniden gönderme yeni bir doğrulama mektubu üretir; bağlantı açılınca yazma açılır.
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/auth/verify-email", null)).StatusCode);
+        var resend = await client.PostAsync("/api/auth/verify-email", null);
+        Assert.Equal(HttpStatusCode.OK, resend.StatusCode);
+        Assert.True(JsonDocument.Parse(await resend.Content.ReadAsStringAsync()).RootElement.GetProperty("sent").GetBoolean());
         await _factory.VerifyEmailAsync(email);
         profile = JsonDocument.Parse(await client.GetStringAsync("/api/me")).RootElement;
         Assert.True(profile.GetProperty("emailVerified").GetBoolean());
         var written = await client.PostAsJsonAsync("/api/venues/nereye:ciya/reviews", new { stars = 4, text = "Güzel" });
         Assert.True(written.IsSuccessStatusCode, await written.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Resend_on_a_verified_account_says_so_and_sends_nothing()
+    {
+        var (client, _, email, _) = await EmailFlow.Signup(_factory);
+        using var _c = client;
+        await _factory.VerifyEmailAsync(email);
+        var before = _factory.Mail.Sent.Count;
+
+        var res = await client.PostAsync("/api/auth/verify-email", null);
+
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = JsonDocument.Parse(await res.Content.ReadAsStringAsync()).RootElement;
+        Assert.False(body.GetProperty("sent").GetBoolean());
+        Assert.True(body.GetProperty("alreadyVerified").GetBoolean());
+        Assert.Equal(before, _factory.Mail.Sent.Count);
     }
 
     [Fact]

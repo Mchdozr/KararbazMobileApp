@@ -1,6 +1,7 @@
 namespace Nereye.Application.Admin;
 
-public sealed record ReportAdminDto(Guid Id, Guid ReporterUserId, Guid? VenueId, Guid? ReviewId, string Reason, bool IsResolved, DateTime CreatedAt);
+/// <param name="PhotoUrl">Fotoğraf şikayetiyse şikayet edilen kare (/media/uploads/...).</param>
+public sealed record ReportAdminDto(Guid Id, Guid ReporterUserId, Guid? VenueId, Guid? ReviewId, string Reason, bool IsResolved, DateTime CreatedAt, string? PhotoUrl = null);
 
 public sealed record UserAdminDto(Guid Id, string Email, string DisplayName, bool IsBanned);
 

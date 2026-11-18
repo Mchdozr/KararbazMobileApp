@@ -18,9 +18,17 @@ public sealed class ReviewService : IReviewService
     private readonly IPlacePhotoEnricher _photos;
     private readonly Application.Common.IClock _clock;
     private readonly IPlacesCache _cache;
+    private readonly Places.AvatarStorage _uploads;
 
-    public ReviewService(NereyeDbContext db, IPlacesClient places, IPlacePhotoEnricher photos, Application.Common.IClock clock, IPlacesCache cache)
+    public ReviewService(
+        NereyeDbContext db,
+        IPlacesClient places,
+        IPlacePhotoEnricher photos,
+        Application.Common.IClock clock,
+        IPlacesCache cache,
+        Places.AvatarStorage uploads)
     {
+        _uploads = uploads;
         _cache = cache;
         _db = db;
         _places = places;
@@ -91,6 +99,7 @@ public sealed class ReviewService : IReviewService
         }
 
         var venue = await EnsureVenueAsync(placeId, cancellationToken);
+        List<string> dropped = [];
         var review = await _db.Reviews
             .Include(r => r.Tags)
             .Include(r => r.Photos)
@@ -116,8 +125,13 @@ public sealed class ReviewService : IReviewService
                 _db.ReviewTags.Remove(gone);
             }
 
-            _db.ReviewPhotos.RemoveRange(review.Photos);
-            review.Photos.Clear();
+            // Fotoğraflarda da fark uygulanır: kalanlar yerinde durur, çıkanların dosyası kayıttan sonra silinir.
+            foreach (var gone in review.Photos.Where(p => !photos.Contains(p.Url)).ToList())
+            {
+                dropped.Add(gone.Url);
+                review.Photos.Remove(gone);
+                _db.ReviewPhotos.Remove(gone);
+            }
         }
 
         review.Stars = request.Stars;
@@ -127,12 +141,20 @@ public sealed class ReviewService : IReviewService
             review.Tags.Add(new ReviewTag { ReviewId = review.Id, Tag = tag });
         }
 
-        foreach (var url in photos)
+        foreach (var url in photos.Where(u => review.Photos.All(p => p.Url != u)))
         {
-            review.Photos.Add(new ReviewPhoto { Id = Guid.NewGuid(), ReviewId = review.Id, Url = url });
+            // Açıkça Added: anahtarı dolu yeni çocuk, izlenen bir yoruma eklenince EF onu UPDATE sanmasın.
+            var photo = new ReviewPhoto { Id = Guid.NewGuid(), ReviewId = review.Id, Url = url };
+            _db.ReviewPhotos.Add(photo);
+            review.Photos.Add(photo);
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        foreach (var url in dropped)
+        {
+            _uploads.DeleteUpload(url);
+        }
+
         await RecalcRatingAsync(venue.Id, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
         var author = await _db.Users.Where(u => u.Id == userId)
@@ -160,8 +182,15 @@ public sealed class ReviewService : IReviewService
             _db.ReviewReplies.Remove(review.Reply);
         }
 
+        var files = review.Photos.Select(p => p.Url).ToList();
         _db.Reviews.Remove(review);
         await _db.SaveChangesAsync(cancellationToken);
+        // Yorum gidince fotoğraf dosyaları da gider: bağlantıyı bilen biri silinmiş kareyi açamasın.
+        foreach (var url in files)
+        {
+            _uploads.DeleteUpload(url);
+        }
+
         await RecalcRatingAsync(venueId, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
     }

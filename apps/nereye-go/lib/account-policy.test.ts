@@ -46,3 +46,19 @@ test('logout never refreshes with the token it is revoking', () => {
   assert.ok(logout.indexOf('refreshToken = null') < logout.indexOf("'/api/auth/logout'"));
   assert.match(read('./session.tsx'), /await api\.logout\(\);/);
 });
+
+test('resending verification never claims success when nothing was sent', () => {
+  const account = read('../app/account.tsx');
+  assert.match(account, /useFocusEffect\(/);
+  const send = account.slice(account.indexOf('async function sendVerification'), account.indexOf('async function saveName'));
+  assert.ok(send.indexOf('res.alreadyVerified') < send.indexOf("toast.success('Doğrulama bağlantısı"));
+  assert.match(send, /if \(!res\.sent\)/);
+  assert.match(read('../app/(tabs)/profile.tsx'), /emailVerified === false \? 'E-postanı doğrula'/);
+});
+
+test('review screen does not offer photos or submit to an unverified account, and reuses uploaded urls', () => {
+  const review = read('../app/review/[id].tsx');
+  assert.match(review, /photos\.length < REVIEW_MAX_PHOTOS && !blocked/);
+  assert.match(review, /disabled=\{blocked\}/);
+  assert.match(review, /x\.key === p\.key \? \{ \.\.\.x, url, base64: undefined \}/);
+});

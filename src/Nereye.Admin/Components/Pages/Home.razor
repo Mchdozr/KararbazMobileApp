@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
 @rendermode InteractiveServer
 @inject IAdminService Admin
+@inject IConfiguration Config
 
 <h1>Şikayetler</h1>
 
@@ -21,6 +22,7 @@ else
                 <th>Tarih</th>
                 <th>Neden</th>
                 <th>Yorum</th>
+                <th>Fotoğraf</th>
                 <th></th>
             </tr>
         </thead>
@@ -32,8 +34,31 @@ else
                     <td>@r.Reason</td>
                     <td>@(r.ReviewId?.ToString("N")[..8] ?? "—")</td>
                     <td>
+                        @if (r.PhotoUrl is not null)
+                        {
+                            @if (_apiBase is not null)
+                            {
+                                <a href="@(_apiBase + r.PhotoUrl)" target="_blank" rel="noopener">
+                                    <img src="@(_apiBase + r.PhotoUrl)" alt="Şikayet edilen fotoğraf" style="height:56px;border-radius:6px" />
+                                </a>
+                            }
+                            else
+                            {
+                                <code>@r.PhotoUrl</code>
+                            }
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </td>
+                    <td>
                         <button class="btn btn-sm btn-outline-secondary" @onclick="() => Resolve(r.Id, false)">Kapat</button>
-                        @if (r.ReviewId is not null)
+                        @if (r.PhotoUrl is not null)
+                        {
+                            <button class="btn btn-sm btn-danger" @onclick="() => Resolve(r.Id, true)">Fotoğrafı sil + kapat</button>
+                        }
+                        else if (r.ReviewId is not null)
                         {
                             <button class="btn btn-sm btn-danger" @onclick="() => Resolve(r.Id, true)">Gizle + kapat</button>
                         }
@@ -46,6 +71,9 @@ else
 
 @code {
     private IReadOnlyList<ReportAdminDto>? _reports;
+
+    // Fotoğraflar API hostunda durur. Adres verilmezse yalnızca yol yazılır (tarayıcıda açılamaz).
+    private string? _apiBase => Config["Api:PublicBaseUrl"]?.Trim().TrimEnd('/') is { Length: > 0 } b ? b : null;
 
     protected override async Task OnInitializedAsync() =>
         _reports = await Admin.ListReportsAsync(true);

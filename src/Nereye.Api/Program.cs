@@ -181,10 +181,12 @@ app.UseStaticFiles(new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
     {
-        // Yüklenen dosyalar benzersiz adlıdır; mekan görselleri nadiren değişir.
+        // Mekan görselleri nadiren değişir; avatar kısa önbelleklenir.
         var path = ctx.Context.Request.Path.Value ?? "";
         ctx.Context.Response.Headers.CacheControl =
-            path.StartsWith("/media/uploads/", StringComparison.Ordinal) ? "public, max-age=31536000, immutable"
+            // Yorum fotoğrafı silinebilir (yorum silme, fotoğraf değişimi, moderasyon): uzun/immutable önbellek
+            // silinmiş kareyi istemcide ve ara önbellekte yaşatırdı. Her istekte ETag ile doğrulanır (304 ucuzdur).
+            path.StartsWith("/media/uploads/", StringComparison.Ordinal) ? "public, no-cache"
             : path.StartsWith("/media/avatars/", StringComparison.Ordinal) ? "public, max-age=300"
             : "public, max-age=86400";
     }

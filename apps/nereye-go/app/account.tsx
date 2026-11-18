@@ -7,8 +7,8 @@ import { useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { nameProblem, passwordProblem } from '@/lib/validation';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,7 +36,6 @@ export default function Account() {
       if (p) {
         setEmail(p.email);
         setName(p.displayName);
-        setVerified(p.emailVerified ?? false);
       }
     });
     void api.consents().then((c) => setMarketing(Boolean(c.marketing)));
@@ -44,6 +43,24 @@ export default function Account() {
     // Yalnızca ekran açılırken: oturum yenilenince kullanıcının yazdığını ezmeyelim.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Ekran her odaklandığında doğrulama durumu yeniden okunur: tarayıcıda doğrulayıp dönen kullanıcıda kart kalkar.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) {
+        return;
+      }
+      let alive = true;
+      void api.profile().then((p) => {
+        if (alive && p) {
+          setVerified(p.emailVerified ?? false);
+        }
+      });
+      return () => {
+        alive = false;
+      };
+    }, [session]),
+  );
 
   if (!session) {
     return <View style={styles.bg} />;
@@ -55,7 +72,17 @@ export default function Account() {
   async function sendVerification() {
     setBusy('verify');
     try {
-      await api.resendVerification();
+      const res = await api.resendVerification();
+      if (res.alreadyVerified) {
+        // Başka yerde (ör. tarayıcıda) doğrulanmış: mektup gitmedi, "gönderildi" denmez.
+        setVerified(true);
+        toast.info('E-postan zaten doğrulanmış.');
+        return;
+      }
+      if (!res.sent) {
+        toast.error('Bağlantı gönderilemedi. Biraz sonra tekrar dene.');
+        return;
+      }
       haptic.success();
       toast.success('Doğrulama bağlantısı e-postana gönderildi.');
     } catch (e) {

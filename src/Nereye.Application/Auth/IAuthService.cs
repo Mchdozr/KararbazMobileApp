@@ -23,9 +23,9 @@ public interface IAuthService
 
     /// <summary>
     /// Doğrulama bağlantısı gönderir. E-posta sağlayıcısı yoksa <c>ServiceUnavailableException</c>.
-    /// Adres zaten doğrulanmışsa bir şey göndermez.
+    /// Adres zaten doğrulanmışsa bir şey göndermez ve false döner (çağıran "gönderildi" demesin).
     /// </summary>
-    Task SendVerificationAsync(Guid userId, Func<Guid, string, string> link, CancellationToken cancellationToken = default);
+    Task<bool> SendVerificationAsync(Guid userId, Func<Guid, string, string> link, CancellationToken cancellationToken = default);
 
     /// <summary>Bağlantıdaki token doğruysa e-postayı doğrulanmış işaretler.</summary>
     Task<bool> ConfirmEmailAsync(Guid userId, string token, CancellationToken cancellationToken = default);

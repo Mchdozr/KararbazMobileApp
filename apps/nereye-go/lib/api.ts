@@ -290,7 +290,13 @@ export const api = {
       { method: 'POST', body: JSON.stringify({ email }) },
       { skipAuth: true },
     ),
-  resendVerification: () => request('/api/auth/verify-email', { method: 'POST' }),
+  /** sent: mektup gitti. alreadyVerified: adres zaten doğrulanmış, mektup gitmedi. */
+  resendVerification: async () => {
+    const res = await request<{ sent?: boolean; alreadyVerified?: boolean } | undefined>('/api/auth/verify-email', {
+      method: 'POST',
+    });
+    return { sent: Boolean(res?.sent), alreadyVerified: Boolean(res?.alreadyVerified) };
+  },
   /** Gizlilik ve koşullar metni sunucudan gelir (tek kaynak: /gizlilik ve /kosullar sayfalarıyla aynı). */
   legal: () => request<Legal>('/api/legal', {}, { skipAuth: true }),
   /**

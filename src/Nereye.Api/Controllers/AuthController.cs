@@ -45,16 +45,26 @@ public sealed class AuthController : ControllerBase
         return Ok(session);
     }
 
-    /// <summary>Doğrulama bağlantısını yeniden gönderir. Sağlayıcı ya da genel adres yoksa 503.</summary>
+    public sealed record VerificationResult(bool Sent, bool AlreadyVerified);
+
+    /// <summary>
+    /// Doğrulama bağlantısını yeniden gönderir. Adres zaten doğrulanmışsa mektup gitmez:
+    /// <c>{ sent: false, alreadyVerified: true }</c>. Sağlayıcı ya da genel adres yoksa 503.
+    /// </summary>
     [Authorize]
     [EnableRateLimiting("auth")]
     [HttpPost("verify-email")]
-    public async Task<IActionResult> ResendVerification(CancellationToken ct)
+    public async Task<ActionResult<VerificationResult>> ResendVerification(CancellationToken ct)
     {
+        if (await _auth.IsEmailVerifiedAsync(User.Id(), ct))
+        {
+            return Ok(new VerificationResult(false, true));
+        }
+
         var baseUrl = PublicPages.BaseUrl(HttpContext, _config, _env)
                       ?? throw new ServiceUnavailableException("E-posta doğrulama şu an kapalı.");
-        await _auth.SendVerificationAsync(User.Id(), (id, token) => EmailLinksController.VerifyLink(baseUrl, id, token), ct);
-        return NoContent();
+        var sent = await _auth.SendVerificationAsync(User.Id(), (id, token) => EmailLinksController.VerifyLink(baseUrl, id, token), ct);
+        return Ok(new VerificationResult(sent, !sent));
     }
 
     public sealed record ForgotRequest(string? Email);

@@ -383,7 +383,13 @@ export default function Profile() {
             <View style={styles.divider} />
             <Row icon="chatbubble-ellipses-outline" label="Yorumlarım" value={String(info?.reviewCount ?? 0)} onPress={() => router.push('/my-reviews')} />
             <View style={styles.divider} />
-            <Row icon="person-circle-outline" label="Hesap ve güvenlik" onPress={() => router.push('/account')} />
+            <Row
+              icon={info?.emailVerified === false ? 'mail-unread-outline' : 'person-circle-outline'}
+              label="Hesap ve güvenlik"
+              // Doğrulanmamış hesap yorum ve fotoğraf yazamaz: kısa uyarı.
+              value={info?.emailVerified === false ? 'E-postanı doğrula' : undefined}
+              onPress={() => router.push('/account')}
+            />
             <View style={styles.divider} />
           </>
         ) : null}

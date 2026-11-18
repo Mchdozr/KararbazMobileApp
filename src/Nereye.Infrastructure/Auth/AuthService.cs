@@ -363,7 +363,7 @@ public sealed class AuthService : IAuthService
         return true;
     }
 
-    public async Task SendVerificationAsync(Guid userId, Func<Guid, string, string> link, CancellationToken cancellationToken = default)
+    public async Task<bool> SendVerificationAsync(Guid userId, Func<Guid, string, string> link, CancellationToken cancellationToken = default)
     {
         if (!_email.IsConfigured)
         {
@@ -373,7 +373,7 @@ public sealed class AuthService : IAuthService
         var user = await RequireUserAsync(userId);
         if (user.EmailConfirmed)
         {
-            return;
+            return false;
         }
 
         var token = await _users.GenerateEmailConfirmationTokenAsync(user);
@@ -389,6 +389,7 @@ public sealed class AuthService : IAuthService
                 $"Nereye'de yorum yazabilmek ve fotoğraf yükleyebilmek için e-posta adresini doğrula:\n{url}\n\n" +
                 "Bağlantı 2 saat geçerlidir. Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin."),
             cancellationToken);
+        return true;
     }
 
     public async Task<bool> ConfirmEmailAsync(Guid userId, string token, CancellationToken cancellationToken = default)
