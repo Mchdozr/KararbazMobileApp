@@ -45,7 +45,7 @@ import {
 import MapView, { Marker, Polyline } from '@/components/Map';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const HERO = 320;
+const HERO = 360; // Şeffaf başlık altında durum çubuğuna kadar uzanır.
 
 /** Tam ekran görüntüleyici. Yorum fotoğrafıysa reviewId ve sunucu yolları (bildirim için) taşır. */
 type ViewerState = { uris: string[]; index: number; reviewId?: string; paths?: string[] };
@@ -357,7 +357,7 @@ export default function Venue() {
 
   return (
     <View style={styles.bg}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <Stack.Screen
         options={{
           headerRight: () => (
@@ -860,12 +860,14 @@ const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1 },
   skel: { padding: 22, gap: 12 },
-  headRight: { flexDirection: 'row', gap: 8 },
+  headRight: { flexDirection: 'row', gap: 8, paddingRight: 4 },
   glass: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassLine,
     alignItems: 'center',
     justifyContent: 'center',
   },

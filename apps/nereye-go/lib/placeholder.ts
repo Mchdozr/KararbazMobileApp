@@ -1,12 +1,12 @@
 const PALETTES = [
-  ['#fbf6ee', '#064e3b'],
-  ['#fffdf8', '#0a6b50'],
-  ['#d7e8dc', '#064e3b'],
-  ['#f4e6c8', '#04382b'],
-  ['#cfe0c8', '#064e3b'],
-  ['#f8ead4', '#0a6b50'],
-  ['#c9ddd4', '#04382b'],
-  ['#ebe3d2', '#064e3b'],
+  ['#f6f2ea', '#0b5d45'],
+  ['#ffffff', '#15845f'],
+  ['#dcebe2', '#0b5d45'],
+  ['#f8e1cf', '#0a2f24'],
+  ['#dfe9d8', '#0b5d45'],
+  ['#f6e6d2', '#15845f'],
+  ['#d6ebe2', '#0a2f24'],
+  ['#e6dfd2', '#0b5d45'],
 ] as const;
 
 export function hashSeed(value: string) {

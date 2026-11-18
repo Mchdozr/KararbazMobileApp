@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { metaLine, ratingLine } from '@/lib/venue-format';
 import { mahalleLine } from '@/lib/geo-hit';
-import { colors, fonts, radii } from '@/lib/theme';
+import { colors, fonts, gradients, radii, shadows } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import type { VenueCard } from '@/lib/types';
 import { useRouter } from 'expo-router';
@@ -91,7 +91,7 @@ export const VenueProductCard = memo(function VenueProductCard({
             radius={radii.md}
             active={loadPhoto}
           />
-          <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={styles.fade} />
+          <LinearGradient colors={gradients.photo} style={styles.fade} />
           <View style={styles.badges}>
             {card.kind === 'Sponsored' ? <Text style={[styles.pill, styles.boost]}>Öne çıkan</Text> : null}
             {card.distanceMeters >= 0 ? <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text> : null}
@@ -149,7 +149,16 @@ export const VenueProductCard = memo(function VenueProductCard({
 });
 
 const styles = StyleSheet.create({
-  card: { marginBottom: 4, position: 'relative' },
+  // Beyaz kart: fotoğraf üstte, bilgiler altta; zeminden hafif gölgeyle ayrılır.
+  card: {
+    marginBottom: 4,
+    position: 'relative',
+    backgroundColor: colors.surface,
+    borderRadius: radii.md + 4,
+    padding: 6,
+    paddingBottom: 12,
+    ...shadows.card,
+  },
   photo: {
     borderRadius: radii.md,
     overflow: 'hidden',
@@ -162,7 +171,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 88,
   },
-  boost: { backgroundColor: colors.gold, color: colors.espresso },
+  boost: { backgroundColor: colors.accent, color: colors.white },
   badges: {
     position: 'absolute',
     top: 10,
@@ -172,10 +181,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
-  heart: { position: 'absolute', top: 8, right: 8, zIndex: 2 },
+  heart: { position: 'absolute', top: 14, right: 14, zIndex: 2 },
   pill: {
     color: colors.white,
-    backgroundColor: 'rgba(6,78,59,0.45)',
+    backgroundColor: colors.glass,
     fontSize: 11,
     fontWeight: '700',
     paddingHorizontal: 8,
@@ -184,7 +193,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   open: { backgroundColor: colors.sage },
-  closed: { backgroundColor: 'rgba(40,30,25,0.72)' },
+  closed: { backgroundColor: colors.scrim },
   onPhoto: {
     position: 'absolute',
     left: 12,
@@ -195,17 +204,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingHorizontal: 2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingHorizontal: 6 },
   rating: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   star: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 13 },
   count: { color: colors.muted, fontSize: 12 },
   fresh: { color: colors.sage, fontFamily: fonts.sansBold, fontSize: 12 },
   addr: { flex: 1, color: colors.muted, fontSize: 12 },
   meta: { flex: 1, color: colors.ink, fontFamily: fonts.sansMed, fontSize: 12 },
-  where: { color: colors.muted, fontSize: 12, marginTop: 3, paddingHorizontal: 2 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6, paddingHorizontal: 2 },
+  where: { color: colors.muted, fontSize: 12, marginTop: 3, paddingHorizontal: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, paddingHorizontal: 6 },
   chip: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
     color: colors.ink,
     fontSize: 11,
     fontWeight: '700',
@@ -213,8 +222,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: radii.pill,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.line,
   },
-  note: { color: colors.ink, fontSize: 13, lineHeight: 18, marginTop: 6, paddingHorizontal: 2, opacity: 0.86 },
+  note: { color: colors.muted, fontSize: 13, lineHeight: 18, marginTop: 6, paddingHorizontal: 6 },
 });

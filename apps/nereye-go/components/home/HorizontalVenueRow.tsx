@@ -1,5 +1,6 @@
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { colors, fonts } from '@/lib/theme';
+import { Ionicons } from '@expo/vector-icons';
 import type { VenueCard } from '@/lib/types';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -31,8 +32,14 @@ export function HorizontalVenueRow({
           {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
         </View>
         {onSeeAll ? (
-          <Pressable onPress={onSeeAll} hitSlop={12} accessibilityRole="button" accessibilityLabel={`${title}, tümünü gör`}>
+          <Pressable
+            onPress={onSeeAll}
+            hitSlop={6}
+            style={styles.allBtn}
+            accessibilityRole="button"
+            accessibilityLabel={`${title}, tümünü gör`}>
             <Text style={styles.all}>Tümü</Text>
+            <Ionicons name="arrow-forward" size={14} color={colors.accent} />
           </Pressable>
         ) : null}
       </View>
@@ -53,7 +60,7 @@ export function HorizontalVenueRow({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: 26 },
+  wrap: { marginTop: 30 },
   head: {
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -61,8 +68,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 12,
   },
-  title: { fontFamily: fonts.display, fontSize: 24, color: colors.ink },
-  sub: { color: colors.muted, marginTop: 2, fontSize: 13 },
-  all: { color: colors.coral, fontFamily: fonts.sansBold, fontSize: 14, paddingVertical: 6 },
-  row: { paddingHorizontal: 20, gap: 12, paddingBottom: 4 },
+  title: { fontFamily: fonts.display, fontSize: 22, color: colors.ink },
+  sub: { color: colors.muted, marginTop: 2, fontSize: 13, fontFamily: fonts.sans },
+  allBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: colors.accentSoft,
+  },
+  all: { color: colors.accent, fontFamily: fonts.sansBold, fontSize: 13 },
+  // Kart gölgeleri kesilmesin diye alt boşluk.
+  row: { paddingHorizontal: 20, gap: 14, paddingBottom: 12, paddingTop: 2 },
 });

@@ -6,17 +6,23 @@ import { detectLocation } from '@/lib/geo';
 import { isLocPinned, useFilters } from '@/lib/filters';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, gradients, shadows } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export function HomeHeader() {
+/**
+ * @param topInset Üst güvenli alan. Liste başlığı olarak kullanıldığında ekran durum çubuğu şeridini kendi çizer
+ * ve 0 verir.
+ */
+export function HomeHeader({ topInset }: { topInset?: number } = {}) {
   const insets = useSafeAreaInsets();
+  const top = topInset ?? insets.top;
   const router = useRouter();
   const filters = useFilters();
   const { session } = useSession();
@@ -56,89 +62,109 @@ export function HomeHeader() {
   }
 
   return (
-    <View style={[styles.wrap, evening && styles.eveWrap, { paddingTop: insets.top + 10 }]}>
-      <StatusBar style={evening ? 'light' : 'dark'} />
-      <View style={styles.top}>
-        <BrandLogo size={40} />
-        <View style={styles.locRow}>
-          <Pressable
-            style={styles.loc}
-            onPress={() => setSheet(true)}
-            accessibilityRole="button"
-            accessibilityLabel={`Konum ${filters.label}`}>
-            <Ionicons name="location" size={14} color={colors.coral} />
-            <Text style={styles.locText} numberOfLines={1}>
-              {filters.label}
-            </Text>
-            <Ionicons name="chevron-down" size={14} color={colors.ink} />
-          </Pressable>
-          <Pressable
-            style={styles.gps}
-            onPress={() => {
-              if (locating) {
-                return;
-              }
-              setLocating(true);
-              void detectLocation()
-                .then((fix) => {
-                  if (fix) {
-                    filters.setLoc(fix.lat, fix.lng, fix.label, false);
-                    toast.success(`Konum: ${fix.label}`);
-                    if (session) {
-                      void api.consent('location', true);
+    <View style={styles.outer}>
+      <StatusBar style="light" />
+      <LinearGradient
+        colors={evening ? gradients.evening : gradients.hero}
+        style={[styles.hero, { paddingTop: top + 14 }]}>
+        <View style={styles.top}>
+          <View style={styles.brand}>
+            <View style={styles.logoTile}>
+              <BrandLogo size={34} />
+            </View>
+            <Text style={styles.brandName}>Nereye</Text>
+          </View>
+          <View style={styles.locRow}>
+            <Pressable
+              style={styles.loc}
+              onPress={() => setSheet(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Konum ${filters.label}, değiştir`}>
+              <Ionicons name="location" size={14} color={colors.white} />
+              <Text style={styles.locText} numberOfLines={1}>
+                {filters.label}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={colors.onDarkMuted} />
+            </Pressable>
+            <Pressable
+              style={styles.gps}
+              onPress={() => {
+                if (locating) {
+                  return;
+                }
+                setLocating(true);
+                void detectLocation()
+                  .then((fix) => {
+                    if (fix) {
+                      filters.setLoc(fix.lat, fix.lng, fix.label, false);
+                      toast.success(`Konum: ${fix.label}`);
+                      if (session) {
+                        void api.consent('location', true);
+                      }
+                    } else {
+                      toast.info('Konum izni kapalı. Semtini listeden seçebilirsin.');
+                      setSheet(true);
                     }
-                  } else {
-                    toast.info('Konum izni kapalı. Semtini listeden seçebilirsin.');
-                    setSheet(true);
-                  }
-                })
-                .catch(() => toast.error('Konum alınamadı. Tekrar dene.'))
-                .finally(() => setLocating(false));
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Konumumu kullan"
-            hitSlop={8}>
-            {locating ? <ActivityIndicator size="small" color={colors.coral} /> : <Ionicons name="navigate" size={16} color={colors.coral} />}
-          </Pressable>
+                  })
+                  .catch(() => toast.error('Konum alınamadı. Tekrar dene.'))
+                  .finally(() => setLocating(false));
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Konumumu kullan"
+              hitSlop={8}>
+              {locating ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="navigate" size={16} color={colors.white} />}
+            </Pressable>
+          </View>
         </View>
-      </View>
-      <Text style={[styles.line, evening && styles.eveMuted]}>{timeGreeting()}</Text>
-      {saved.items.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.savedRow}>
-          {saved.items.slice(0, 8).map((p) => {
-            const on = p.label === filters.label;
-            return (
-              <Pressable
-                key={p.id}
-                style={[styles.saved, on && styles.savedOn]}
-                onPress={() => filters.setLoc(p.latitude, p.longitude, p.label, true)}
-                accessibilityRole="button"
-                accessibilityLabel={p.label}
-                accessibilityState={{ selected: on }}>
-                <Ionicons name={p.kind === 'home' ? 'home' : p.kind === 'work' ? 'briefcase' : 'bookmark'} size={12} color={on ? colors.white : colors.coral} />
-                <Text style={[styles.savedText, on && styles.savedTextOn]}>{p.label}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : null}
-      <View style={styles.search}>
-        <Ionicons name="search" size={18} color={colors.muted} />
-        <TextInput
-          style={styles.input}
-          placeholder="Kahve, kafe, sahil…"
-          placeholderTextColor={colors.muted}
-          value={q}
-          onChangeText={setQ}
-          onSubmitEditing={() => goSearch()}
-          returnKeyType="search"
-          accessibilityLabel="Mekan ara"
-        />
-        {q ? (
-          <Pressable onPress={() => setQ('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Aramayı temizle">
-            <Ionicons name="close-circle" size={18} color={colors.muted} />
-          </Pressable>
+        <Text style={styles.greeting}>{timeGreeting()}</Text>
+        {saved.items.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.savedRow}>
+            {saved.items.slice(0, 8).map((p) => {
+              const on = p.label === filters.label;
+              return (
+                <Pressable
+                  key={p.id}
+                  style={[styles.saved, on && styles.savedOn]}
+                  onPress={() => filters.setLoc(p.latitude, p.longitude, p.label, true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={p.label}
+                  accessibilityState={{ selected: on }}>
+                  <Ionicons name={p.kind === 'home' ? 'home' : p.kind === 'work' ? 'briefcase' : 'bookmark'} size={12} color={on ? colors.coral : colors.white} />
+                  <Text style={[styles.savedText, on && styles.savedTextOn]}>{p.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         ) : null}
+      </LinearGradient>
+      {/* Arama kutusu üst menünün kavisli alt kenarına taşar. */}
+      <View style={styles.searchWrap}>
+        <View style={styles.search}>
+          <Ionicons name="search" size={18} color={colors.coral} />
+          <TextInput
+            style={styles.input}
+            placeholder="Mekan, semt ya da tür ara"
+            placeholderTextColor={colors.muted}
+            value={q}
+            onChangeText={setQ}
+            onSubmitEditing={() => goSearch()}
+            returnKeyType="search"
+            accessibilityLabel="Mekan ara"
+          />
+          {q ? (
+            <Pressable onPress={() => setQ('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Aramayı temizle">
+              <Ionicons name="close-circle" size={18} color={colors.muted} />
+            </Pressable>
+          ) : (
+            <Pressable
+              style={styles.go}
+              onPress={() => goSearch()}
+              accessibilityRole="button"
+              accessibilityLabel="Aramaya git">
+              <Ionicons name="arrow-forward" size={16} color={colors.white} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <Modal visible={sheet} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSheet(false)}>
@@ -157,67 +183,92 @@ export function HomeHeader() {
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    backgroundColor: colors.bg,
+  outer: { backgroundColor: colors.bg, zIndex: 2 },
+  hero: {
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingBottom: 40,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  eveWrap: { backgroundColor: colors.espresso },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  locRow: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '58%' },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  logoTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandName: { fontFamily: fonts.display, fontSize: 22, color: colors.white, letterSpacing: 0.2 },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   loc: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    gap: 5,
+    backgroundColor: colors.glassLight,
+    borderWidth: 1,
+    borderColor: colors.glassLine,
+    paddingHorizontal: 12,
     minHeight: 44,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.line,
     flexShrink: 1,
   },
-  locText: { color: colors.ink, fontWeight: '700', fontSize: 13, maxWidth: 120 },
+  locText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13, maxWidth: 120 },
   gps: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glassLight,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.glassLine,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  line: { color: colors.muted, marginTop: 4, marginBottom: 10, fontSize: 15 },
-  eveMuted: { color: colors.gold },
-  savedRow: { gap: 8, paddingBottom: 12 },
+  greeting: {
+    fontFamily: fonts.display,
+    fontSize: 26,
+    lineHeight: 32,
+    color: colors.white,
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  savedRow: { gap: 8, paddingTop: 12 },
   saved: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glassLight,
     borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderColor: colors.glassLine,
+    paddingHorizontal: 12,
     minHeight: 44,
     borderRadius: 999,
   },
-  savedOn: { backgroundColor: colors.espresso, borderColor: colors.espresso },
-  savedText: { color: colors.ink, fontWeight: '700', fontSize: 12 },
-  savedTextOn: { color: colors.white },
+  savedOn: { backgroundColor: colors.surface, borderColor: colors.surface },
+  savedText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 12 },
+  savedTextOn: { color: colors.coral },
+  searchWrap: { paddingHorizontal: 20, marginTop: -26 },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderRadius: 18,
+    paddingLeft: 16,
+    paddingRight: 6,
+    minHeight: 54,
+    ...shadows.float,
   },
-  input: { flex: 1, paddingVertical: 14, color: colors.ink, fontSize: 16, minHeight: 44 },
+  input: { flex: 1, paddingVertical: 14, color: colors.ink, fontSize: 16, minHeight: 44, fontFamily: fonts.sans },
+  go: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.coral,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sheet: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: 20 },
   sheetHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   sheetTitle: { fontFamily: fonts.display, fontSize: 28, color: colors.ink, flex: 1 },

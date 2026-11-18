@@ -12,7 +12,7 @@ import { toast } from '@/lib/toast';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, gradients } from '@/lib/theme';
 import type { Preferences, Profile as ProfileInfo } from '@/lib/types';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -208,7 +208,7 @@ export default function Profile() {
       <StatusBar style="light" />
       <View style={styles.hero}>
         <Image source={INTENT_PHOTOS[heroIntent] ?? INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <LinearGradient colors={['rgba(6,78,59,0.15)', 'rgba(6,78,59,0.78)']} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={[colors.scrimSoft, colors.scrim]} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroCopy, { paddingTop: insets.top + 12 }]}>
           <Text style={styles.kicker}>Profil</Text>
           <Text style={styles.heroLine}>Karar tarzın.</Text>
@@ -319,7 +319,7 @@ export default function Profile() {
                     accessibilityState={{ checked: on }}
                     accessibilityLabel={intentLabel(intent)}>
                     <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />
-                    <LinearGradient colors={['transparent', 'rgba(6,78,59,0.72)']} style={StyleSheet.absoluteFill} />
+                    <LinearGradient colors={gradients.photo} style={StyleSheet.absoluteFill} />
                     {on ? (
                       <View style={styles.check}>
                         <Ionicons name="checkmark" size={14} color={colors.white} />

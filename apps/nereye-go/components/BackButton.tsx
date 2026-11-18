@@ -18,8 +18,8 @@ export function BackButton({ light = false }: { light?: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  btn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  btn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   dark: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  light: { backgroundColor: colors.glass },
+  light: { backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.glassLine },
   pressed: { opacity: 0.7 },
 });

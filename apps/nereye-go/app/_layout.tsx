@@ -12,12 +12,17 @@ import { Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 
 const navTheme = {
   ...DefaultTheme,
   colors: { ...DefaultTheme.colors, primary: colors.coral, background: colors.bg, card: colors.surface },
 };
+
+// Web: sayfa dili Türkçe olsun. Büyük harf dönüşümü "i"yi "İ" yapar, ekran okuyucu doğru telaffuz eder.
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  document.documentElement.lang = 'tr';
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -43,10 +48,10 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerTintColor: colors.ink,
-              headerStyle: { backgroundColor: colors.surface },
+              headerStyle: { backgroundColor: colors.bg },
               headerShadowVisible: false,
               headerBackTitle: '',
-              headerTitleStyle: { fontFamily: fonts.sansBold, fontSize: 17, color: colors.ink },
+              headerTitleStyle: { fontFamily: fonts.display, fontSize: 19, color: colors.ink },
               headerTitleAlign: 'center',
               contentStyle: { backgroundColor: colors.bg },
             }}>
@@ -59,8 +64,11 @@ export default function RootLayout() {
               name="venue/[id]"
               options={{
                 title: '',
+                // Fotoğraf ekranın tepesine kadar uzanır; düğmeler fotoğrafın üstünde cam görünümlü durur.
+                headerTransparent: true,
+                headerStyle: { backgroundColor: 'transparent' },
                 headerBackVisible: false,
-                headerLeft: () => <BackButton />,
+                headerLeft: () => <BackButton light />,
               }}
             />
             <Stack.Screen

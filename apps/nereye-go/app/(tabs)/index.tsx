@@ -18,12 +18,13 @@ import { isOffline, offlineBanner, savedListName, toSaved, usableSaved, type Sav
 import { advancePage } from '@/lib/paging';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { getLargeJson, setLargeJson } from '@/lib/storage';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, gradients } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const NO_CARDS: VenueCard[] = [];
 
@@ -45,6 +46,7 @@ export default function Home() {
   // Sunucudan şimdiye kadar alınan kayıt sayısı (filtreden önce). "Daha fazla" buradan devam eder.
   const offset = useRef(0);
   const favorites = useFavorites();
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     const n = ++seq.current;
@@ -181,7 +183,8 @@ export default function Home() {
 
   return (
     <View style={styles.bg}>
-      <HomeHeader />
+      {/* Durum çubuğunun arkası: üst menü kayıp gidince saat ve pil ikonları açık zeminde kaybolmasın. */}
+      <View style={[styles.statusStrip, { height: insets.top, backgroundColor: (isEvening() ? gradients.evening : gradients.hero)[0] }]} />
       <FlatList
         data={showAll ? organic : NO_CARDS}
         keyExtractor={(card) => `feed-${card.placeId}`}
@@ -208,6 +211,7 @@ export default function Home() {
         }
         ListHeaderComponent={
           <>
+            <HomeHeader topInset={0} />
             {offline ? (
               <View style={styles.offline} accessibilityRole="alert">
                 <Ionicons name="cloud-offline-outline" size={18} color={colors.ink} />
@@ -222,7 +226,9 @@ export default function Home() {
                   goDiscover(filters.intent);
                 }}
                 accessibilityRole="button">
-                <Ionicons name="moon" size={16} color={colors.gold} />
+                <View style={styles.eveIcon}>
+                  <Ionicons name="moon" size={16} color={colors.accent} />
+                </View>
                 <Text style={styles.eveText}>Akşam oldu — şu an açık yerlere bak</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.white} />
               </Pressable>
@@ -315,18 +321,27 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
+  statusStrip: { width: '100%' },
   wrap: { paddingBottom: 48 },
   eve: {
     marginHorizontal: 20,
-    marginBottom: 8,
+    marginTop: 16,
     backgroundColor: colors.espresso,
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    minHeight: 48,
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  eveIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.glassLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eveText: { flex: 1, color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
   skelRow: { marginTop: 26 },
@@ -334,16 +349,26 @@ const styles = StyleSheet.create({
   gridTitle: {
     marginBottom: 12,
     fontFamily: fonts.display,
-    fontSize: 24,
+    fontSize: 22,
     color: colors.ink,
   },
-  more: { marginHorizontal: 20, marginTop: 20, alignItems: 'center', padding: 14, minHeight: 44 },
+  more: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.coral,
+    backgroundColor: colors.surface,
+  },
   moreText: { color: colors.coral, fontFamily: fonts.sansBold, fontSize: 15 },
   listTitle: { paddingHorizontal: 20, marginTop: 20 },
   listItem: { paddingHorizontal: 20, marginBottom: 16 },
   offline: {
     marginHorizontal: 20,
-    marginBottom: 8,
+    marginTop: 16,
     backgroundColor: colors.surface,
     borderColor: colors.line,
     borderWidth: 1,

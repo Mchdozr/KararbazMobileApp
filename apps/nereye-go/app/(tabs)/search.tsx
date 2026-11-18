@@ -11,7 +11,7 @@ import { geoChip, type GeoHit } from '@/lib/geo-hit';
 import { haptic } from '@/lib/haptics';
 import { clearRecentSearches, loadRecentSearches, pushRecentSearch, removeRecentSearch } from '@/lib/recent-searches';
 import { debounceMs, shouldSearch } from '@/lib/search-query';
-import { colors, fonts, INTENT_ICONS } from '@/lib/theme';
+import { colors, fonts, INTENT_ICONS, INTENT_PASTELS } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -201,7 +201,7 @@ export default function Search() {
                     }}
                     accessibilityRole="button"
                     accessibilityLabel={`${intentLabel(i)} mekanlarını listele`}>
-                    <View style={styles.intentIcon}>
+                    <View style={[styles.intentIcon, { backgroundColor: INTENT_PASTELS[i] ?? colors.coralSoft }]}>
                       <Ionicons name={INTENT_ICONS[i]} size={18} color={colors.coral} />
                     </View>
                     <Text style={styles.intentText}>{intentLabel(i)}</Text>

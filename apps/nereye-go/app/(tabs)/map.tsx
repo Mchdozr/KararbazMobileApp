@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     minHeight: 40,
     borderRadius: 20,
-    shadowColor: '#04382b',
+    shadowColor: colors.espresso,
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },

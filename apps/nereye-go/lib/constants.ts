@@ -1,6 +1,6 @@
 import { resolveApiUrl } from '@/lib/release-config';
 
-export const ACCENT = '#064e3b';
+export const ACCENT = '#0b5d45'; // lib/theme.ts colors.coral ile aynı
 export const KADIKOY = { lat: 40.9885, lng: 29.025 };
 
 export const INTENTS = ['Kahve', 'Yemek', 'Eglence', 'Kultur', 'AcikHava', 'Gece'] as const;

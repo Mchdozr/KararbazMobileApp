@@ -1,6 +1,6 @@
 import { INTENTS, intentLabel } from '@/lib/constants';
 import { INTENT_PHOTOS } from '@/lib/photos';
-import { colors } from '@/lib/theme';
+import { colors, fonts } from '@/lib/theme';
 import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -23,8 +23,10 @@ export function CategoryGrid({
             accessibilityRole="button"
             accessibilityLabel={intentLabel(intent)}
             accessibilityState={{ selected: on }}>
-            <View style={[styles.avatar, on && styles.avatarOn]}>
-              <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <View style={[styles.ring, on && styles.ringOn]}>
+              <View style={styles.avatar}>
+                <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />
+              </View>
             </View>
             <Text style={[styles.label, on && styles.labelOn]}>{intentLabel(intent)}</Text>
           </Pressable>
@@ -35,18 +37,24 @@ export function CategoryGrid({
 }
 
 const styles = StyleSheet.create({
-  row: { paddingHorizontal: 20, gap: 16, paddingTop: 8, paddingBottom: 4 },
+  row: { paddingHorizontal: 20, gap: 14, paddingTop: 18, paddingBottom: 4 },
   item: { alignItems: 'center', width: 76 },
-  avatar: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    overflow: 'hidden',
-    backgroundColor: colors.line,
+  // Seçili niyet: fotoğrafla halka arasında ince bir boşluk (hikâye halkası gibi).
+  ring: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    padding: 3,
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  avatarOn: { borderColor: colors.coral },
-  label: { marginTop: 8, fontSize: 12, fontWeight: '600', color: colors.muted },
-  labelOn: { color: colors.ink, fontWeight: '800' },
+  ringOn: { borderColor: colors.accent },
+  avatar: {
+    flex: 1,
+    borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: colors.line,
+  },
+  label: { marginTop: 6, fontSize: 12, fontFamily: fonts.sansMed, color: colors.muted },
+  labelOn: { color: colors.ink, fontFamily: fonts.sansBold },
 });
