@@ -2,7 +2,6 @@ import { FavoriteButton } from '@/components/FavoriteButton';
 import { VenueImage } from '@/components/VenueImage';
 import { vibeText } from '@/lib/constants';
 import { api } from '@/lib/api';
-import { INTENT_PHOTOS } from '@/lib/photos';
 import { metaLine, ratingLine } from '@/lib/venue-format';
 import { mahalleLine } from '@/lib/geo-hit';
 import { colors, fonts, gradients, radii, shadows } from '@/lib/theme';
@@ -86,7 +85,7 @@ export const VenueProductCard = memo(function VenueProductCard({
             photoUrl={card.photoUrl}
             photoReference={card.photoReference}
             name={card.name}
-            fallback={intent ? INTENT_PHOTOS[intent] : undefined}
+            intent={intent}
             style={StyleSheet.absoluteFill}
             radius={radii.md}
             active={loadPhoto}

@@ -19,6 +19,7 @@ public sealed class ReviewService : IReviewService
     private readonly Application.Common.IClock _clock;
     private readonly IPlacesCache _cache;
     private readonly Places.AvatarStorage _uploads;
+    private readonly Places.PlaceCovers _covers;
 
     public ReviewService(
         NereyeDbContext db,
@@ -26,8 +27,10 @@ public sealed class ReviewService : IReviewService
         IPlacePhotoEnricher photos,
         Application.Common.IClock clock,
         IPlacesCache cache,
-        Places.AvatarStorage uploads)
+        Places.AvatarStorage uploads,
+        Places.PlaceCovers covers)
     {
+        _covers = covers;
         _uploads = uploads;
         _cache = cache;
         _db = db;
@@ -338,7 +341,7 @@ public sealed class ReviewService : IReviewService
                 place.Category));
         }
 
-        return items;
+        return await _covers.FillAsync(items, cancellationToken);
     }
 
     public async Task ReportAsync(

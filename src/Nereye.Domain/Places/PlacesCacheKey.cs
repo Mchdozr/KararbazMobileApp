@@ -17,6 +17,9 @@ public static class PlacesCacheKey
     /// <summary>Detay sayfası için zenginleştirilmiş kayıt (özet, yorum, olanak, galeri).</summary>
     public static string Rich(string placeId) => $"places:rich:v2:{placeId}";
 
+    /// <summary>Mekanın kart (kapak) görseli: detayda ya da görsel aramasında bulunan ilk gerçek kare.</summary>
+    public static string Cover(string placeId) => $"places:cover:v1:{placeId}";
+
     /// <summary>Konum önerisi. Büyük/küçük harf ve fazla boşluk aynı anahtara düşer.</summary>
     public static string Suggest(string query) =>
         "places:suggest:v1:" + string.Join(' ', query.Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));

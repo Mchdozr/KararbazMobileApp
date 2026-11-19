@@ -19,14 +19,17 @@ public sealed class VenueQueryService : IVenueQueryService
     private readonly IPlacePhotoEnricher _photos;
     private readonly NereyeDbContext _db;
     private readonly AvatarStorage _uploads;
+    private readonly PlaceCovers _covers;
 
     public VenueQueryService(
         IPlacesClient places,
         IPlacesCache cache,
         IPlacePhotoEnricher photos,
         NereyeDbContext db,
-        AvatarStorage uploads)
+        AvatarStorage uploads,
+        PlaceCovers covers)
     {
+        _covers = covers;
         _places = places;
         _cache = cache;
         _photos = photos;
@@ -65,6 +68,11 @@ public sealed class VenueQueryService : IVenueQueryService
             .Cast<string>()
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        if (gallery.Count > 0)
+        {
+            // Detayda bulunan gerçek kare, listelerde bu mekanın kapağı olur (stok görsel yerine).
+            await _covers.RememberAsync(placeId, gallery[0], cancellationToken);
+        }
 
         var google = new GoogleVenueBlock(
             place.Name,
@@ -207,6 +215,11 @@ public sealed class VenueQueryService : IVenueQueryService
             return PlaceMedia.Url(owner, null);
         }
 
+        if (await _covers.GetAsync(placeId, cancellationToken) is { } cover)
+        {
+            return cover;
+        }
+
         var place = await _cache.GetOrSetAsync(
             PlacesCacheKey.Details(placeId),
             DetailsTtl,
@@ -218,7 +231,9 @@ public sealed class VenueQueryService : IVenueQueryService
         }
 
         var enriched = await _photos.EnrichOneAsync(place, cancellationToken);
-        return PlaceMedia.Url(null, enriched.PhotoReference);
+        var url = PlaceMedia.Url(null, enriched.PhotoReference);
+        await _covers.RememberAsync(placeId, url, cancellationToken);
+        return url;
     }
 
     public async Task<IReadOnlyDictionary<string, string>> GetPhotosAsync(
@@ -240,6 +255,7 @@ public sealed class VenueQueryService : IVenueQueryService
         var overlayById = overlays.ToDictionary(v => v.GooglePlaceId);
         var found = new Dictionary<string, string>(StringComparer.Ordinal);
         var lookups = new List<Task<PlaceSnapshot?>>();
+        var covers = await _covers.GetManyAsync(ids, cancellationToken);
         foreach (var id in ids)
         {
             overlayById.TryGetValue(id, out var overlay);
@@ -248,6 +264,22 @@ public sealed class VenueQueryService : IVenueQueryService
             if (!string.IsNullOrWhiteSpace(owned))
             {
                 found[id] = owned;
+                continue;
+            }
+
+            if (covers.TryGetValue(id, out var cover))
+            {
+                found[id] = cover;
+                continue;
+            }
+
+            // Detay daha önce açıldıysa zengin kaydın galerisi elde: kotasız, anında.
+            var rich = await _cache.TryGetAsync<PlaceSnapshot>(PlacesCacheKey.Rich(id), cancellationToken);
+            var fromRich = rich is null ? null : PlaceMedia.Url(null, rich.PhotoReference ?? rich.Photos?.FirstOrDefault());
+            if (!string.IsNullOrWhiteSpace(fromRich))
+            {
+                found[id] = fromRich;
+                await _covers.RememberAsync(id, fromRich, cancellationToken);
                 continue;
             }
 
@@ -271,6 +303,7 @@ public sealed class VenueQueryService : IVenueQueryService
             if (!string.IsNullOrWhiteSpace(tagged))
             {
                 found[place.PlaceId] = tagged;
+                await _covers.RememberAsync(place.PlaceId, tagged, cancellationToken);
                 continue;
             }
 
@@ -289,6 +322,7 @@ public sealed class VenueQueryService : IVenueQueryService
             if (!string.IsNullOrWhiteSpace(url))
             {
                 found[place.PlaceId] = url;
+                await _covers.RememberAsync(place.PlaceId, url, cancellationToken);
             }
         }
 
@@ -321,7 +355,7 @@ public sealed class VenueQueryService : IVenueQueryService
             .ToListAsync(cancellationToken);
         var map = overlays.ToDictionary(v => v.GooglePlaceId);
 
-        return snapshots.Select(p =>
+        var items = snapshots.Select(p =>
         {
             map.TryGetValue(p.PlaceId, out var overlay);
             var distance = GeoMath.HaversineMeters(latitude, longitude, p.Latitude, p.Longitude);
@@ -347,5 +381,6 @@ public sealed class VenueQueryService : IVenueQueryService
                 p.PriceLevel,
                 p.Category);
         }).ToList();
+        return await _covers.FillAsync(items, cancellationToken);
     }
 }

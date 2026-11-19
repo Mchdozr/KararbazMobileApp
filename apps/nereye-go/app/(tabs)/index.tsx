@@ -74,17 +74,37 @@ export default function Home() {
     } else {
       setLoading(true);
     }
+    // İstek hemen yola çıkar; beklerken (soğuk açılış, yavaş ağ) aynı semt ve niyetin diskteki son listesi
+    // anında çizilir, taze liste gelince yerini alır. Uydurma veri yok: kayıt yoksa iskelet görünür.
+    let settled = false;
+    const fetching = api.recommend(
+      filters.lat,
+      filters.lng,
+      filters.intent,
+      filters.openNow,
+      filters.vibes,
+      filters.radiusMeters,
+      0,
+      20,
+    );
+    void fetching.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    if (!cached) {
+      const saved = usableSaved(await getLargeJson<SavedList>(savedListName(filters.intent)), filters.intent);
+      if (!settled && n === seq.current && saved && saved.label === filters.label) {
+        setItems(saved.items.filter((c) => !filters.minRating || (c.nereyeRating ?? 0) >= filters.minRating));
+        setHasMore(false);
+        setLoading(false);
+      }
+    }
     try {
-      const res = await api.recommend(
-        filters.lat,
-        filters.lng,
-        filters.intent,
-        filters.openNow,
-        filters.vibes,
-        filters.radiusMeters,
-        0,
-        20,
-      );
+      const res = await fetching;
       if (n !== seq.current) {
         return;
       }

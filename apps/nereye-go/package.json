@@ -44,7 +44,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/ui-critical.test.ts lib/release-config.test.ts lib/map-policy.test.ts lib/play-policy.test.ts lib/account-policy.test.ts lib/offline.test.ts"
+    "test": "node --experimental-strip-types --test lib/ui-critical.test.ts lib/release-config.test.ts lib/map-policy.test.ts lib/play-policy.test.ts lib/account-policy.test.ts lib/offline.test.ts lib/cover-store.test.ts"
   },
   "private": true,
   "overrides": {

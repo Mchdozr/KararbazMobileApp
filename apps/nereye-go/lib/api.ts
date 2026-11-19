@@ -4,6 +4,7 @@ import { venuePhotoUrls } from '@/lib/venue-photos';
 import { DEFAULT_API } from '@/lib/constants';
 import { apiCandidates } from '@/lib/release-config';
 import { photoBatchIds } from '@/lib/photo-batch';
+import { warmCards } from '@/lib/prefetch';
 import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
@@ -33,6 +34,7 @@ let authEvents: { onRefreshed?: (session: Session) => void; onCleared?: () => vo
 
 const EMPTY_PREFS: Preferences = { defaultRadiusMeters: 5000, intents: [], vibes: [] };
 const photoWait = new Map<string, Promise<string | null>>();
+const PHOTO_GROUP = 4;
 
 function enqueuePlacePhoto(placeId: string): Promise<string | null> {
   return new Promise((resolve) => {
@@ -47,7 +49,8 @@ function enqueuePlacePhoto(placeId: string): Promise<string | null> {
 
 async function flushPlacePhotos() {
   photoFlush = null;
-  const batch = photoQueue.splice(0, 8);
+  // Küçük gruplar: sunucunun Google bütçesi (grup başına 4) ekrandaki her kartı kapsar, ilk kareler daha erken gelir.
+  const batch = photoQueue.splice(0, PHOTO_GROUP);
   if (photoQueue.length > 0) {
     photoFlush = setTimeout(() => {
       void flushPlacePhotos();
@@ -341,6 +344,7 @@ export const api = {
     );
     const page = { items: res.items ?? [], hasMore: Boolean(res.hasMore) };
     putRecommend(key, page);
+    warmCards(page.items, skip === 0 ? 8 : 4);
     return page;
   },
   placePhotos: async (placeIds: string[]) => {
@@ -362,6 +366,13 @@ export const api = {
     }
     const pending = enqueuePlacePhoto(placeId);
     photoWait.set(placeId, pending);
+    // Bulunamadıysa bir dakika sonra yeniden sorulabilsin: sunucu o sırada Google bütçesi ya da başka bir
+    // kaynakla kareyi bulmuş olabilir. Bulunan kare kapak deposunda kalır.
+    void pending.then((url) => {
+      if (!url) {
+        setTimeout(() => photoWait.delete(placeId), 60_000);
+      }
+    });
     return pending;
   },
   route: (

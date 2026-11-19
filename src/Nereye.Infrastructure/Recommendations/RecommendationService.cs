@@ -15,13 +15,16 @@ public sealed class RecommendationService : IRecommendationService
     private readonly IPlacesCache _cache;
     private readonly NereyeDbContext _db;
     private readonly Application.Common.IClock _clock;
+    private readonly Places.PlaceCovers _covers;
 
     public RecommendationService(
         IPlacesClient places,
         IPlacesCache cache,
         NereyeDbContext db,
-        Application.Common.IClock clock)
+        Application.Common.IClock clock,
+        Places.PlaceCovers covers)
     {
+        _covers = covers;
         _places = places;
         _cache = cache;
         _db = db;
@@ -158,6 +161,8 @@ public sealed class RecommendationService : IRecommendationService
                 place.Category);
         }).Where(i => i is not null).Cast<RecommendationItemDto>().ToList();
 
+        // Görseli olmayan kartlara daha önce bulunmuş gerçek kapak: istemci stok görsel göstermez, ek istek atmaz.
+        items = await _covers.FillAsync(items, cancellationToken);
         var attribution = snapshots.FirstOrDefault()?.Attribution ?? "Harita verisi: OpenStreetMap";
         return new RecommendationResponse(items, geohash, attribution, hasMore);
     }

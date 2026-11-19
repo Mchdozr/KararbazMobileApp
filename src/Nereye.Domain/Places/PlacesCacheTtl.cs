@@ -14,6 +14,14 @@ public static class PlacesCacheTtl
     public static readonly TimeSpan Rich = TimeSpan.FromHours(24);
 
     /// <summary>
+    /// Kapak görseli. Google karesi (/api/media/google) Rich ile aynı süre tutulur; Wikimedia, web sitesi
+    /// ve işletme görselleri daha uzun.
+    /// </summary>
+    public static readonly TimeSpan CoverGoogle = TimeSpan.FromHours(24);
+
+    public static readonly TimeSpan Cover = TimeSpan.FromDays(7);
+
+    /// <summary>
     /// Google'ın fotoğraf için döndürdüğü indirme adresi kısa ömürlü olabilir ve saklanması şartla
     /// sınırlı olabilir; ömrü doğrulanamadığı için kısa tutulur.
     /// </summary>

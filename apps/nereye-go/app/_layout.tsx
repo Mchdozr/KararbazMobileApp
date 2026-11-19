@@ -1,6 +1,7 @@
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { BackButton } from '@/components/BackButton';
 import { gradientHeader } from '@/components/ScreenHeader';
+import { hydrateCovers } from '@/lib/covers';
 import { SessionProvider } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 import { ToastHost } from '@/lib/toast';
@@ -19,6 +20,9 @@ const navTheme = {
   ...DefaultTheme,
   colors: { ...DefaultTheme.colors, primary: colors.coral, background: colors.bg, card: colors.surface },
 };
+
+// Önceki oturumda görülen kapak görselleri: ilk kartlar ağ beklemeden gerçek fotoğrafla açılsın.
+void hydrateCovers();
 
 // Web: sayfa dili Türkçe olsun. Büyük harf dönüşümü "i"yi "İ" yapar, ekran okuyucu doğru telaffuz eder.
 if (Platform.OS === 'web' && typeof document !== 'undefined') {

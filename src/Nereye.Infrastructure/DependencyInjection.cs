@@ -129,6 +129,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ISavedPlaceService, SavedPlaceService>();
         services.AddSingleton<AvatarStorage>();
+        services.AddSingleton<PlaceCovers>();
         services.AddSingleton<FakeGeoSuggest>();
 
         services.AddSingleton<FakePlacesClient>();

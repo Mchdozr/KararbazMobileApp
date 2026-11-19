@@ -210,9 +210,9 @@ export default function Discover() {
         contentContainerStyle={styles.wrap}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={header}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <View style={styles.cell}>
-            <VenueProductCard card={item} intent={intent} loadPhoto={visibleIds.has(item.placeId)} />
+            <VenueProductCard card={item} intent={intent} loadPhoto={index < 8 || visibleIds.has(item.placeId)} />
           </View>
         )}
         viewabilityConfig={{ itemVisiblePercentThreshold: 30, minimumViewTime: 80 }}

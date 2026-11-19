@@ -1,11 +1,20 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { api } from '@/lib/api';
+import { dropCover } from '@/lib/cover-store';
+import { rememberCover, useCover } from '@/lib/covers';
 import { photoSource } from '@/lib/photos';
-import { placeholderInitials, placeholderPalette, placeholderShapes } from '@/lib/placeholder';
-import { colors, fonts } from '@/lib/theme';
+import { placeholderPalette } from '@/lib/placeholder';
+import { colors, INTENT_ICONS } from '@/lib/theme';
 
+/**
+ * Mekan görseli. Öncelik: listenin verdiği kare → cihazda kayıtlı kapak (detayda ya da daha önce görülen
+ * gerçek kare) → sunucudan toplu istek. Hiçbiri yoksa niyet ikonlu yer tutucu. Başka bir mekanın stok
+ * fotoğrafı asla gösterilmez: kullanıcı yanlış mekanı görmüş olur.
+ */
 export const VenueImage = memo(function VenueImage({
   placeId,
   photoUrl,
@@ -13,8 +22,8 @@ export const VenueImage = memo(function VenueImage({
   name,
   style,
   radius = 18,
-  fallback,
-  active = false,
+  intent,
+  active = true,
   onFail,
 }: {
   placeId: string;
@@ -23,27 +32,33 @@ export const VenueImage = memo(function VenueImage({
   name?: string | null;
   style?: object;
   radius?: number;
-  fallback?: number;
+  /** Yer tutucudaki ikon. */
+  intent?: string;
+  /** false: ekran dışında, henüz sunucuya sorma. */
   active?: boolean;
   /** Görsel indirilemediğinde, denenmiş URI ile çağrılır. */
   onFail?: (uri: string) => void;
 }) {
-  const given = photoSource(placeId, photoUrl, photoReference);
+  const given = photoUrl || photoReference || null;
+  const cover = useCover(placeId);
   const [lazyUrl, setLazyUrl] = useState<string | null>(null);
   // Görsel indirilemezse (kota, silinmiş dosya) boş kare yerine yer tutucu göster.
   const [broken, setBroken] = useState<string | null>(null);
-  const candidate = given ?? photoSource(placeId, lazyUrl);
+  const raw = given ?? cover ?? lazyUrl;
+  const candidate = photoSource(placeId, raw);
   const uri = candidate && typeof candidate === 'object' ? candidate.uri : null;
   const source = uri && uri === broken ? null : candidate;
   const [a, b] = placeholderPalette(placeId);
-  const shapes = placeholderShapes(placeId);
 
   useEffect(() => {
-    if (given || !placeId || !active) {
+    if (given || cover || !placeId || !active || photoSource(placeId, null)) {
       return;
     }
     let alive = true;
     void api.placePhoto(placeId).then((url) => {
+      if (url) {
+        rememberCover(placeId, url);
+      }
       if (alive) {
         setLazyUrl(url);
       }
@@ -51,48 +66,39 @@ export const VenueImage = memo(function VenueImage({
     return () => {
       alive = false;
     };
-  }, [given, placeId, active]);
+  }, [given, cover, placeId, active]);
+
+  const icon = (intent && INTENT_ICONS[intent]) || 'location';
 
   return (
     <View style={[styles.wrap, { borderRadius: radius }, style]}>
+      {/* Yer tutucu her zaman altta: görsel gelince üstüne yumuşakça biner, gelmezse bu kalır. */}
+      <LinearGradient colors={[a, b]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ph}>
+        {/* Mekan adı kartta zaten yazılı; burada yalnızca türünü anlatan ikon. */}
+        <View style={styles.badge} accessibilityLabel={name ? `${name}, fotoğraf yok` : undefined}>
+          <Ionicons name={icon} size={24} color={colors.coral} />
+        </View>
+      </LinearGradient>
       {source ? (
         <Image
           source={source}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
-          transition={180}
+          transition={220}
           cachePolicy="memory-disk"
+          priority={active ? 'high' : 'low'}
           recyclingKey={uri ?? placeId}
           onError={() => {
             setBroken(uri);
             if (uri) {
+              if (cover && raw === cover) {
+                dropCover(placeId, cover);
+              }
               onFail?.(uri);
             }
           }}
         />
-      ) : fallback ? (
-        <Image source={fallback} style={StyleSheet.absoluteFill} contentFit="cover" />
-      ) : (
-        <View style={[styles.ph, { backgroundColor: a }]}>
-          {shapes.map((s, i) => (
-            <View
-              key={`${placeId}-${i}`}
-              style={[
-                styles.blob,
-                {
-                  top: s.top,
-                  left: s.left,
-                  width: s.size,
-                  height: s.size,
-                  opacity: s.opacity,
-                  backgroundColor: i === 1 ? colors.white : b,
-                },
-              ]}
-            />
-          ))}
-          <Text style={styles.initials}>{placeholderInitials(name, placeId)}</Text>
-        </View>
-      )}
+      ) : null}
     </View>
   );
 });
@@ -100,16 +106,18 @@ export const VenueImage = memo(function VenueImage({
 const styles = StyleSheet.create({
   wrap: {
     overflow: 'hidden',
-    backgroundColor: colors.line,
+    backgroundColor: colors.surfaceAlt,
     width: '100%',
     height: '100%',
   },
-  ph: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  blob: { position: 'absolute', borderRadius: 999 },
-  initials: {
-    fontFamily: fonts.display,
-    fontSize: 28,
-    color: colors.espresso,
-    letterSpacing: 1,
+  // İkon üst-orta: alt kısımda kartın adı ve karartma perdesi durur.
+  ph: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: '18%' },
+  badge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

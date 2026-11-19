@@ -20,6 +20,7 @@ import { relativeDate, summarizeRatings } from '@/lib/reviews';
 import { formatRouteLine } from '@/lib/route';
 import { useSession } from '@/lib/session';
 import { shareVenue } from '@/lib/share';
+import { rememberCover } from '@/lib/covers';
 import { colors, fonts, radii } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { peekVenue } from '@/lib/venue-cache';
@@ -98,6 +99,16 @@ export default function Venue() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [detail, setDetail] = useState<VenueDetail | null>(null);
+  // Fotoğraf geçilince saydam başlık zemin rengini ve mekan adını alır: düğmeler metnin üstüne binmez.
+  const [pastHero, setPastHero] = useState(false);
+  // Detayda gerçek kare varsa o, listelerde bu mekanın kapağı olur: geri dönünce kart stok görsel göstermez.
+  useEffect(() => {
+    if (!detail) {
+      return;
+    }
+    const first = [...(detail.photoUrls ?? []), detail.photoUrl].find((u) => Boolean(u?.trim()));
+    rememberCover(detail.placeId, first);
+  }, [detail]);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -357,9 +368,11 @@ export default function Venue() {
 
   return (
     <View style={styles.bg}>
-      <StatusBar style="light" />
       <Stack.Screen
         options={{
+          title: pastHero ? detail.name : '',
+          headerStyle: { backgroundColor: pastHero ? colors.bg : 'transparent' },
+          headerTitleStyle: { fontFamily: fonts.display, fontSize: 17, color: colors.ink },
           headerRight: () => (
             <View style={styles.headRight}>
               <Pressable
@@ -375,7 +388,17 @@ export default function Venue() {
           ),
         }}
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 96 }} showsVerticalScrollIndicator={false}>
+      <StatusBar style={pastHero ? 'dark' : 'light'} />
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={32}
+        onScroll={(e) => {
+          const past = e.nativeEvent.contentOffset.y > HERO - 120;
+          if (past !== pastHero) {
+            setPastHero(past);
+          }
+        }}>
         <View style={[styles.hero, { width }]}>
           <ScrollView
             horizontal
