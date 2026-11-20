@@ -48,9 +48,11 @@ Production prebuild çıktısında (`npx expo prebuild -p android`, depoya eklen
   yalnızca mekan detayında istenir. Önbellek süreleri: fotoğraf adresi 30 dk, yakındaki arama 6 sa, zengin detay
   24 sa, OSM yakın arama 3 gün, OSM detay 7 gün (`src/Nereye.Domain/Places/PlacesCacheTtl.cs`). Google Maps
   Platform şartlarındaki saklama sınırları **doğrulanmadı**; 6 sa ve 24 sa değerleri önceki sürümden kaldı.
-- **Google içeriği yalnızca Google haritasıyla:** Google'dan gelen içerik Google olmayan bir harita üstünde
-  gösterilmiyor; iOS'ta harita şu an gösterilmiyor (`lib/map-config.ts` → `unsupported`). Şartın kapsamı
-  **doğrulanmadı**.
+- **iOS haritası:** iPhone'da harita her zaman görünür. Derlemeye `GOOGLE_MAPS_IOS_API_KEY` verilirse Google
+  haritası, verilmezse Apple Haritalar kullanılır (Expo Go'da da). Apple haritasının üstünde Google'dan gelen
+  mekanların pinleri ve kartları görünür; Google Maps Platform şartları Google içeriğinin Google dışı haritada
+  gösterilmesini kısıtlayabilir (**doğrulanmadı**). Yayın öncesi iOS derlemesine Google anahtarı verilmesi önerilir.
+- **Android haritası:** Production derlemesi `GOOGLE_MAPS_ANDROID_API_KEY` olmadan derlenmez (harita boş kalmasın).
 - **Atıf:** Harita altında "Harita © Google · Mekan verisi © OpenStreetMap katkıcıları"; Google yorumlarında yazar
   adı Google profil bağlantısına gider.
 

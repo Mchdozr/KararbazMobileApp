@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildConfig } from '../app.config.ts';
-import { mapMode } from './map-config.ts';
+import { mapAttribution, mapMode } from './map-config.ts';
 
 const repo = fileURLToPath(new URL('../../../', import.meta.url));
 const SKIP = new Set(['node_modules', '.git', 'bin', 'obj', '.expo', 'dist', 'web-build', 'android', 'ios', 'build', '.dart_tool']);
@@ -39,12 +39,27 @@ test('no Google API key is committed in source', () => {
   assert.deepEqual(hits, []);
 });
 
-test('Google content is only drawn on a Google map', () => {
+test('a real map is drawn on every phone', () => {
   assert.equal(mapMode('android', true, false), 'google');
   assert.equal(mapMode('android', false, true), 'google'); // Expo Go kendi anahtarını taşır
   assert.equal(mapMode('android', false, false), 'no-key');
-  assert.equal(mapMode('ios', true, false), 'unsupported');
-  assert.equal(mapMode('web', true, false), 'unsupported');
+  // iPhone: Apple Haritalar anahtarsız çalışır (Expo Go dahil); iOS anahtarı verilirse Google.
+  assert.equal(mapMode('ios', false, true), 'apple');
+  assert.equal(mapMode('ios', false, false), 'apple');
+  assert.equal(mapMode('ios', false, false, true), 'google');
+  assert.equal(mapMode('web', true, false), 'web');
+  assert.equal(mapAttribution('apple'), 'Harita © Apple · Mekan verisi © OpenStreetMap katkıcıları');
+  assert.doesNotMatch(readFileSync(new URL('../components/Map.tsx', import.meta.url), 'utf8'), /bu cihazda yok/);
+});
+
+test('an Android production build without a maps key does not compile', () => {
+  const base = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8')).expo;
+  const env = { APP_VARIANT: 'production', EXPO_PUBLIC_API_URL: 'https://api.example.test' };
+  assert.throws(() => buildConfig(base, env), /GOOGLE_MAPS_ANDROID_API_KEY/);
+  const ok = buildConfig(base, { ...env, GOOGLE_MAPS_ANDROID_API_KEY: 'test-maps-key-not-real', GOOGLE_MAPS_IOS_API_KEY: 'test-ios-key-not-real' });
+  assert.equal(ok.ios?.config?.googleMapsApiKey, 'test-ios-key-not-real');
+  assert.equal((ok.extra as Record<string, unknown>).googleMapsIosEnabled, true);
+  assert.equal(JSON.stringify(ok.extra).includes('test-ios-key-not-real'), false);
 });
 
 test('maps key comes only from the build environment and never lands in extra', () => {
@@ -63,5 +78,14 @@ test('maps key comes only from the build environment and never lands in extra', 
 test('map screens no longer reference UrlTile', () => {
   for (const f of sources.filter((s) => s.path.includes('apps/nereye-go/') && /\.(tsx?)$/.test(s.path) && !s.path.endsWith('.test.ts'))) {
     assert.doesNotMatch(f.text, /UrlTile/, f.path);
+  }
+});
+
+test('native and web map modules export the same names', () => {
+  const native = readFileSync(new URL('../components/Map.tsx', import.meta.url), 'utf8');
+  const web = readFileSync(new URL('../components/Map.web.tsx', import.meta.url), 'utf8');
+  for (const pattern of [/export function currentMapMode/, /export default MapView/, /export type MapRef/, /\bRegion\b/, /\bMarker\b/]) {
+    assert.match(native, pattern);
+    assert.match(web, pattern);
   }
 });

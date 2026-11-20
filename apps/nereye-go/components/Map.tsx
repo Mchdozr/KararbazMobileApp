@@ -1,12 +1,13 @@
 // Native harita. Web'de aynı ad `Map.web.tsx` dosyasına çözülür.
-// Döşeme her zaman Google'dan gelir (PROVIDER_GOOGLE); public OSM döşemesi kullanılmaz.
-import { MAP_ATTRIBUTION, mapMode, type MapMode } from '@/lib/map-config';
+// Android: Google haritası. iOS: Apple Haritalar (anahtarsız, Expo Go dahil); iOS anahtarı varsa Google.
+// Public OSM döşemesi hiçbir durumda kullanılmaz.
+import { mapAttribution, mapMode, type MapMode } from '@/lib/map-config';
 import { colors, fonts } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { forwardRef, useImperativeHandle, useRef, type ComponentProps } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import RNMapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import RNMapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 
 export { Marker, Polyline } from 'react-native-maps';
 export type { Region } from 'react-native-maps';
@@ -19,8 +20,13 @@ type Props = Omit<ComponentProps<typeof RNMapView>, 'provider'> & {
 };
 
 export function currentMapMode(): MapMode {
-  const extra = (Constants.expoConfig?.extra ?? {}) as { googleMapsEnabled?: boolean };
-  return mapMode(Platform.OS, Boolean(extra.googleMapsEnabled), Constants.executionEnvironment === ExecutionEnvironment.StoreClient);
+  const extra = (Constants.expoConfig?.extra ?? {}) as { googleMapsEnabled?: boolean; googleMapsIosEnabled?: boolean };
+  return mapMode(
+    Platform.OS,
+    Boolean(extra.googleMapsEnabled),
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient,
+    Boolean(extra.googleMapsIosEnabled),
+  );
 }
 
 const MapView = forwardRef<MapRef, Props>(function MapView({ style, showAttribution = true, ...rest }, ref) {
@@ -29,29 +35,33 @@ const MapView = forwardRef<MapRef, Props>(function MapView({ style, showAttribut
     animateToRegion: (region, duration) => inner.current?.animateToRegion(region, duration),
   }));
   const mode = currentMapMode();
-  if (mode !== 'google') {
-    return <MapUnavailable style={style} mode={mode} />;
+  if (mode === 'no-key') {
+    return <MapUnavailable style={style} />;
   }
   return (
     <View style={style}>
-      <RNMapView ref={inner} {...rest} provider={PROVIDER_GOOGLE} style={StyleSheet.absoluteFill} />
+      <RNMapView
+        ref={inner}
+        {...rest}
+        provider={mode === 'google' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
+        style={StyleSheet.absoluteFill}
+      />
       {showAttribution ? (
         <Text style={styles.attr} pointerEvents="none" numberOfLines={1}>
-          {MAP_ATTRIBUTION}
+          {mapAttribution(mode)}
         </Text>
       ) : null}
     </View>
   );
 });
 
-function MapUnavailable({ style, mode }: { style: Props['style']; mode: MapMode }) {
+/** Yalnızca anahtarsız Android önizleme/geliştirme derlemesi (production bu durumda derlenmez). */
+function MapUnavailable({ style }: { style: Props['style'] }) {
   return (
     <View style={[styles.empty, style]} accessibilityRole="text">
       <Ionicons name="map-outline" size={28} color={colors.sage} />
-      <Text style={styles.emptyTitle}>{mode === 'no-key' ? 'Harita anahtarı yok' : 'Harita bu cihazda yok'}</Text>
-      <Text style={styles.emptyBody}>
-        {mode === 'no-key' ? 'Bu derlemeye harita anahtarı verilmedi. Mekan listesi çalışmaya devam eder.' : 'Mekan listesini kullanabilirsin.'}
-      </Text>
+      <Text style={styles.emptyTitle}>Harita bu derlemede kapalı</Text>
+      <Text style={styles.emptyBody}>Derlemeye harita anahtarı verilmedi. Mekanlar aşağıda listeleniyor.</Text>
     </View>
   );
 }

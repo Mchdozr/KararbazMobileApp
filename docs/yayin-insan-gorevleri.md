@@ -27,8 +27,10 @@ kullanıcı bulmak. **Hiçbiri yapılmış sayılmaz**; her kutu bilerek boş b�
       paylaşıldı; o anahtar Google Cloud Console'da **insan tarafından silinip yenisi üretilmeli** ve yalnızca
       ortam değişkeniyle (`GOOGLE_PLACES_API_KEY`) verilmeli. Yeni anahtarı API ve IP ile kısıtla.
 - [ ] **Harita anahtarı:** Android için ayrı bir Maps SDK anahtarı; paket adı `com.mchdozr.nereye` ve imza SHA-1
-      ile kısıtlı. Derlemede `GOOGLE_MAPS_ANDROID_API_KEY` ortam değişkeni (EAS secret). Yoksa harita
-      "Harita anahtarı yok" der.
+      ile kısıtlı. Derlemede `GOOGLE_MAPS_ANDROID_API_KEY` ortam değişkeni (EAS secret). Yoksa production
+      derlemesi durur.
+- [ ] İsteğe bağlı iOS harita anahtarı (Maps SDK for iOS, paket kimliğiyle kısıtlı): `GOOGLE_MAPS_IOS_API_KEY`.
+      Verilmezse iPhone'da Apple Haritalar kullanılır.
 - [ ] **E-posta sağlayıcısı** (Resend ya da Postmark) hesabı, gönderici alan adı doğrulaması (SPF/DKIM) ve:
       `Email__Provider` (`resend`|`postmark`), `Email__ApiKey`, `Email__From`.
       Yoksa e-posta doğrulama, şifre sıfırlama ve web'den hesap silme kapalı kalır ve **kimse yorum yazamaz**.

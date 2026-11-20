@@ -65,17 +65,33 @@ export function buildConfig(config: ExpoConfig, env: Record<string, string | und
   // Google Maps Android anahtarı yalnızca derleme ortamından (EAS secret) gelir; repoya ve `extra`ya yazılmaz.
   // Anahtar yoksa uygulama haritayı çizmez ("harita anahtarı yok"); public OSM döşemesine düşmez.
   const mapsKey = env.GOOGLE_MAPS_ANDROID_API_KEY?.trim();
+  if (variant === 'production' && !mapsKey) {
+    // Anahtarsız Android derlemesinde harita boş kalır; mağazaya böyle bir paket çıkmasın.
+    throw new Error('[nereye] production derlemesi için GOOGLE_MAPS_ANDROID_API_KEY (EAS ortam değişkeni) gerekli; yoksa harita görünmez.');
+  }
   const android = { ...config.android };
   if (mapsKey) {
     android.config = { ...android.config, googleMaps: { apiKey: mapsKey } };
   }
 
+  // iOS: anahtar verilirse Google haritası, verilmezse Apple Haritalar (anahtarsız, her zaman çalışır).
+  const iosMapsKey = env.GOOGLE_MAPS_IOS_API_KEY?.trim();
+  const ios = { ...config.ios, infoPlist };
+  if (iosMapsKey) {
+    ios.config = { ...ios.config, googleMapsApiKey: iosMapsKey };
+  }
+
   return {
     ...config,
-    ios: { ...config.ios, infoPlist },
+    ios,
     android,
     plugins,
-    extra: { ...config.extra, variant, googleMapsEnabled: Boolean(mapsKey) },
+    extra: {
+      ...config.extra,
+      variant,
+      googleMapsEnabled: Boolean(mapsKey),
+      googleMapsIosEnabled: Boolean(iosMapsKey),
+    },
   };
 }
 

@@ -5,7 +5,7 @@ import { buildConfig, cleartextOf, TARGET_SDK, variantOf } from '../app.config.t
 import { apiCandidates, DEV_LAN_API, resolveApiUrl } from './release-config.ts';
 
 const base = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8')).expo;
-const prod = (url?: string) => ({ EAS_BUILD_PROFILE: 'production', EXPO_PUBLIC_API_URL: url });
+const prod = (url?: string) => ({ EAS_BUILD_PROFILE: 'production', EXPO_PUBLIC_API_URL: url, GOOGLE_MAPS_ANDROID_API_KEY: 'test-maps-key-not-real' });
 
 test('production build fails without an API URL', () => {
   assert.throws(() => buildConfig(base, prod(undefined)), /EXPO_PUBLIC_API_URL tanımlı değil/);

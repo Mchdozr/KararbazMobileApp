@@ -11,14 +11,16 @@ import { toast } from '@/lib/toast';
 import { useFilters } from '@/lib/filters';
 import { api } from '@/lib/api';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, INTENT_ICONS, shadows } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, type MapRef, type Region } from '@/components/Map';
-import { MAP_ATTRIBUTION } from '@/lib/map-config';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import MapView, { currentMapMode, type MapRef, type Region } from '@/components/Map';
+import { MePin, VenuePin } from '@/components/MapPin';
+import { mapAttribution } from '@/lib/map-config';
+import { INTENTS, intentLabel } from '@/lib/constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function inRegion(card: VenueCard, region: Region) {
@@ -28,6 +30,22 @@ function inRegion(card: VenueCard, region: Region) {
     Math.abs(card.latitude - region.latitude) <= latPad &&
     Math.abs(card.longitude - region.longitude) <= lngPad
   );
+}
+
+/** Arama noktası ve en yakın mekanları kapsayan bölge; çok sıkışmasın, çok da açılmasın. */
+function fitRegion(cards: VenueCard[], lat: number, lng: number): Region {
+  const lats = [lat, ...cards.map((c) => c.latitude)];
+  const lngs = [lng, ...cards.map((c) => c.longitude)];
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.min(0.2, Math.max(0.008, (maxLat - minLat) * 1.6)),
+    longitudeDelta: Math.min(0.2, Math.max(0.008, (maxLng - minLng) * 1.6)),
+  };
 }
 
 export default function MapScreen() {
@@ -136,6 +154,19 @@ export default function MapScreen() {
     void load();
   }, [load]);
 
+  // Liste gelince harita mekanları sığdıracak kadar yakınlaşır (pinler üst üste binmesin).
+  const fitted = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${filters.intent}:${filters.lat}:${filters.lng}`;
+    if (loading || items.length === 0 || fitted.current === key) {
+      return;
+    }
+    fitted.current = key;
+    const next = fitRegion(items.slice(0, 20), filters.lat, filters.lng);
+    setRegion(next);
+    mapRef.current?.animateToRegion(next, 450);
+  }, [items, loading, filters.intent, filters.lat, filters.lng]);
+
   const visible = useMemo(() => items.filter((c) => inRegion(c, region)), [items, region]);
   const sheetCards = picked ? [picked] : visible;
 
@@ -176,164 +207,229 @@ export default function MapScreen() {
     filters.setLoc(region.latitude, region.longitude, label === 'Konumun' ? 'Harita merkezi' : label, true);
   }
 
+  function pick(card: VenueCard | null) {
+    setPicked(card);
+    if (card) {
+      // Seçilen mekan alt sayfanın üstünde, görünür alanın ortasında kalsın.
+      mapRef.current?.animateToRegion(
+        { latitude: card.latitude, longitude: card.longitude, latitudeDelta: region.latitudeDelta, longitudeDelta: region.longitudeDelta },
+        350,
+      );
+    }
+  }
+
+  function recenter() {
+    mapRef.current?.animateToRegion(
+      { latitude: filters.lat, longitude: filters.lng, latitudeDelta: 0.035, longitudeDelta: 0.035 },
+      350,
+    );
+  }
+
+  const mode = currentMapMode();
+
   return (
     <View style={styles.bg}>
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
-        // Üstteki düğmeler ve alttaki sayfa Google logosunu örtmesin; atıf alt sayfada yazılı.
-        mapPadding={{ top: insets.top + 64, right: 0, bottom: 340, left: 0 }}
+        // Üstteki çubuk ve alttaki sayfa harita logosunu örtmesin; atıf alt sayfada yazılı.
+        mapPadding={{ top: insets.top + 112, right: 0, bottom: SHEET + 8, left: 0 }}
         showAttribution={false}
+        showsCompass={false}
+        showsPointsOfInterests={false}
+        toolbarEnabled={false}
         onRegionChangeComplete={setRegion}
         onPress={() => setPicked(null)}>
-        <Marker coordinate={{ latitude: filters.lat, longitude: filters.lng }} title="Sen" pinColor={colors.coral} />
+        <MePin latitude={filters.lat} longitude={filters.lng} />
         {visible.map((card) => (
-          <Marker
+          <VenuePin
             key={card.placeId}
-            coordinate={{ latitude: card.latitude, longitude: card.longitude }}
-            pinColor={picked?.placeId === card.placeId ? colors.coral : colors.espresso}
-            onPress={() => setPicked(card)}
+            latitude={card.latitude}
+            longitude={card.longitude}
+            intent={filters.intent}
+            name={card.name}
+            selected={picked?.placeId === card.placeId}
+            onPress={() => pick(card)}
           />
         ))}
       </MapView>
-      <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <Pressable
-          style={styles.chip}
-          onPress={() => router.push('/places')}
-          accessibilityRole="button"
-          accessibilityLabel={`Konum ${filters.label}, değiştir`}>
-          <Ionicons name="location" size={14} color={colors.coral} />
-          <Text style={styles.chipText} numberOfLines={1}>
-            {filters.label}
-          </Text>
-          <Ionicons name="chevron-down" size={14} color={colors.ink} style={{ marginLeft: 'auto' }} />
-        </Pressable>
-        <Pressable style={styles.here} onPress={() => void here()} disabled={busy} accessibilityRole="button" accessibilityLabel="Konumumu kullan">
-          <Ionicons name="navigate" size={16} color={colors.white} />
-          <Text style={styles.hereText}>{busy ? 'Alınıyor…' : 'GPS'}</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.filter, badge > 0 && styles.filterOn]}
-          onPress={() => setSheet(true)}
-          accessibilityRole="button"
-          accessibilityLabel={badge > 0 ? `Filtre, ${badge} etkin` : 'Filtre'}>
-          <Ionicons name="options" size={16} color={badge > 0 ? colors.white : colors.ink} />
-        </Pressable>
+
+      <View style={[styles.top, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+        <View style={styles.bar}>
+          <Pressable
+            style={styles.chip}
+            onPress={() => router.push('/places')}
+            accessibilityRole="button"
+            accessibilityLabel={`Konum ${filters.label}, değiştir`}>
+            <Ionicons name="location" size={16} color={colors.coral} />
+            <Text style={styles.chipText} numberOfLines={1}>
+              {filters.label}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color={colors.muted} style={{ marginLeft: 'auto' }} />
+          </Pressable>
+          <Pressable
+            style={styles.round}
+            onPress={() => void here()}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Konumumu kullan">
+            {busy ? <ActivityIndicator size="small" color={colors.coral} /> : <Ionicons name="navigate" size={18} color={colors.coral} />}
+          </Pressable>
+          <Pressable
+            style={[styles.round, badge > 0 && styles.roundOn]}
+            onPress={() => setSheet(true)}
+            accessibilityRole="button"
+            accessibilityLabel={badge > 0 ? `Filtre, ${badge} etkin` : 'Filtre'}>
+            <Ionicons name="options" size={18} color={badge > 0 ? colors.white : colors.ink} />
+          </Pressable>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.intents}>
+          {INTENTS.map((i) => {
+            const on = filters.intent === i;
+            return (
+              <Pressable
+                key={i}
+                style={[styles.intent, on && styles.intentOn]}
+                onPress={() => filters.setIntent(i)}
+                accessibilityRole="button"
+                accessibilityLabel={intentLabel(i)}
+                accessibilityState={{ selected: on }}>
+                <Ionicons name={INTENT_ICONS[i]} size={14} color={on ? colors.white : colors.coral} />
+                <Text style={[styles.intentText, on && styles.intentTextOn]}>{intentLabel(i)}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        {canSearchHere ? (
+          <Pressable style={styles.searchHere} onPress={() => void searchHere()} accessibilityRole="button" accessibilityLabel="Bu bölgede ara">
+            <Ionicons name="refresh" size={14} color={colors.white} />
+            <Text style={styles.searchHereText}>Bu bölgede ara</Text>
+          </Pressable>
+        ) : null}
       </View>
-      {canSearchHere ? (
+
+      {mode !== 'no-key' ? (
         <Pressable
-          style={[styles.searchHere, { top: insets.top + 64 }]}
-          onPress={() => void searchHere()}
+          style={[styles.round, styles.recenter, { bottom: SHEET + 16 }]}
+          onPress={recenter}
           accessibilityRole="button"
-          accessibilityLabel="Bu bölgede ara">
-          <Ionicons name="refresh" size={14} color={colors.white} />
-          <Text style={styles.searchHereText}>Bu bölgede ara</Text>
+          accessibilityLabel="Arama noktasına dön">
+          <Ionicons name="locate" size={20} color={colors.coral} />
         </Pressable>
       ) : null}
+
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
-        {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
         <View style={styles.grab} />
-        <Text style={styles.sub}>
-          {picked ? picked.name : `${filters.label} · ${visible.length} yer`}
-        </Text>
-        {!loading && visible.length === 0 && !error ? (
-          <Text style={styles.none}>{emptyMap(filters.intent)}</Text>
-        ) : null}
+        <View style={styles.sheetHead}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sheetTitle} numberOfLines={1}>
+              {picked ? picked.name : `${intentLabel(filters.intent)} · ${filters.label}`}
+            </Text>
+            <Text style={styles.sheetSub}>
+              {picked ? 'Haritada seçili' : loading ? 'Aranıyor…' : `${visible.length} yer bu görünümde`}
+            </Text>
+          </View>
+          {picked ? (
+            <Pressable style={styles.all} onPress={() => setPicked(null)} accessibilityRole="button" accessibilityLabel="Tüm mekanları göster">
+              <Text style={styles.allText}>Tümü</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
+        {!loading && visible.length === 0 && !error ? <Text style={styles.none}>{emptyMap(filters.intent)}</Text> : null}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {sheetCards.map((card) => (
             <View key={card.placeId} style={styles.card}>
-              <VenueProductCard card={card} width={168} intent={filters.intent} loadPhoto />
+              <VenueProductCard card={card} width={CARD} intent={filters.intent} loadPhoto />
             </View>
           ))}
         </ScrollView>
-        <Text style={styles.attr}>{MAP_ATTRIBUTION}</Text>
+        <Text style={styles.attr}>{mapAttribution(mode)}</Text>
       </View>
       <FilterSheet visible={sheet} onClose={() => setSheet(false)} />
-      <SearchingOverlay visible={loading} intent={filters.intent} />
+      <SearchingOverlay visible={loading && items.length === 0} intent={filters.intent} />
     </View>
   );
 }
 
+const SHEET = 396;
+const CARD = 176;
+
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: colors.bg },
-  top: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
+  top: { position: 'absolute', left: 0, right: 0, gap: 10 },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
   chip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     backgroundColor: colors.surface,
-    paddingHorizontal: 12,
-    minHeight: 44,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.line,
+    paddingHorizontal: 14,
+    minHeight: 48,
+    borderRadius: 24,
+    ...shadows.float,
   },
-  chipText: { color: colors.ink, fontWeight: '700', fontSize: 13, flexShrink: 1 },
-  here: {
+  chipText: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 14, flexShrink: 1 },
+  round: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.float,
+  },
+  roundOn: { backgroundColor: colors.coral },
+  intents: { gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
+  intent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.coral,
+    minHeight: 36,
     paddingHorizontal: 12,
-    minHeight: 44,
-    borderRadius: 999,
-  },
-  hereText: { color: colors.white, fontWeight: '800', fontSize: 13 },
-  filter: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    borderRadius: 18,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
-    alignItems: 'center',
-    justifyContent: 'center',
+    ...shadows.card,
   },
+  intentOn: { backgroundColor: colors.coral },
+  intentText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 13 },
+  intentTextOn: { color: colors.white, fontFamily: fonts.sansBold },
+  searchHere: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 16,
+    minHeight: 40,
+    borderRadius: 20,
+    ...shadows.float,
+  },
+  searchHereText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
+  recenter: { position: 'absolute', right: 16 },
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
+    height: SHEET,
     backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingTop: 10,
     paddingHorizontal: 16,
-    maxHeight: 340,
-    borderWidth: 1,
-    borderColor: colors.line,
+    ...shadows.sheet,
   },
-  filterOn: { backgroundColor: colors.coral, borderColor: colors.coral },
-  searchHere: {
-    position: 'absolute',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.espresso,
-    paddingHorizontal: 14,
-    minHeight: 40,
-    borderRadius: 20,
-    shadowColor: colors.espresso,
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  searchHereText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
-  grab: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 10 },
+  grab: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginBottom: 10 },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  sheetTitle: { color: colors.ink, fontFamily: fonts.display, fontSize: 19 },
+  sheetSub: { color: colors.muted, fontFamily: fonts.sans, fontSize: 13, marginTop: 2 },
+  all: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.accentSoft, justifyContent: 'center' },
+  allText: { color: colors.accent, fontFamily: fonts.sansBold, fontSize: 13 },
   none: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20, paddingBottom: 8 },
-  sub: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 14, marginBottom: 10 },
-  row: { gap: 12, paddingBottom: 4 },
-  card: { width: 168 },
-  attr: { marginTop: 8, fontSize: 11, color: colors.muted },
+  row: { gap: 12, paddingBottom: 12, paddingTop: 2 },
+  card: { width: CARD },
+  attr: { fontSize: 10, color: colors.muted, marginTop: 'auto' },
 });
