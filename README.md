@@ -2,6 +2,19 @@
 
 Karar motoru. Canlı istemci **Expo `apps/nereye-go`**. Flutter `apps/mobile` arşiv.
 
+## Telefonda tek komutla çalıştır (Docker + Expo Go)
+
+Docker Desktop açıkken, telefon ve bilgisayar aynı Wi-Fi'deyken repo kökünde:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\calistir.ps1
+```
+
+macOS / Linux: `bash tools/calistir.sh`. Betik Postgres, Redis, migrate, API ve yönetim panelini açar,
+API'nin hazır olmasını bekler, bilgisayarın Wi-Fi IP'sini bulup uygulamayı ona yönlendirir ve Expo'yu
+başlatır; çıkan QR kodu Expo Go ile (iPhone'da Kamera) okut. Telefon bağlanamazsa güvenlik duvarında
+5079 ve 8081 portlarına izin ver. Google anahtarı için kökteki `.env` dosyasına `GOOGLE_PLACES_API_KEY=...`.
+
 ## Çalıştırma (Visual Studio / CLI)
 
 1. Docker: `docker compose up postgres redis`
