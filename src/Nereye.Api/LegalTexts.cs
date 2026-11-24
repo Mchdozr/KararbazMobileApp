@@ -36,6 +36,10 @@ public static class LegalTexts
                 "Konumun cihazında tutulur ve öneri isteğiyle birlikte sunucuya koordinat olarak gönderilir. Geçmiş konumlarını saklamayız; " +
                 "yalnızca kendin kaydettiğin konumlar (ev, iş) hesabında durur. Konum yalnızca uygulama açıkken kullanılır. " +
                 "İzni cihaz ayarlarından istediğin an kapatabilirsin; uygulama semt seçerek de çalışır."),
+            new("Hata kayıtları",
+                "Uygulama bir hatayla karşılaşırsa hatanın teknik kaydını (hata metni, ekran adı, uygulama sürümü, işletim sistemi türü) " +
+                "sunucumuza gönderir. Kayıt hesabına bağlanmaz; e-posta, konum, telefon numarası ve oturum anahtarı gönderilmeden önce " +
+                "cihazında ve sunucuda ayıklanır. Kayıtlar 30 gün sonra silinir ve yalnızca hataları düzeltmek için kullanılır."),
             new("Kimlerle paylaşıyoruz?",
                 "Mekan ve adres bilgisi için sunucumuz OpenStreetMap tabanlı servislere (Overpass, Nominatim, OSRM) ve Google Places'e " +
                 "arama metni ve koordinat iletir; bu isteklere kimliğin eklenmez. Android'de harita Google Haritalar ile gösterilir; " +

@@ -32,6 +32,7 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
     public DbSet<ConsentLog> ConsentLogs => Set<ConsentLog>();
     public DbSet<SavedPlace> SavedPlaces => Set<SavedPlace>();
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
+    public DbSet<ErrorReport> ErrorReports => Set<ErrorReport>();
 
     /// <summary>
     /// Her DateTime UTC'dir: yazarken türü belirsiz değer UTC sayılır, yerel saat UTC'ye çevrilir; okurken Kind=Utc.
@@ -52,6 +53,19 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
             e.HasIndex(x => x.GooglePlaceId).IsUnique();
             e.Property(x => x.GooglePlaceId).HasMaxLength(128);
             e.Property(x => x.Geohash).HasMaxLength(16);
+        });
+
+        builder.Entity<ErrorReport>(e =>
+        {
+            e.HasIndex(x => new { x.Fingerprint, x.Day }).IsUnique();
+            e.HasIndex(x => x.Day);
+            e.Property(x => x.Fingerprint).HasMaxLength(32);
+            e.Property(x => x.Source).HasMaxLength(16);
+            e.Property(x => x.Platform).HasMaxLength(16);
+            e.Property(x => x.AppVersion).HasMaxLength(40);
+            e.Property(x => x.Screen).HasMaxLength(80);
+            e.Property(x => x.Message).HasMaxLength(500);
+            e.Property(x => x.Stack).HasMaxLength(4000);
         });
 
         builder.Entity<VenueTag>().HasKey(x => new { x.VenueId, x.Tag });

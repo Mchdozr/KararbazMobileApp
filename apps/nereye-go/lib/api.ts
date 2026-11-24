@@ -9,6 +9,7 @@ import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { EtagCache } from '@/lib/etag-cache';
 import { linkAbort, recommendPath } from '@/lib/request-control';
 import { Platform } from 'react-native';
+import type { CrashReport } from '@/lib/crash-queue';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
   Legal,
@@ -299,6 +300,19 @@ async function request<T>(path: string, init: RequestInit = {}, opts: RequestOpt
 }
 
 export const api = {
+  /** Hata raporları (lib/crash.ts). Oturumsuz; başarısızsa false döner, kuyruk sonra yeniden dener. */
+  reportErrors: async (reports: readonly CrashReport[]) => {
+    try {
+      const res = await raw(
+        '/api/telemetry/errors',
+        { method: 'POST', body: JSON.stringify({ reports }) },
+        { skipAuth: true, timeoutMs: 8000 },
+      );
+      return res.status === 202 || res.status === 400; // 400: bozuk paket, tekrar göndermenin anlamı yok
+    } catch {
+      return false;
+    }
+  },
   /** acceptTerms: kullanım koşulları kabulü, kayıt için zorunlu. Aydınlatma metni onay gerektirmez. */
   register: (email: string, password: string, displayName: string, acceptTerms: boolean) =>
     request<Session>(

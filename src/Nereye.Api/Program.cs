@@ -14,6 +14,18 @@ using Nereye.Infrastructure.Auth;
 using Nereye.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
+// Yayında günlük satırları JSON: istek kimliği (X-Request-Id) kapsam olarak her satıra eklenir, toplayıcı
+// (Loki, CloudWatch, Elastic) alanlara ayırarak arar. Geliştirmede okunur düz metin kalır.
+if (builder.Configuration.GetValue("Logging:Json", builder.Environment.IsProduction()))
+{
+    builder.Logging.ClearProviders();
+    builder.Logging.AddJsonConsole(o =>
+    {
+        o.IncludeScopes = true;
+        o.UseUtcTimestamp = true;
+        o.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ ";
+    });
+}
 
 builder.Services.AddNereyeInfrastructure(builder.Configuration);
 builder.Services.PostConfigure<JwtOptions>(o =>
@@ -85,6 +97,13 @@ builder.Services.AddRateLimiter(o =>
     {
         Window = TimeSpan.FromMinutes(1),
         PermitLimit = 30,
+        QueueLimit = 0
+    }));
+    // Hata raporu: döngüye giren bir istemci tabloyu doldurmasın.
+    o.AddPolicy("telemetry", ctx => RateLimitPartition.GetFixedWindowLimiter("ip:" + ClientIp.Ip(ctx), _ => new FixedWindowRateLimiterOptions
+    {
+        Window = TimeSpan.FromMinutes(1),
+        PermitLimit = 10,
         QueueLimit = 0
     }));
 });

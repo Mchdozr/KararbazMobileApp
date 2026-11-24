@@ -129,6 +129,7 @@ public static class DependencyInjection
         services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ISavedPlaceService, SavedPlaceService>();
+        services.AddScoped<Application.Telemetry.ITelemetryService, Telemetry.TelemetryService>();
         services.AddSingleton<AvatarStorage>();
         // Küçültülmüş görseller: yapılandırılmazsa geçici klasör (kaybolursa yeniden üretilir).
         services.AddSingleton(sp => new MediaVariantStore(

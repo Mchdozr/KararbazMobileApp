@@ -33,6 +33,7 @@ public sealed class ApiErrorMiddleware
             if (status >= 500)
             {
                 _log.LogError(ex, "Unhandled {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
+                await RecordAsync(ctx, ex);
             }
             else
             {
@@ -46,6 +47,23 @@ public sealed class ApiErrorMiddleware
                 error = message,
                 requestId = ctx.Response.Headers["X-Request-Id"].ToString()
             });
+        }
+    }
+
+    // Yönetim panelindeki "Hatalar" listesine de düşsün. Kayıt başarısız olursa yanıt etkilenmez.
+    private async Task RecordAsync(HttpContext ctx, Exception ex)
+    {
+        try
+        {
+            var telemetry = ctx.RequestServices.GetService<Nereye.Application.Telemetry.ITelemetryService>();
+            if (telemetry is not null)
+            {
+                await telemetry.RecordServerErrorAsync(ex, ctx.Request.Path.Value ?? "", CancellationToken.None);
+            }
+        }
+        catch (Exception recordFailure)
+        {
+            _log.LogWarning(recordFailure, "Hata kaydı yazılamadı");
         }
     }
 

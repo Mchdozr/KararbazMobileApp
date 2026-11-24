@@ -1,0 +1,82 @@
+@page "/errors"
+@attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
+@rendermode InteractiveServer
+@inject Nereye.Application.Telemetry.ITelemetryService Telemetry
+
+<h1>Hatalar</h1>
+<p class="text-muted">
+    Uygulama ve sunucu hataları, gün ve hata başına tek satır. Metinler kişisel veriden ayıklanmıştır
+    (e-posta, konum, anahtar). 30 gün saklanır.
+</p>
+
+<div class="mb-3">
+    @foreach (var d in new[] { 1, 7, 30 })
+    {
+        <button class="btn btn-sm @(d == _days ? "btn-primary" : "btn-outline-secondary") me-1" @onclick="() => Load(d)">Son @d gün</button>
+    }
+</div>
+
+@if (_rows is null)
+{
+    <p>Yükleniyor…</p>
+}
+else if (_rows.Count == 0)
+{
+    <p class="text-muted">Bu aralıkta hata yok.</p>
+}
+else
+{
+    <p>
+        Toplam <strong>@_rows.Sum(r => r.Count)</strong> olay ·
+        uygulama <strong>@_rows.Where(r => r.Source == "app").Sum(r => r.Count)</strong> ·
+        sunucu <strong>@_rows.Where(r => r.Source == "server").Sum(r => r.Count)</strong> ·
+        çökme <strong>@_rows.Where(r => r.Fatal).Sum(r => r.Count)</strong>
+    </p>
+    <table class="table table-sm align-top">
+        <thead>
+            <tr>
+                <th>Adet</th>
+                <th>Kaynak</th>
+                <th>Hata</th>
+                <th>Ekran / yol</th>
+                <th>Sürüm</th>
+                <th>Son görülme</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in _rows)
+            {
+                <tr class="@(r.Fatal ? "table-danger" : "")">
+                    <td>@r.Count</td>
+                    <td>@(r.Source == "server" ? "Sunucu" : r.Platform)@(r.Fatal ? " · çökme" : "")</td>
+                    <td style="max-width:520px">
+                        <div>@r.Message</div>
+                        @if (!string.IsNullOrEmpty(r.Stack))
+                        {
+                            <details>
+                                <summary class="small text-muted">Yığın</summary>
+                                <pre class="small mb-0" style="white-space:pre-wrap">@r.Stack</pre>
+                            </details>
+                        }
+                    </td>
+                    <td><code>@(r.Screen ?? "—")</code></td>
+                    <td>@(r.AppVersion ?? "—")</td>
+                    <td>@r.LastSeenAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<Nereye.Application.Telemetry.ErrorSummaryDto>? _rows;
+    private int _days = 7;
+
+    protected override Task OnInitializedAsync() => Load(7);
+
+    private async Task Load(int days)
+    {
+        _days = days;
+        _rows = await Telemetry.RecentErrorsAsync(days);
+    }
+}

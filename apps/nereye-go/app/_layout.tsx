@@ -2,6 +2,7 @@ import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { BackButton } from '@/components/BackButton';
 import { gradientHeader } from '@/components/ScreenHeader';
 import { hydrateCovers } from '@/lib/covers';
+import { installCrashReporting, setCrashScreen } from '@/lib/crash';
 import { SessionProvider, useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 import { ToastHost } from '@/lib/toast';
@@ -12,7 +13,7 @@ import {
 } from '@expo-google-fonts/dm-sans';
 import { Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -40,6 +41,17 @@ function SplashGate() {
 
 // Önceki oturumda görülen kapak görselleri: ilk kartlar ağ beklemeden gerçek fotoğrafla açılsın.
 void hydrateCovers();
+// Hata ve çökme raporları (kişisel veri ayıklanmış, hesaba bağlanmaz).
+installCrashReporting();
+
+/** Hata raporuna hangi ekranda olduğunu ekler (yol kalıbı; mekan kimliği gibi değerler değil). */
+function CrashScreenTracker() {
+  const segments = useSegments();
+  useEffect(() => {
+    setCrashScreen('/' + segments.join('/'));
+  }, [segments]);
+  return null;
+}
 
 // Web: sayfa dili Türkçe olsun. Büyük harf dönüşümü "i"yi "İ" yapar, ekran okuyucu doğru telaffuz eder.
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -68,6 +80,7 @@ export default function RootLayout() {
     <AppErrorBoundary>
       <SessionProvider>
         <SplashGate />
+        <CrashScreenTracker />
         <ThemeProvider value={navTheme}>
           <StatusBar style="dark" />
           <Stack
