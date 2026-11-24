@@ -33,7 +33,12 @@ public sealed record RecommendationItemDto(
     double? GoogleRating = null,
     int? GoogleRatingCount = null,
     int? PriceLevel = null,
-    string? Category = null);
+    string? Category = null,
+    // Sunum anında İstanbul saatiyle hesaplanır: "23:00'e kadar açık", "09:00'da açılıyor".
+    string? ClosesAt = null,
+    int? ClosesInMinutes = null,
+    string? OpensAt = null,
+    int? OpensInMinutes = null);
 
 public sealed record CultureEventDto(Guid Id, string Title, DateTime StartsAt, DateTime? EndsAt);
 

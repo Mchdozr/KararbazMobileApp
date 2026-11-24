@@ -37,17 +37,8 @@ public static class OsmOpeningHours
         return hours;
     }
 
-    public static bool? IsOpen(string? spec, DateTimeOffset now)
-    {
-        var hours = Parse(spec);
-        if (hours.Count == 0)
-        {
-            return null;
-        }
-
-        var t = TimeOnly.FromTimeSpan(now.TimeOfDay);
-        return hours.Any(h => h.Day == now.DayOfWeek && t >= h.Open && t <= h.Close);
-    }
+    /// <summary>İstanbul saatine göre; gece yarısını aşan aralıklar ve çoklu aralıklar dahil (bkz. <see cref="OpeningSchedule"/>).</summary>
+    public static bool? IsOpen(string? spec, DateTimeOffset now) => OpeningSchedule.Evaluate(spec, now).IsOpen;
 
     private static IEnumerable<PlaceHour> ParseRule(string rule)
     {

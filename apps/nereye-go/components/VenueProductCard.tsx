@@ -3,6 +3,7 @@ import { VenueImage } from '@/components/VenueImage';
 import { vibeText } from '@/lib/constants';
 import { api } from '@/lib/api';
 import { metaLine, ratingLine } from '@/lib/venue-format';
+import { minutesOfDay, openLine } from '@/lib/open-status';
 import { mahalleLine } from '@/lib/geo-hit';
 import { colors, fonts, gradients, radii, shadows } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,13 +54,14 @@ export const VenueProductCard = memo(function VenueProductCard({
   const vibes = card.vibes.slice(0, 2);
   const event = card.upcomingEvents[0];
   const clock = eventClock(event?.startsAt);
+  const hours = openLine(card, minutesOfDay());
 
   const a11yLabel = [
     card.name,
     card.category,
     rating ? `puan ${rating}` : null,
     card.distanceMeters >= 0 ? formatDistance(card.distanceMeters) : null,
-    card.openNow === true ? 'açık' : card.openNow === false ? 'kapalı' : null,
+    hours ? hours.text.toLocaleLowerCase('tr-TR') : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -94,8 +96,11 @@ export const VenueProductCard = memo(function VenueProductCard({
           <View style={styles.badges}>
             {card.kind === 'Sponsored' ? <Text style={[styles.pill, styles.boost]}>Öne çıkan</Text> : null}
             {card.distanceMeters >= 0 ? <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text> : null}
-            {card.openNow === true ? <Text style={[styles.pill, styles.open]}>Açık</Text> : null}
-            {card.openNow === false ? <Text style={[styles.pill, styles.closed]}>Kapalı</Text> : null}
+            {hours ? (
+              <Text style={[styles.pill, hours.tone === 'open' ? styles.open : hours.tone === 'soon' ? styles.soon : styles.closed]}>
+                {hours.short}
+              </Text>
+            ) : null}
           </View>
           <Text numberOfLines={2} style={styles.onPhoto}>
             {card.name}
@@ -125,6 +130,14 @@ export const VenueProductCard = memo(function VenueProductCard({
           <Text numberOfLines={1} style={styles.where}>
             {mahalleLine(card.address) || card.address}
           </Text>
+        ) : null}
+        {hours && (card.closesAt || card.opensAt) ? (
+          <View style={styles.hoursRow}>
+            <View style={[styles.hoursDot, { backgroundColor: hours.tone === 'open' ? colors.sage : hours.tone === 'soon' ? colors.gold : colors.muted }]} />
+            <Text numberOfLines={1} style={[styles.hoursText, hours.tone === 'soon' ? styles.hoursSoon : null]}>
+              {hours.text}
+            </Text>
+          </View>
         ) : null}
       {vibes.length > 0 || clock ? (
         <View style={styles.chips}>
@@ -192,7 +205,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   open: { backgroundColor: colors.sage },
+  soon: { backgroundColor: colors.gold },
   closed: { backgroundColor: colors.scrim },
+  hoursRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, paddingHorizontal: 6 },
+  hoursDot: { width: 7, height: 7, borderRadius: 4 },
+  hoursText: { flex: 1, color: colors.muted, fontFamily: fonts.sansMed, fontSize: 12 },
+  hoursSoon: { color: colors.ink },
   onPhoto: {
     position: 'absolute',
     left: 12,

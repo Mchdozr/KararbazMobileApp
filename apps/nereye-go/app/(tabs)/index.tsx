@@ -3,6 +3,7 @@ import { ErrorBanner } from '@/components/ErrorBanner';
 import { SearchingOverlay } from '@/components/SearchingOverlay';
 import { VenueCardSkeleton, VenueRowSkeleton } from '@/components/Skeleton';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
+import { DecisionSheet } from '@/components/DecisionSheet';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HorizontalVenueRow } from '@/components/home/HorizontalVenueRow';
 import { PromoBanner } from '@/components/home/PromoBanner';
@@ -10,6 +11,7 @@ import { VenueProductCard } from '@/components/VenueProductCard';
 import { isEvening } from '@/lib/copy';
 import { intentLabel } from '@/lib/constants';
 import { emptyNearby, friendlyError } from '@/lib/empty';
+import { haptic } from '@/lib/haptics';
 import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
 import { recentAsCard, useRecentVenues } from '@/lib/recent-venues';
@@ -37,6 +39,7 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [deciding, setDeciding] = useState(false);
   // Ağ yokken son başarılı liste gösteriliyorsa bandın metni.
   const [offline, setOffline] = useState<string | null>(null);
   const recents = useRecentVenues();
@@ -245,7 +248,8 @@ export default function Home() {
                   filters.setOpenNow(true);
                   goDiscover(filters.intent);
                 }}
-                accessibilityRole="button">
+                accessibilityRole="button"
+                accessibilityLabel="Akşam oldu, şu an açık yerleri göster">
                 <View style={styles.eveIcon}>
                   <Ionicons name="moon" size={16} color={colors.accent} />
                 </View>
@@ -254,6 +258,25 @@ export default function Home() {
               </Pressable>
             ) : null}
             <CategoryGrid selected={filters.intent} onSelect={goDiscover} />
+            {organic.length > 0 ? (
+              <Pressable
+                style={styles.decide}
+                onPress={() => {
+                  haptic.press();
+                  setDeciding(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Benim için seç: şu an için en uygun mekanı gerekçeleriyle göster">
+                <View style={styles.decideIcon}>
+                  <Ionicons name="sparkles" size={18} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.decideTitle}>Benim için seç</Text>
+                  <Text style={styles.decideSub}>Kararsız mısın? Şu an için en iyisini seçeyim.</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.white} />
+              </Pressable>
+            ) : null}
             {sponsored.length > 0 ? (
               <PromoBanner
                 onOpenNow={() => {
@@ -335,6 +358,13 @@ export default function Home() {
         }
       />
       <SearchingOverlay visible={loading && !first} intent={filters.intent} />
+      <DecisionSheet
+        visible={deciding}
+        cards={organic}
+        intentLabel={`${intentLabel(filters.intent)} · ${filters.label}`}
+        origin={{ lat: filters.lat, lng: filters.lng }}
+        onClose={() => setDeciding(false)}
+      />
     </View>
   );
 }
@@ -365,6 +395,28 @@ const styles = StyleSheet.create({
   },
   eveText: { flex: 1, color: colors.white, fontFamily: fonts.sansBold, fontSize: 14 },
   skelRow: { marginTop: 26 },
+  decide: {
+    marginHorizontal: 20,
+    marginTop: 18,
+    minHeight: 64,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.coral,
+  },
+  decideIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  decideTitle: { color: colors.white, fontFamily: fonts.display, fontSize: 18 },
+  decideSub: { color: colors.onDarkMuted, fontFamily: fonts.sans, fontSize: 13, marginTop: 1 },
   feat: { paddingHorizontal: 20, marginTop: 20 },
   gridTitle: {
     marginBottom: 12,

@@ -69,7 +69,7 @@ public sealed class FakePlacesClient : IPlacesClient, IRichPlaceDetails
             P("nereye:sureyya", "Süreyya Operası", "Caferağa, Kadıköy", 40.9875, 29.0289, ["performing_arts_theater"], true, 4.8, Media("sureyya")),
             P("nereye:zorlu", "Zorlu PSM", "Levazım, Beşiktaş", 41.0663, 29.0165, ["performing_arts_theater"], true, 4.6, Media("zorlu")),
             P("nereye:modern", "İstanbul Modern", "Kılıçali Paşa, Beyoğlu", 41.0267, 28.9833, ["museum"], true, 4.5, Media("modern")),
-            P("nereye:mini", "MiniMüzikhol", "Osmanağa, Kadıköy", 40.9902, 29.0271, ["night_club", "bar"], false, 4.3, Media("mini")),
+            P("nereye:mini", "MiniMüzikhol", "Osmanağa, Kadıköy", 40.9902, 29.0271, ["night_club", "bar"], true, 4.3, Media("mini")),
             P("nereye:moda", "Moda Sahil Parkı", "Moda, Kadıköy", 40.9808, 29.0261, ["park"], true, 4.7, Media("moda")),
         ];
 
@@ -97,18 +97,12 @@ public sealed class FakePlacesClient : IPlacesClient, IRichPlaceDetails
                 rating,
                 120,
                 $"https://www.google.com/maps/search/?api=1&query={lat},{lng}",
-                [
-                    new PlaceHour(DayOfWeek.Monday, new TimeOnly(10, 0), new TimeOnly(22, 0)),
-                    new PlaceHour(DayOfWeek.Tuesday, new TimeOnly(10, 0), new TimeOnly(22, 0)),
-                    new PlaceHour(DayOfWeek.Wednesday, new TimeOnly(10, 0), new TimeOnly(22, 0)),
-                    new PlaceHour(DayOfWeek.Thursday, new TimeOnly(10, 0), new TimeOnly(22, 0)),
-                    new PlaceHour(DayOfWeek.Friday, new TimeOnly(10, 0), new TimeOnly(23, 0)),
-                    new PlaceHour(DayOfWeek.Saturday, new TimeOnly(10, 0), new TimeOnly(23, 0)),
-                    new PlaceHour(DayOfWeek.Sunday, new TimeOnly(11, 0), new TimeOnly(21, 0))
-                ],
+                open ? OsmOpeningHours.Parse(HoursOf(types)) : [],
                 attribution,
                 Phone: "0216 555 00 " + (10 + id.Sum(c => c) % 89),
-                OpeningHoursText: "Mo-Th 10:00-22:00; Fr-Sa 10:00-23:00; Su 11:00-21:00",
+                // "Açık" bayrağı veri çekildiği ana aittir; sunumda bu metinden yeniden hesaplanır. Kapalı örnek
+                // mekanın (Opera Kahve) saati yok: her zaman kapalı kalır, testler saate bağlı olmaz.
+                OpeningHoursText: open ? HoursOf(types) : null,
                 Summary: Summaries.GetValueOrDefault(id),
                 PriceLevel: types.Contains("park") ? 0 : types.Contains("restaurant") || types.Contains("performing_arts_theater") ? 3 : 2,
                 Category: CategoryOf(types),
@@ -127,6 +121,17 @@ public sealed class FakePlacesClient : IPlacesClient, IRichPlaceDetails
         ["nereye:sureyya"] = "1927 yapımı tarihi binada opera, bale ve klasik müzik konserlerine ev sahipliği yapan sahne.",
         ["nereye:modern"] = "Türkiye'nin ilk modern ve çağdaş sanat müzesi; Boğaz manzaralı sergi salonları.",
         ["nereye:moda"] = "Deniz kenarında yürüyüş yolu, çimenlik alanlar ve gün batımı manzarası sunan sahil parkı.",
+    };
+
+    // Türe göre gerçekçi saatler: gece mekanı gece yarısını aşar, park her zaman açık.
+    private static string HoursOf(string[] types) => types[0] switch
+    {
+        "night_club" or "bar" => "We-Sa 21:00-04:00; Su 21:00-02:00",
+        "park" => "24/7",
+        "restaurant" => "Mo-Su 11:00-23:30",
+        "performing_arts_theater" => "Tu-Su 11:00-22:30; Mo off",
+        "museum" => "Tu-Su 10:00-18:00; Mo off",
+        _ => "Mo-Th 08:00-23:00; Fr-Sa 08:00-24:00; Su 09:00-23:00",
     };
 
     private static string CategoryOf(string[] types) => types[0] switch

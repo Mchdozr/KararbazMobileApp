@@ -46,8 +46,25 @@ public static class OsrmRoute
             }
         }
 
-        return new RouteResult(mode, dist.GetDouble(), dur.GetDouble(), points);
+        var distance = dist.GetDouble();
+        var duration = dur.GetDouble();
+        // Genel OSRM sunucusu (router.project-osrm.org) yalnızca araç profilini taşır; yaya isteğine araç süresi döner.
+        // Yürüyüşte saatte ~7 km'yi aşan hız gerçek olamaz: süre mesafe ve ortalama yürüme hızından hesaplanır.
+        if (IsFoot(mode) && distance > 0 && (duration <= 0 || distance / duration > MaxWalkingMetersPerSecond))
+        {
+            duration = Math.Round(distance / WalkingMetersPerSecond, 1);
+        }
+
+        return new RouteResult(mode, distance, duration, points);
     }
+
+    /// <summary>Ortalama yürüme hızı (~4,8 km/sa).</summary>
+    public const double WalkingMetersPerSecond = 1.33;
+
+    private const double MaxWalkingMetersPerSecond = 2.0;
+
+    private static bool IsFoot(string mode) =>
+        mode.Equals("foot", StringComparison.OrdinalIgnoreCase) || mode.Equals("walking", StringComparison.OrdinalIgnoreCase);
 
     public static string Profile(string mode) =>
         mode.Equals("foot", StringComparison.OrdinalIgnoreCase) || mode.Equals("walking", StringComparison.OrdinalIgnoreCase)

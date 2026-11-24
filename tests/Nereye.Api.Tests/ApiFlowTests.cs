@@ -154,6 +154,42 @@ public sealed class ApiFlowTests
     }
 
     [Fact]
+    public async Task Cards_carry_closing_or_opening_time_consistent_with_open_flag()
+    {
+        var res = await _client.GetAsync("/api/recommendations?lat=40.9885&lng=29.0250&intent=Kahve&radiusMeters=1500");
+        res.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync());
+        var items = doc.RootElement.GetProperty("items").EnumerateArray().ToList();
+        Assert.NotEmpty(items);
+        foreach (var card in items)
+        {
+            var id = card.GetProperty("placeId").GetString();
+            var open = card.GetProperty("openNow");
+            var closes = card.GetProperty("closesAt");
+            var opens = card.GetProperty("opensAt");
+            if (id == "nereye:opera")
+            {
+                // Saati bilinmeyen kapalı mekan: uydurma saat yazılmaz.
+                Assert.Equal(JsonValueKind.False, open.ValueKind);
+                Assert.Equal(JsonValueKind.Null, closes.ValueKind);
+                Assert.Equal(JsonValueKind.Null, opens.ValueKind);
+                continue;
+            }
+
+            if (open.ValueKind == JsonValueKind.True)
+            {
+                Assert.Matches(@"^\d{2}:\d{2}$", closes.GetString());
+                Assert.True(card.GetProperty("closesInMinutes").GetInt32() > 0);
+            }
+            else
+            {
+                Assert.Matches(@"^\d{2}:\d{2}$", opens.GetString());
+                Assert.True(card.GetProperty("opensInMinutes").GetInt32() > 0);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Register_review_favorite_and_preferences_work()
     {
         var email = $"u{Guid.NewGuid():N}@nereye.test";

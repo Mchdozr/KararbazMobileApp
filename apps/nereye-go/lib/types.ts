@@ -36,6 +36,11 @@ export type VenueCard = {
   /** 0 ücretsiz … 4 çok pahalı */
   priceLevel?: number | null;
   category?: string | null;
+  /** Sunucu İstanbul saatiyle hesaplar: açıkken kapanış, kapalıyken sonraki açılış. */
+  closesAt?: string | null;
+  closesInMinutes?: number | null;
+  opensAt?: string | null;
+  opensInMinutes?: number | null;
 };
 
 /** Dış kaynaktan (Google) gelen yorum. */
@@ -82,6 +87,10 @@ export type VenueDetail = {
   priceLevel?: number | null;
   category?: string | null;
   externalReviews?: ExternalReview[];
+  closesAt?: string | null;
+  closesInMinutes?: number | null;
+  opensAt?: string | null;
+  opensInMinutes?: number | null;
 };
 
 export type RouteMode = 'foot' | 'driving';

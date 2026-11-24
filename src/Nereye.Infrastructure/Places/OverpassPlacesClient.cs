@@ -83,55 +83,111 @@ public sealed class OverpassPlacesClient : IPlacesClient
         return ParseList(json, latitude, longitude).Take(40).ToList();
     }
 
+    /// <summary>
+    /// Birincil uç bu süre içinde cevap vermezse sıradaki uç paralel başlar; ilk dolu cevap kullanılır, diğerleri iptal edilir.
+    /// Önceden uçlar sırayla denendiği için yavaş bir birincil uç ilk açılışı 20+ saniyeye çıkarabiliyordu.
+    /// </summary>
+    internal TimeSpan HedgeDelay { get; set; } = TimeSpan.FromSeconds(3.5);
+
     private async Task<JsonElement> PostAsync(
         string query,
         CancellationToken cancellationToken,
         int primaryBudgetSeconds = 22,
         int? takeEndpoints = null)
     {
-        Exception? last = null;
         var uris = takeEndpoints is null ? Endpoints : Endpoints.Take(takeEndpoints.Value).ToArray();
-        for (var i = 0; i < uris.Length; i++)
+        using var race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var running = new List<Task<JsonElement?>>();
+        var next = 0;
+
+        Task<JsonElement?> Start()
         {
-            var uri = uris[i];
-            try
+            var i = next++;
+            return TryEndpointAsync(uris[i], query, i == 0 ? primaryBudgetSeconds : 10, race.Token);
+        }
+
+        running.Add(Start());
+        while (running.Count > 0)
+        {
+            Task finished;
+            if (next < uris.Length)
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+                var hedge = Task.Delay(HedgeDelay, race.Token);
+                finished = await Task.WhenAny(running.Cast<Task>().Append(hedge));
+                if (finished == hedge)
                 {
-                    Content = new StringContent(query, System.Text.Encoding.UTF8, "text/plain")
-                };
-                request.Headers.TryAddWithoutValidation("User-Agent", HttpIdentity.UserAgent);
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                var budget = i == 0 ? primaryBudgetSeconds : 8;
-                cts.CancelAfter(TimeSpan.FromSeconds(budget));
-                using var response = await _http.SendAsync(request, cts.Token);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var err = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _log.LogWarning("Overpass {Uri} {Status}: {Body}", uri, (int)response.StatusCode, err);
+                    if (!hedge.IsCanceled)
+                    {
+                        running.Add(Start());
+                    }
+
                     continue;
                 }
+            }
+            else
+            {
+                finished = await Task.WhenAny(running);
+            }
 
-                var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
-                var count = json.TryGetProperty("elements", out var elements) && elements.ValueKind == JsonValueKind.Array
-                    ? elements.GetArrayLength()
-                    : 0;
-                if (count == 0)
-                {
-                    _log.LogWarning("Overpass {Uri} returned no elements", uri);
-                    continue;
-                }
-
+            var attempt = (Task<JsonElement?>)finished;
+            running.Remove(attempt);
+            if (await attempt is { } json)
+            {
+                race.Cancel(); // kalan istekler bırakılsın
                 return json;
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+
+            if (running.Count == 0 && next < uris.Length)
             {
-                last = ex;
-                _log.LogWarning(ex, "Overpass endpoint failed {Uri}", uri);
+                running.Add(Start()); // hızlı hata: beklemeden sıradakine geç
             }
         }
 
-        throw last ?? new HttpRequestException("Overpass unavailable");
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new HttpRequestException("Overpass unavailable");
+    }
+
+    /// <summary>Tek uca istek. Başarısızlık (hata kodu, boş sonuç, zaman aşımı) null döner ve günlüğe yazılır.</summary>
+    private async Task<JsonElement?> TryEndpointAsync(Uri uri, string query, int budgetSeconds, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+            {
+                Content = new StringContent(query, System.Text.Encoding.UTF8, "text/plain")
+            };
+            request.Headers.TryAddWithoutValidation("User-Agent", HttpIdentity.UserAgent);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(budgetSeconds));
+            using var response = await _http.SendAsync(request, cts.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync(cts.Token);
+                _log.LogWarning("Overpass {Uri} {Status}: {Body}", uri, (int)response.StatusCode, err);
+                return null;
+            }
+
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>(cts.Token);
+            var count = json.TryGetProperty("elements", out var elements) && elements.ValueKind == JsonValueKind.Array
+                ? elements.GetArrayLength()
+                : 0;
+            if (count == 0)
+            {
+                _log.LogWarning("Overpass {Uri} returned no elements", uri);
+                return null;
+            }
+
+            return json;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                _log.LogWarning(ex, "Overpass endpoint failed {Uri}", uri);
+            }
+
+            return null;
+        }
     }
 
     internal static IReadOnlyList<PlaceSnapshot> ParseList(JsonElement json, double originLat, double originLng)

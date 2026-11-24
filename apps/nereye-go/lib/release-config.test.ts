@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { buildConfig, cleartextOf, TARGET_SDK, variantOf } from '../app.config.ts';
-import { apiCandidates, DEV_LAN_API, resolveApiUrl } from './release-config.ts';
+import { apiCandidates, DEV_LAN_API, needsProbe, resolveApiUrl } from './release-config.ts';
 
 const base = JSON.parse(readFileSync(new URL('../app.json', import.meta.url), 'utf8')).expo;
 const prod = (url?: string) => ({ EAS_BUILD_PROFILE: 'production', EXPO_PUBLIC_API_URL: url, GOOGLE_MAPS_ANDROID_API_KEY: 'test-maps-key-not-real' });
@@ -86,4 +86,9 @@ test('the developer server field cannot open outside __DEV__', () => {
   }
   assert.match(src, /if \(__DEV__ && showServer && base\.trim\(\)/);
   assert.equal([...src.matchAll(/setShowServer\(/g)].length, 1);
+});
+
+test('yayında tek adres var: açılışta yoklama yapılmaz', () => {
+  assert.equal(needsProbe(apiCandidates(false, 'https://api.ornek.dev', 'http://192.168.1.5:5079')), false);
+  assert.equal(needsProbe(apiCandidates(true, 'http://192.168.1.248:5079', null)), true);
 });

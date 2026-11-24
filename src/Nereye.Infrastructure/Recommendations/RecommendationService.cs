@@ -80,10 +80,13 @@ public sealed class RecommendationService : IRecommendationService
         }
 
         var organic = new List<RankedCard>();
-        var scored = new Dictionary<string, (PlaceSnapshot Place, Venue? Overlay, double Score, double Distance)>();
+        var scored = new Dictionary<string, (PlaceSnapshot Place, Venue? Overlay, double Score, double Distance, OpenState Open)>();
+        var now = Places.ServeTime.Now(_clock);
 
-        foreach (var place in snapshots)
+        foreach (var cachedPlace in snapshots)
         {
+            // Önbellekteki "açık" bayrağı çekildiği ana ait; saat metninden şimdi (İstanbul) yeniden hesaplanır.
+            var (place, openState) = OpenNowResolver.Apply(cachedPlace, now);
             overlayByPlace.TryGetValue(place.PlaceId, out var overlay);
             var distance = GeoMath.HaversineMeters(query.Latitude, query.Longitude, place.Latitude, place.Longitude);
             var open = place.OpenNow switch
@@ -117,7 +120,7 @@ public sealed class RecommendationService : IRecommendationService
                 query.Intent));
 
             organic.Add(new RankedCard(place.PlaceId, score, CardKind.Organic));
-            scored[place.PlaceId] = (place, overlay, score, distance);
+            scored[place.PlaceId] = (place, overlay, score, distance, openState);
         }
 
         var rankedOrganic = organic.OrderByDescending(c => c.Score).Take(PromotionSlotAssembler.MaxOrganic).ToList();
@@ -158,7 +161,11 @@ public sealed class RecommendationService : IRecommendationService
                 place.GoogleRating,
                 place.GoogleUserRatingCount,
                 place.PriceLevel,
-                place.Category);
+                place.Category,
+                row.Open.ClosesAt,
+                row.Open.ClosesInMinutes,
+                row.Open.OpensAt,
+                row.Open.OpensInMinutes);
         }).Where(i => i is not null).Cast<RecommendationItemDto>().ToList();
 
         // Görseli olmayan kartlara daha önce bulunmuş gerçek kapak: istemci stok görsel göstermez, ek istek atmaz.

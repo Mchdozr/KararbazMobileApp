@@ -2,7 +2,7 @@ import { ApiError, serverMessage } from '@/lib/api-error';
 import { isFresh, shareVenueRequest } from '@/lib/venue-cache';
 import { venuePhotoUrls } from '@/lib/venue-photos';
 import { DEFAULT_API } from '@/lib/constants';
-import { apiCandidates } from '@/lib/release-config';
+import { apiCandidates, needsProbe } from '@/lib/release-config';
 import { photoBatchIds } from '@/lib/photo-batch';
 import { warmCards } from '@/lib/prefetch';
 import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
@@ -103,6 +103,10 @@ async function probe(base: string): Promise<string> {
 export async function pickReachableApiBase(saved?: string | null) {
   // Yayında yalnızca derlemeye verilen https adres; kayıtlı adres ve LAN yalnızca __DEV__.
   const candidates = apiCandidates(__DEV__, DEFAULT_API, saved);
+  if (!needsProbe(candidates)) {
+    apiBase = (candidates[0] ?? DEFAULT_API).replace(/\/$/, '');
+    return apiBase;
+  }
   try {
     apiBase = await Promise.any(candidates.map(probe));
   } catch {
@@ -572,5 +576,9 @@ export function mapVenueDetail(raw: Record<string, unknown>): VenueDetail {
     priceLevel: google.priceLevel as number | undefined,
     category: google.category as string | undefined,
     externalReviews: Array.isArray(raw.externalReviews) ? (raw.externalReviews as VenueDetail['externalReviews']) : [],
+    closesAt: (google.closesAt as string | null | undefined) ?? null,
+    closesInMinutes: (google.closesInMinutes as number | null | undefined) ?? null,
+    opensAt: (google.opensAt as string | null | undefined) ?? null,
+    opensInMinutes: (google.opensInMinutes as number | null | undefined) ?? null,
   };
 }

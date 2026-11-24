@@ -33,6 +33,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { minutesOfDay, openLine, type OpenTone } from '@/lib/open-status';
 import {
   Alert,
   Linking,
@@ -217,6 +218,7 @@ export default function Venue() {
   );
 
   const summary = useMemo(() => summarizeRatings(reviews), [reviews]);
+  const statusLine = detail ? openLine(detail, minutesOfDay()) : null;
   const mine = useMemo(() => (userId ? reviews.find((r) => r.userId === userId) ?? null : null), [reviews, userId]);
   const others = useMemo(() => reviews.filter((r) => r !== mine), [reviews, mine]);
 
@@ -459,12 +461,10 @@ export default function Venue() {
           {detail.address ? <Text style={styles.addr}>{detail.address}</Text> : null}
 
           <View style={styles.statusRow}>
-            {detail.openNow != null ? (
-              <View style={[styles.status, detail.openNow ? styles.open : styles.closed]}>
-                <View style={[styles.statusDot, { backgroundColor: detail.openNow ? colors.sage : colors.danger }]} />
-                <Text style={[styles.statusText, { color: detail.openNow ? colors.sage : colors.danger }]}>
-                  {detail.openNow ? 'Şu an açık' : 'Şu an kapalı'}
-                </Text>
+            {statusLine ? (
+              <View style={[styles.status, statusLine.tone === 'closed' ? styles.closed : styles.open]} accessibilityRole="text">
+                <View style={[styles.statusDot, { backgroundColor: statusColor(statusLine.tone) }]} />
+                <Text style={[styles.statusText, { color: statusColor(statusLine.tone) }]}>{statusLine.text}</Text>
               </View>
             ) : null}
             {detail.nereyeRating != null ? (
@@ -1072,3 +1072,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
   },
 });
+
+function statusColor(tone: OpenTone) {
+  return tone === 'open' ? colors.sage : tone === 'soon' ? colors.gold : colors.danger;
+}

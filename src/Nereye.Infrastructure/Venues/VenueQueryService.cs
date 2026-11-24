@@ -20,6 +20,7 @@ public sealed class VenueQueryService : IVenueQueryService
     private readonly NereyeDbContext _db;
     private readonly AvatarStorage _uploads;
     private readonly PlaceCovers _covers;
+    private readonly Application.Common.IClock _clock;
 
     public VenueQueryService(
         IPlacesClient places,
@@ -27,8 +28,10 @@ public sealed class VenueQueryService : IVenueQueryService
         IPlacePhotoEnricher photos,
         NereyeDbContext db,
         AvatarStorage uploads,
-        PlaceCovers covers)
+        PlaceCovers covers,
+        Application.Common.IClock clock)
     {
+        _clock = clock;
         _covers = covers;
         _places = places;
         _cache = cache;
@@ -74,12 +77,13 @@ public sealed class VenueQueryService : IVenueQueryService
             await _covers.RememberAsync(placeId, gallery[0], cancellationToken);
         }
 
+        var (_, open) = OpenNowResolver.Apply(place, ServeTime.Now(_clock));
         var google = new GoogleVenueBlock(
             place.Name,
             place.Address,
             place.Latitude,
             place.Longitude,
-            place.OpenNow,
+            open.IsOpen,
             place.GoogleRating,
             place.GoogleUserRatingCount,
             place.PhotoReference,
@@ -96,7 +100,11 @@ public sealed class VenueQueryService : IVenueQueryService
             place.PriceLevel,
             place.Category,
             gallery,
-            place.Features);
+            place.Features,
+            open.ClosesAt,
+            open.ClosesInMinutes,
+            open.OpensAt,
+            open.OpensInMinutes);
 
         var nereye = new NereyeVenueBlock(
             overlay?.Id,
@@ -355,8 +363,10 @@ public sealed class VenueQueryService : IVenueQueryService
             .ToListAsync(cancellationToken);
         var map = overlays.ToDictionary(v => v.GooglePlaceId);
 
-        var items = snapshots.Select(p =>
+        var now = ServeTime.Now(_clock);
+        var items = snapshots.Select(cached =>
         {
+            var (p, open) = OpenNowResolver.Apply(cached, now);
             map.TryGetValue(p.PlaceId, out var overlay);
             var distance = GeoMath.HaversineMeters(latitude, longitude, p.Latitude, p.Longitude);
             return new RecommendationItemDto(
@@ -379,7 +389,11 @@ public sealed class VenueQueryService : IVenueQueryService
                 p.GoogleRating,
                 p.GoogleUserRatingCount,
                 p.PriceLevel,
-                p.Category);
+                p.Category,
+                open.ClosesAt,
+                open.ClosesInMinutes,
+                open.OpensAt,
+                open.OpensInMinutes);
         }).ToList();
         return await _covers.FillAsync(items, cancellationToken);
     }

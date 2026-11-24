@@ -317,7 +317,7 @@ public sealed class ReviewService : IReviewService
         for (var i = 0; i < pending.Count; i++)
         {
             var venue = pending[i].Venue;
-            var place = enriched[i];
+            var (place, open) = OpenNowResolver.Apply(enriched[i], Places.ServeTime.Now(_clock));
             items.Add(new RecommendationItemDto(
                 place.PlaceId,
                 venue.OwnerDisplayName ?? place.Name,
@@ -338,7 +338,11 @@ public sealed class ReviewService : IReviewService
                 place.GoogleRating,
                 place.GoogleUserRatingCount,
                 place.PriceLevel,
-                place.Category));
+                place.Category,
+                open.ClosesAt,
+                open.ClosesInMinutes,
+                open.OpensAt,
+                open.OpensInMinutes));
         }
 
         return await _covers.FillAsync(items, cancellationToken);

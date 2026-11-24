@@ -22,7 +22,11 @@ public sealed record GoogleVenueBlock(
     int? PriceLevel = null,
     string? Category = null,
     IReadOnlyList<string>? PhotoUrls = null,
-    IReadOnlyList<string>? Features = null);
+    IReadOnlyList<string>? Features = null,
+    string? ClosesAt = null,
+    int? ClosesInMinutes = null,
+    string? OpensAt = null,
+    int? OpensInMinutes = null);
 
 /// <summary>Dış kaynaktan (Google) gelen yorum; Nereye yorumlarından ayrı bir bölümde gösterilir.</summary>
 public sealed record ExternalReviewDto(string Author, int Rating, string? Text, string? When, string? AuthorPhotoUrl, string? AuthorUri = null);

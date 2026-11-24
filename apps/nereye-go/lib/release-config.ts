@@ -29,6 +29,14 @@ export function resolveApiUrl(dev: boolean, envUrl?: string | null): string {
   return isHttps(given) || isLoopback(given) ? given : '';
 }
 
+/**
+ * Açılışta adres yoklaması gerekli mi? Tek aday varken (yayın derlemesi) yoklama yalnızca ilk isteği bir gidiş-dönüş
+ * geciktirir; ağ yokken açılışı zaman aşımı kadar bekletir. Seçilecek başka adres olmadığı için atlanır.
+ */
+export function needsProbe(candidates: readonly string[]): boolean {
+  return candidates.length > 1;
+}
+
 /** Adres seçiminde denenecek adaylar. Yayında yalnızca derlemeye verilen https adres. */
 export function apiCandidates(dev: boolean, defaultApi: string, saved?: string | null): string[] {
   const pool = dev ? [saved, defaultApi, ...DEV_FALLBACK_APIS] : [defaultApi];

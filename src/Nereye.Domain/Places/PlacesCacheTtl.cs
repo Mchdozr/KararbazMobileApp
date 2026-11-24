@@ -36,4 +36,7 @@ public static class PlacesCacheTtl
     public static readonly TimeSpan Suggest = TimeSpan.FromDays(7);
 
     public static readonly TimeSpan Empty = TimeSpan.FromMinutes(2);
+
+    /// <summary>Yürüme/araç rotası: sokak ağı nadiren değişir; trafik verisi kullanılmıyor.</summary>
+    public static readonly TimeSpan Route = TimeSpan.FromHours(12);
 }

@@ -35,6 +35,11 @@ public static class PlacesCacheKey
 
     public static string PhotoUri(string name, int width) => $"places:photouri:v1:{width}:{name}";
 
+    /// <summary>Rota: başlangıç ~11 m'ye yuvarlanır (aynı noktadan tekrar açılan mekan aynı kaydı kullanır).</summary>
+    public static string Route(double fromLat, double fromLng, double toLat, double toLng, string mode) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"routes:v1:{mode}:{fromLat:F4}:{fromLng:F4}:{toLat:F5}:{toLng:F5}");
+
     public static string TextSearch(string geohash, string query) =>
         $"places:text:v2:{geohash}:{query.Trim().ToLowerInvariant()}";
 

@@ -2,7 +2,7 @@ import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { BackButton } from '@/components/BackButton';
 import { gradientHeader } from '@/components/ScreenHeader';
 import { hydrateCovers } from '@/lib/covers';
-import { SessionProvider } from '@/lib/session';
+import { SessionProvider, useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 import { ToastHost } from '@/lib/toast';
 import {
@@ -13,13 +13,30 @@ import {
 import { Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 const navTheme = {
   ...DefaultTheme,
   colors: { ...DefaultTheme.colors, primary: colors.coral, background: colors.bg, card: colors.surface },
 };
+
+// Yerel açılış ekranı fontlar ve oturum hazır olana dek kalır: arada boş ekran ya da yükleniyor çarkı görünmez.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.setOptions({ duration: 250, fade: true });
+
+/** Oturum okunduğunda (ve en geç birkaç saniyede) açılış ekranını kaldırır. Derin bağlantıyla açılışta da çalışır. */
+function SplashGate() {
+  const { ready } = useSession();
+  useEffect(() => {
+    if (ready) {
+      SplashScreen.hide();
+    }
+  }, [ready]);
+  return null;
+}
 
 // Önceki oturumda görülen kapak görselleri: ilk kartlar ağ beklemeden gerçek fotoğrafla açılsın.
 void hydrateCovers();
@@ -37,17 +54,20 @@ export default function RootLayout() {
     DMSans_700Bold,
   });
 
+  // Güvenlik ağı: bir şey takılırsa açılış ekranı sonsuza dek kalmasın.
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hide(), 6000);
+    return () => clearTimeout(t);
+  }, []);
+
   if (!loaded) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
-        <ActivityIndicator color={colors.coral} />
-      </View>
-    );
+    return null; // açılış ekranı hâlâ görünür
   }
 
   return (
     <AppErrorBoundary>
       <SessionProvider>
+        <SplashGate />
         <ThemeProvider value={navTheme}>
           <StatusBar style="dark" />
           <Stack
