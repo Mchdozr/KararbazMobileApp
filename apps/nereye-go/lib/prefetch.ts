@@ -2,6 +2,8 @@ import { rememberCover } from '@/lib/covers';
 import { photoSource } from '@/lib/photos';
 import type { VenueCard } from '@/lib/types';
 import { Image } from 'expo-image';
+import { PixelRatio } from 'react-native';
+import { CARD_IMAGE_PT, variantWidth } from '@/lib/media-width';
 
 const done = new Set<string>();
 
@@ -11,6 +13,7 @@ const done = new Set<string>();
  */
 export function warmCards(cards: readonly VenueCard[], count = 8) {
   const uris: string[] = [];
+  const cardWidthPx = variantWidth(CARD_IMAGE_PT, PixelRatio.get());
   for (const card of cards) {
     const raw = card.photoUrl || card.photoReference;
     if (raw) {
@@ -19,7 +22,8 @@ export function warmCards(cards: readonly VenueCard[], count = 8) {
     if (uris.length >= count) {
       continue;
     }
-    const src = photoSource(card.placeId, raw);
+    // Kartın isteyeceği sürümün aynısı (aynı URI): önden indirilen dosya kartta kullanılır.
+    const src = photoSource(card.placeId, raw, null, cardWidthPx);
     const uri = src && typeof src === 'object' ? src.uri : null;
     if (uri && !done.has(uri)) {
       done.add(uri);

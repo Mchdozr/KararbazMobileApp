@@ -130,6 +130,12 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ISavedPlaceService, SavedPlaceService>();
         services.AddSingleton<AvatarStorage>();
+        // Küçültülmüş görseller: yapılandırılmazsa geçici klasör (kaybolursa yeniden üretilir).
+        services.AddSingleton(sp => new MediaVariantStore(
+            configuration["Media:VariantCacheDir"] is { Length: > 0 } dir
+                ? dir
+                : Path.Combine(Path.GetTempPath(), "nereye-media-variants"),
+            sp.GetService<ILogger<MediaVariantStore>>()));
         services.AddSingleton<PlaceCovers>();
         services.AddSingleton<FakeGeoSuggest>();
 

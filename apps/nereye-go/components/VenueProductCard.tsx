@@ -1,4 +1,5 @@
 import { FavoriteButton } from '@/components/FavoriteButton';
+import { CARD_IMAGE_PT } from '@/lib/media-width';
 import { VenueImage } from '@/components/VenueImage';
 import { vibeText } from '@/lib/constants';
 import { api } from '@/lib/api';
@@ -91,6 +92,7 @@ export const VenueProductCard = memo(function VenueProductCard({
             style={StyleSheet.absoluteFill}
             radius={radii.md}
             active={loadPhoto}
+            widthPt={CARD_IMAGE_PT}
           />
           <LinearGradient colors={gradients.photo} style={styles.fade} />
           <View style={styles.badges}>

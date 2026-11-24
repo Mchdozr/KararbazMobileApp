@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { PixelRatio, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { api } from '@/lib/api';
 import { dropCover } from '@/lib/cover-store';
 import { rememberCover, useCover } from '@/lib/covers';
+import { variantWidth } from '@/lib/media-width';
 import { photoSource } from '@/lib/photos';
 import { placeholderPalette } from '@/lib/placeholder';
 import { colors, INTENT_ICONS } from '@/lib/theme';
@@ -25,6 +26,7 @@ export const VenueImage = memo(function VenueImage({
   intent,
   active = true,
   onFail,
+  widthPt,
 }: {
   placeId: string;
   photoUrl?: string | null;
@@ -38,14 +40,18 @@ export const VenueImage = memo(function VenueImage({
   active?: boolean;
   /** Görsel indirilemediğinde, denenmiş URI ile çağrılır. */
   onFail?: (uri: string) => void;
+  /** Gösterilen genişlik (pt). Verilmezse ekran genişliği. Yerel görselin uygun boyutlu sürümü istenir. */
+  widthPt?: number;
 }) {
+  const screen = useWindowDimensions();
+  const widthPx = variantWidth(widthPt ?? screen.width, PixelRatio.get());
   const given = photoUrl || photoReference || null;
   const cover = useCover(placeId);
   const [lazyUrl, setLazyUrl] = useState<string | null>(null);
   // Görsel indirilemezse (kota, silinmiş dosya) boş kare yerine yer tutucu göster.
   const [broken, setBroken] = useState<string | null>(null);
   const raw = given ?? cover ?? lazyUrl;
-  const candidate = photoSource(placeId, raw);
+  const candidate = photoSource(placeId, raw, null, widthPx);
   const uri = candidate && typeof candidate === 'object' ? candidate.uri : null;
   const source = uri && uri === broken ? null : candidate;
   const [a, b] = placeholderPalette(placeId);
@@ -94,7 +100,9 @@ export const VenueImage = memo(function VenueImage({
               if (cover && raw === cover) {
                 dropCover(placeId, cover);
               }
-              onFail?.(uri);
+              // Çağıran (detay galerisi) görselleri boyutsuz adresle tanır: sürüm eki olmadan bildir.
+              const plain = photoSource(placeId, raw);
+              onFail?.(plain && typeof plain === 'object' ? plain.uri : uri);
             }
           }}
         />

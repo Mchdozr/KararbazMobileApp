@@ -18,7 +18,33 @@ public static class ImageSanitizer
 
     private const int Quality = 85;
 
-    public static (byte[] Bytes, string Extension) Normalize(byte[] input, int maxSide)
+    public static (byte[] Bytes, string Extension) Normalize(byte[] input, int maxSide) =>
+        Encode(input, (w, h) => Math.Min(1.0, (double)maxSide / Math.Max(w, h)), Quality);
+
+    /// <summary>
+    /// Görüntü genişliği en fazla <paramref name="width"/> olacak şekilde küçültür (EXIF yönü uygulanmış genişlik).
+    /// Zaten dar olan görsel için null döner: özgün dosya sunulur.
+    /// </summary>
+    public static (byte[] Bytes, string Extension)? ResizeToWidth(byte[] input, int width)
+    {
+        var smaller = false;
+        var result = Encode(input, (w, _) =>
+        {
+            smaller = w > width;
+            return Math.Min(1.0, (double)width / w);
+        }, VariantQuality, orientedScale: true);
+        return smaller ? result : null;
+    }
+
+    /// <summary>Küçük sürümlerde gözle ayırt edilmeyen, dosyayı belirgin küçülten kalite.</summary>
+    private const int VariantQuality = 80;
+
+    /// <param name="scaleFor">Kaynak (ya da orientedScale ise yönü uygulanmış) genişlik ve yükseklikten ölçek.</param>
+    private static (byte[] Bytes, string Extension) Encode(
+        byte[] input,
+        Func<int, int, double> scaleFor,
+        int quality,
+        bool orientedScale = false)
     {
         using var data = SKData.CreateCopy(input);
         using var codec = SKCodec.Create(data) ?? throw new ValidationException("Fotoğraf okunamadı.");
@@ -40,7 +66,9 @@ public static class ImageSanitizer
             format == SKEncodedImageFormat.Jpeg ? SKAlphaType.Opaque : SKAlphaType.Premul);
         using var source = SKBitmap.Decode(codec, decodeInfo) ?? throw new ValidationException("Fotoğraf okunamadı.");
 
-        var scale = Math.Min(1.0, (double)maxSide / Math.Max(info.Width, info.Height));
+        var turned = codec.EncodedOrigin is SKEncodedOrigin.LeftTop or SKEncodedOrigin.RightTop
+            or SKEncodedOrigin.RightBottom or SKEncodedOrigin.LeftBottom;
+        var scale = orientedScale && turned ? scaleFor(info.Height, info.Width) : scaleFor(info.Width, info.Height);
         var w = Math.Max(1, (int)Math.Round(info.Width * scale));
         var h = Math.Max(1, (int)Math.Round(info.Height * scale));
         using var sized = scale < 1.0
@@ -63,7 +91,7 @@ public static class ImageSanitizer
         }
 
         using var image = SKImage.FromBitmap(oriented);
-        using var encoded = image.Encode(format, Quality) ?? throw new ValidationException("Fotoğraf kaydedilemedi.");
+        using var encoded = image.Encode(format, quality) ?? throw new ValidationException("Fotoğraf kaydedilemedi.");
         var ext = format switch
         {
             SKEncodedImageFormat.Png => ".png",

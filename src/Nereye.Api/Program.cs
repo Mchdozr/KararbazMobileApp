@@ -177,19 +177,13 @@ if (app.Environment.IsProduction())
 
 app.UseResponseCompression();
 app.UseCors();
+// Kart boyutunda görsel: /media/venues/x.jpg?w=400 (disk önbellekli küçültülmüş sürüm).
+app.UseMiddleware<MediaVariantMiddleware>();
 app.UseStaticFiles(new StaticFileOptions
 {
+    // Mekan görselleri nadiren değişir; avatar kısa önbelleklenir; yorum fotoğrafı her istekte doğrulanır.
     OnPrepareResponse = ctx =>
-    {
-        // Mekan görselleri nadiren değişir; avatar kısa önbelleklenir.
-        var path = ctx.Context.Request.Path.Value ?? "";
-        ctx.Context.Response.Headers.CacheControl =
-            // Yorum fotoğrafı silinebilir (yorum silme, fotoğraf değişimi, moderasyon): uzun/immutable önbellek
-            // silinmiş kareyi istemcide ve ara önbellekte yaşatırdı. Her istekte ETag ile doğrulanır (304 ucuzdur).
-            path.StartsWith("/media/uploads/", StringComparison.Ordinal) ? "public, no-cache"
-            : path.StartsWith("/media/avatars/", StringComparison.Ordinal) ? "public, max-age=300"
-            : "public, max-age=86400";
-    }
+        ctx.Context.Response.Headers.CacheControl = MediaCachePolicy.For(ctx.Context.Request.Path.Value ?? "")
 });
 app.UseAuthentication();
 if (!testing)

@@ -1,4 +1,5 @@
 import { getApiBase } from '@/lib/api';
+import { withVariant } from '@/lib/media-width';
 
 const local: Record<string, number> = {
   'nereye:petra': require('../assets/venues/petra.jpg'),
@@ -28,7 +29,16 @@ export const INTENT_PHOTOS: Record<string, number> = {
   Gece: local['nereye:opera'],
 };
 
-export function photoSource(placeId: string, photoUrl?: string | null, photoReference?: string | null) {
+/**
+ * Görselin kaynağı. widthPx verilirse yerel mekan/yükleme görselinin o genişlikteki küçültülmüş sürümü istenir
+ * (lib/media-width.ts); Google kareleri zaten 800 px gelir.
+ */
+export function photoSource(
+  placeId: string,
+  photoUrl?: string | null,
+  photoReference?: string | null,
+  widthPx?: number | null,
+) {
   if (local[placeId]) {
     return local[placeId];
   }
@@ -37,13 +47,13 @@ export function photoSource(placeId: string, photoUrl?: string | null, photoRefe
     return { uri: `${getApiBase()}${raw}` };
   }
   if (raw?.startsWith('http')) {
-    return { uri: raw };
+    return { uri: withVariant(raw, widthPx) };
   }
   if (raw?.startsWith('places/')) {
     return { uri: `${getApiBase()}/api/media/google?name=${encodeURIComponent(raw)}` };
   }
   if (raw?.startsWith('/')) {
-    return { uri: `${getApiBase()}${raw}` };
+    return { uri: withVariant(`${getApiBase()}${raw}`, widthPx) };
   }
   return null;
 }
