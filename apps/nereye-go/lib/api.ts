@@ -6,6 +6,9 @@ import { apiCandidates, needsProbe } from '@/lib/release-config';
 import { photoBatchIds } from '@/lib/photo-batch';
 import { warmCards } from '@/lib/prefetch';
 import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
+import { EtagCache } from '@/lib/etag-cache';
+import { linkAbort, recommendPath } from '@/lib/request-control';
+import { Platform } from 'react-native';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
   Legal,
@@ -209,13 +212,23 @@ type PhotoWaiter = { id: string; resolve: (url: string | null) => void };
 const photoQueue: PhotoWaiter[] = [];
 let photoFlush: ReturnType<typeof setTimeout> | null = null;
 
-async function raw(path: string, init: RequestInit = {}, skipAuth = false, timeoutMs = TIMEOUT_MS) {
+// Koşullu GET (ETag/304). Web'de tarayıcının HTTP önbelleği bunu kendisi yapar; elle başlık eklemek
+// çapraz kökenli istekte ön uçuş (preflight) doğururdu. Bu yüzden yalnızca yerel uygulamada.
+const etags = new EtagCache();
+const conditionalGets = Platform.OS !== 'web';
+
+type RawOpts = { skipAuth?: boolean; timeoutMs?: number; signal?: AbortSignal; conditional?: boolean };
+
+async function raw(path: string, init: RequestInit = {}, o: RawOpts = {}) {
+  const { skipAuth = false, timeoutMs = TIMEOUT_MS, signal } = o;
+  const conditional = Boolean(o.conditional && conditionalGets && !init.method);
   if (!skipAuth) {
     await ensureFreshAccess();
   }
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(conditional ? etags.headers(path) : {}),
     ...(init.headers as Record<string, string> | undefined),
   };
   if (!skipAuth && accessToken && !jwtExpired(accessToken, 0)) {
@@ -223,31 +236,40 @@ async function raw(path: string, init: RequestInit = {}, skipAuth = false, timeo
   }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const unlink = linkAbort(signal, ctrl);
   try {
     const res = await fetch(`${apiBase}${path}`, { ...init, headers, signal: ctrl.signal });
-    return { ok: res.ok, status: res.status, text: await res.text() };
+    const result = { ok: res.ok, status: res.status, text: await res.text() };
+    if (!conditional) {
+      return result;
+    }
+    etags.remember(path, res.status, res.headers.get('etag'), result.text);
+    return etags.resolve(path, result);
   } catch (e) {
+    if (signal?.aborted) {
+      // Ekran bu isteği bıraktı (niyet/konum değişti): ağda sürmesin, hata olarak da gösterilmesin.
+      throw new ApiError(0, 'aborted', 'aborted');
+    }
     if (ctrl.signal.aborted) {
       throw new ApiError(0, 'timeout', 'timeout');
     }
     throw new ApiError(0, e instanceof Error ? e.message : 'network', 'network');
   } finally {
     clearTimeout(timer);
+    unlink();
   }
 }
 
-async function request<T>(
-  path: string,
-  init: RequestInit = {},
-  opts: { skipAuth?: boolean; optional?: boolean; timeoutMs?: number } = {},
-): Promise<T> {
+type RequestOpts = RawOpts & { optional?: boolean };
+
+async function request<T>(path: string, init: RequestInit = {}, opts: RequestOpts = {}): Promise<T> {
   let result: Awaited<ReturnType<typeof raw>>;
   try {
-    result = await raw(path, init, opts.skipAuth, opts.timeoutMs);
+    result = await raw(path, init, opts);
     if (result.status === 401 && !opts.skipAuth && refreshToken) {
       const refreshed = await refreshAccess();
       if (refreshed) {
-        result = await raw(path, init, false, opts.timeoutMs);
+        result = await raw(path, init, { ...opts, skipAuth: false });
       }
     }
   } catch (e) {
@@ -339,12 +361,13 @@ export const api = {
     radiusMeters = 5000,
     skip = 0,
     take = 20,
+    opts: { signal?: AbortSignal } = {},
   ) => {
     const key = recommendCacheKey({ lat, lng, intent, radiusMeters, openNow, vibes, skip, take });
     const res = await request<{ items?: VenueCard[]; hasMore?: boolean }>(
-      `/api/recommendations?lat=${lat}&lng=${lng}&intent=${intent}&radiusMeters=${radiusMeters}&openNow=${openNow}&skip=${skip}&take=${take}${vibes.length ? `&vibes=${vibes.join(',')}` : ''}`,
+      recommendPath({ lat, lng, intent, radiusMeters, openNow, vibes, skip, take }),
       {},
-      { timeoutMs: RECOMMEND_TIMEOUT_MS },
+      { timeoutMs: RECOMMEND_TIMEOUT_MS, signal: opts.signal, conditional: true },
     );
     const page = { items: res.items ?? [], hasMore: Boolean(res.hasMore) };
     putRecommend(key, page);
@@ -394,7 +417,9 @@ export const api = {
   /** Her zaman sunucudan tazeler; eşzamanlı çağrılar tek isteği paylaşır ve sonuç önbelleğe yazılır. */
   venue: (placeId: string) =>
     shareVenueRequest(placeId, async () =>
-      mapVenueDetail(await request<Record<string, unknown>>(`/api/venues/${encodeURIComponent(placeId)}`)),
+      mapVenueDetail(
+        await request<Record<string, unknown>>(`/api/venues/${encodeURIComponent(placeId)}`, {}, { conditional: true }),
+      ),
     ),
   /** Kart dokunulurken çağrılır: sayfa açılana kadar veri yolda olur. Hata sessizdir. */
   prefetchVenue: (placeId: string) => {

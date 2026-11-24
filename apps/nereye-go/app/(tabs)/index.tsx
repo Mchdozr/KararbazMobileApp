@@ -16,6 +16,7 @@ import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
 import { recentAsCard, useRecentVenues } from '@/lib/recent-venues';
 import { api } from '@/lib/api';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import { isOffline, offlineBanner, savedListName, toSaved, usableSaved, type SavedList } from '@/lib/offline';
 import { advancePage } from '@/lib/paging';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
@@ -46,6 +47,8 @@ export default function Home() {
   // Niyet ya da konum değişince önceki isteğin geç gelen cevabı yeni listeyi ezmesin
   // (ör. Yemek cevabı, Kültür seçildikten sonra gelip Kültür başlığı altına yemek mekanı koymasın).
   const seq = useRef(0);
+  // Yeni yükleme başlayınca öncekinin isteği ağda da durur (yalnızca cevabını yok saymak yetmez).
+  const nextRequest = useLatestRequest();
   // Sunucudan şimdiye kadar alınan kayıt sayısı (filtreden önce). "Daha fazla" buradan devam eder.
   const offset = useRef(0);
   const favorites = useFavorites();
@@ -89,6 +92,7 @@ export default function Home() {
       filters.radiusMeters,
       0,
       20,
+      { signal: nextRequest() },
     );
     void fetching.then(
       () => {
@@ -150,7 +154,7 @@ export default function Home() {
         setLoading(false);
       }
     }
-  }, [filters.lat, filters.lng, filters.intent, filters.label, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
+  }, [filters.lat, filters.lng, filters.intent, filters.label, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating, nextRequest]);
 
   useEffect(() => {
     void load();

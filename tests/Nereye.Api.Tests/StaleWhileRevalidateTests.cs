@@ -233,8 +233,8 @@ public class StaleWhileRevalidateTests
     }
 }
 
-/// <summary>Öneri listesinin kendisi (OSM + Google birleşimi) de bayatken sunulup arkada tazelenir.</summary>
-public sealed class StaleRecommendationsFactory : NereyeApiFactory
+/// <summary>Saati elle ilerleyen, mekan kaynağının çağrılarını sayan (ve yavaşlatabilen) API.</summary>
+public sealed class ControlledApiFactory : NereyeApiFactory
 {
     public ManualClock Clock { get; } = new();
     public CountingFakePlaces Places { get; } = new();
@@ -257,12 +257,18 @@ public sealed class CountingFakePlaces : IPlacesClient
     private int _nearby;
     public FakePlacesClient? Inner { get; set; }
     public int NearbyCalls => Volatile.Read(ref _nearby);
+    public TimeSpan Delay { get; set; }
 
-    public Task<IReadOnlyList<PlaceSnapshot>> NearbyAsync(
+    public async Task<IReadOnlyList<PlaceSnapshot>> NearbyAsync(
         double latitude, double longitude, Intent intent, int radiusMeters, CancellationToken cancellationToken = default)
     {
         Interlocked.Increment(ref _nearby);
-        return Inner!.NearbyAsync(latitude, longitude, intent, radiusMeters, cancellationToken);
+        if (Delay > TimeSpan.Zero)
+        {
+            await Task.Delay(Delay, cancellationToken);
+        }
+
+        return await Inner!.NearbyAsync(latitude, longitude, intent, radiusMeters, cancellationToken);
     }
 
     public Task<PlaceSnapshot?> DetailsAsync(string placeId, CancellationToken cancellationToken = default) =>
@@ -273,11 +279,11 @@ public sealed class CountingFakePlaces : IPlacesClient
         Inner!.TextSearchAsync(query, latitude, longitude, cancellationToken);
 }
 
-public sealed class StaleRecommendationsTests : IClassFixture<StaleRecommendationsFactory>
+public sealed class StaleRecommendationsTests : IClassFixture<ControlledApiFactory>
 {
-    private readonly StaleRecommendationsFactory _factory;
+    private readonly ControlledApiFactory _factory;
 
-    public StaleRecommendationsTests(StaleRecommendationsFactory factory) => _factory = factory;
+    public StaleRecommendationsTests(ControlledApiFactory factory) => _factory = factory;
 
     [Fact]
     public async Task Stale_list_is_served_and_refreshed_once_in_background()

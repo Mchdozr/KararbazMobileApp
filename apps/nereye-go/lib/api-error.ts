@@ -1,8 +1,8 @@
 /** Sunucudan dönen hata. `message` sunucunun kullanıcıya dönük Türkçe metnidir (varsa). */
 export class ApiError extends Error {
   readonly status: number;
-  /** 0 = ağa hiç ulaşılamadı ya da zaman aşımı. */
-  readonly kind: 'network' | 'timeout' | 'http';
+  /** 0 = ağa hiç ulaşılamadı, zaman aşımı ya da ekran isteği iptal etti ('aborted': kullanıcıya gösterilmez). */
+  readonly kind: 'network' | 'timeout' | 'aborted' | 'http';
 
   constructor(status: number, message: string, kind: ApiError['kind'] = 'http') {
     super(message);

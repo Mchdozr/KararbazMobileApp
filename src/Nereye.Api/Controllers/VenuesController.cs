@@ -25,6 +25,7 @@ public sealed class VenuesController : ControllerBase
     }
 
     [HttpGet("{placeId}")]
+    [ETag]
     public async Task<ActionResult<VenueDetailDto>> Get(string placeId, CancellationToken ct)
     {
         Guid? uid = User.Identity?.IsAuthenticated == true ? User.Id() : null;

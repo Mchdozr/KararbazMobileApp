@@ -207,28 +207,30 @@ public sealed class RecommendationService : IRecommendationService
         {
             var bucket = PlacesCacheKey.BucketMeters(query.RadiusMeters);
             var key = PlacesCacheKey.Nearby(geohash, query.Intent, bucket);
-            var fresh = false;
-            snapshots = await _cache.GetOrSetAsync(
+            var places = _places;
+            var cache = _cache;
+            var refresher = _refresher;
+            var (lat, lng, intent) = (query.Latitude, query.Longitude, query.Intent);
+
+            // Soğuk çekim (Overpass 15–22 sn) istemci vazgeçse de (niyet değişti, istek iptal edildi) sürer ve
+            // önbelleğe yazılır: aynı listeyi isteyen bir sonraki kişi baştan beklemez. Bu istek yalnızca
+            // beklemeyi bırakır. Detay önbelleği ve damga, liste gerçekten yeni çekildiğinde bir kez yazılır.
+            var load = cache.GetOrSetAsync(
                 key,
                 PlacesCacheTtl.Nearby,
                 async ct =>
                 {
-                    fresh = true;
-                    var found = await _places.NearbyAsync(query.Latitude, query.Longitude, query.Intent, bucket, ct);
-                    return found.ToList();
-                },
-                cancellationToken);
+                    var found = (await places.NearbyAsync(lat, lng, intent, bucket, ct)).ToList();
+                    await StoreDetailsAsync(cache, found, ct);
+                    if (found.Count > 0)
+                    {
+                        await refresher.MarkFreshAsync(key, PlacesCacheTtl.Nearby, ct);
+                    }
 
-            // Detay önbelleğini yalnızca liste gerçekten yeni çekildiğinde ve hepsini aynı anda doldur.
-            // (Önceden her öneri isteğinde, önbellekten gelse bile, mekan başına sırayla bir yazma yapılıyordu.)
-            if (fresh)
-            {
-                await StoreDetailsAsync(_cache, snapshots, cancellationToken);
-                if (snapshots.Count > 0)
-                {
-                    await _refresher.MarkFreshAsync(key, PlacesCacheTtl.Nearby, cancellationToken);
-                }
-            }
+                    return found;
+                },
+                CancellationToken.None);
+            snapshots = await load.WaitAsync(cancellationToken);
         }
 
         return NearbyPlaces.WithinRadius(snapshots, query.Latitude, query.Longitude, query.RadiusMeters);

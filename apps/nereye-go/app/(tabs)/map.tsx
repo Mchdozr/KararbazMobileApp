@@ -10,6 +10,7 @@ import { activeFilterCount } from '@/lib/sort';
 import { toast } from '@/lib/toast';
 import { useFilters } from '@/lib/filters';
 import { api } from '@/lib/api';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { colors, fonts, INTENT_ICONS, shadows } from '@/lib/theme';
 import type { VenueCard } from '@/lib/types';
@@ -68,8 +69,10 @@ export default function MapScreen() {
     longitudeDelta: 0.035,
   });
 
+  const nextRequest = useLatestRequest();
   const load = useCallback(async () => {
     const n = ++seq.current;
+    const signal = nextRequest();
     // Seçili kart önceki niyetin mekanı olabilir; yeni liste gelirken alt sayfada kalmasın.
     setPicked(null);
     setError(null);
@@ -103,6 +106,7 @@ export default function MapScreen() {
         radius,
         0,
         40,
+        { signal },
       );
       if (n !== seq.current) {
         return;
@@ -121,6 +125,7 @@ export default function MapScreen() {
             radius,
             40,
             110,
+            { signal },
           );
           // İkinci dalga eski niyetin mekanlarını yeni listeye eklemesin.
           if (n !== seq.current) {
@@ -148,7 +153,7 @@ export default function MapScreen() {
         setLoading(false);
       }
     }
-  }, [filters.lat, filters.lng, filters.intent, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating]);
+  }, [filters.lat, filters.lng, filters.intent, filters.openNow, filters.vibes, filters.radiusMeters, filters.minRating, nextRequest]);
 
   useEffect(() => {
     void load();

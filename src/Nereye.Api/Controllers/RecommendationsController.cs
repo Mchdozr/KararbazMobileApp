@@ -23,6 +23,7 @@ public sealed class RecommendationsController : ControllerBase
     }
 
     [HttpGet]
+    [ETag]
     public async Task<ActionResult<RecommendationResponse>> Get(
         [FromQuery] double lat,
         [FromQuery] double lng,

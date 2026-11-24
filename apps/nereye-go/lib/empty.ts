@@ -38,6 +38,10 @@ export function friendlyError(reason: unknown) {
     if (api.kind === 'network') {
       return NETWORK;
     }
+    if (api.kind === 'aborted') {
+      // Ekran isteği kendisi bıraktı; normalde gösterilmez, gösterilirse de ham metin çıkmasın.
+      return 'İstek yarıda bırakıldı.';
+    }
     if (api.status === 429) {
       return api.message || 'Çok sık istek. Bir dakika sonra tekrar dene.';
     }

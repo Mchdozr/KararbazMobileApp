@@ -5,6 +5,7 @@ import { FilterSheet } from '@/components/FilterSheet';
 import { VenueGridSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { api } from '@/lib/api';
+import { useLatestRequest } from '@/lib/use-latest-request';
 import { advancePage } from '@/lib/paging';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { INTENTS, intentLabel } from '@/lib/constants';
@@ -43,9 +44,10 @@ export default function Discover() {
     setVisibleIds(new Set(viewableItems.map((row) => row.item?.placeId).filter((id): id is string => Boolean(id))));
   }).current;
 
+  const nextRequest = useLatestRequest();
   const fetchPage = useCallback(
-    async (skip: number) => {
-      const res = await api.recommend(lat, lng, intent, openNow, vibes, radiusMeters, skip, PAGE);
+    async (skip: number, signal?: AbortSignal) => {
+      const res = await api.recommend(lat, lng, intent, openNow, vibes, radiusMeters, skip, PAGE, { signal });
       const page = advancePage(skip, res, minRating);
       return { cards: page.cards, hasMore: page.hasMore, fetched: res.items.length };
     },
@@ -79,7 +81,7 @@ export default function Discover() {
       setLoading(true);
     }
     try {
-      const page = await fetchPage(0);
+      const page = await fetchPage(0, nextRequest());
       if (n !== seq.current) {
         return;
       }
@@ -100,7 +102,7 @@ export default function Discover() {
         setLoading(false);
       }
     }
-  }, [fetchPage, lat, lng, intent, radiusMeters, openNow, vibes, minRating]);
+  }, [fetchPage, nextRequest, lat, lng, intent, radiusMeters, openNow, vibes, minRating]);
 
   useEffect(() => {
     void load();
