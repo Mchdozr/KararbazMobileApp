@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Nereye.Application.Places;
 using Nereye.Domain.Places;
 
@@ -11,19 +12,15 @@ namespace Nereye.Infrastructure.Places;
 public sealed class OverpassPlacesClient : IPlacesClient
 {
     private const string Attribution = "Harita verisi: OpenStreetMap";
-    private static readonly Uri[] Endpoints =
-    [
-        new("https://overpass-api.de/api/interpreter"),
-        new("https://overpass.kumi.systems/api/interpreter"),
-        new("https://overpass.osm.ch/api/interpreter")
-    ];
+    private readonly Uri[] _endpoints;
     private readonly HttpClient _http;
     private readonly ILogger<OverpassPlacesClient> _log;
 
-    public OverpassPlacesClient(HttpClient http, ILogger<OverpassPlacesClient> log)
+    public OverpassPlacesClient(HttpClient http, ILogger<OverpassPlacesClient> log, IOptions<OverpassOptions>? options = null)
     {
         _http = http;
         _log = log;
+        _endpoints = (options?.Value ?? new OverpassOptions()).EffectiveEndpoints.ToArray();
         _http.Timeout = TimeSpan.FromSeconds(40);
     }
 
@@ -95,7 +92,7 @@ public sealed class OverpassPlacesClient : IPlacesClient
         int primaryBudgetSeconds = 22,
         int? takeEndpoints = null)
     {
-        var uris = takeEndpoints is null ? Endpoints : Endpoints.Take(takeEndpoints.Value).ToArray();
+        var uris = takeEndpoints is null ? _endpoints : _endpoints.Take(takeEndpoints.Value).ToArray();
         using var race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var running = new List<Task<JsonElement?>>();
         var next = 0;

@@ -1,0 +1,93 @@
+# Kendi rota (OSRM: yaya + araç) ve mekan (Overpass) sunucularımız.
+# Kullanım ve kaynak ihtiyacı: docs/kendi-sunucular.md
+#   docker compose -f docker-compose.yml -f docker-compose.selfhost.yml up -d
+# İlk açılış uzun sürer (indirme + hazırlık). Genel sunucular yedek olarak listede kalır.
+services:
+  osm-download:
+    image: debian:bookworm-slim
+    environment:
+      PBF_URL: ${PBF_URL:-https://download.geofabrik.de/europe/turkey-latest.osm.pbf}
+      # İstanbul kutusu: batı,güney,doğu,kuzey
+      BBOX: ${BBOX:-28.45,40.80,29.45,41.30}
+    volumes:
+      - osmdata:/data
+      - ./tools/selfhost:/scripts:ro
+    command: ["bash", "/scripts/download-osm.sh"]
+
+  osrm-prepare-foot:
+    image: ghcr.io/project-osrm/osrm-backend:${OSRM_TAG:-v5.27.1}
+    volumes:
+      - osmdata:/data
+      - ./tools/selfhost:/scripts:ro
+    command: ["bash", "/scripts/osrm-prepare.sh", "foot"]
+    depends_on:
+      osm-download:
+        condition: service_completed_successfully
+
+  osrm-prepare-car:
+    image: ghcr.io/project-osrm/osrm-backend:${OSRM_TAG:-v5.27.1}
+    volumes:
+      - osmdata:/data
+      - ./tools/selfhost:/scripts:ro
+    command: ["bash", "/scripts/osrm-prepare.sh", "car"]
+    depends_on:
+      osm-download:
+        condition: service_completed_successfully
+
+  osrm-foot:
+    image: ghcr.io/project-osrm/osrm-backend:${OSRM_TAG:-v5.27.1}
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "100", "/data/foot/istanbul.osrm"]
+    volumes:
+      - osmdata:/data:ro
+    ports:
+      - "5001:5000"
+    restart: unless-stopped
+    depends_on:
+      osrm-prepare-foot:
+        condition: service_completed_successfully
+
+  osrm-car:
+    image: ghcr.io/project-osrm/osrm-backend:${OSRM_TAG:-v5.27.1}
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "100", "/data/car/istanbul.osrm"]
+    volumes:
+      - osmdata:/data:ro
+    ports:
+      - "5002:5000"
+    restart: unless-stopped
+    depends_on:
+      osrm-prepare-car:
+        condition: service_completed_successfully
+
+  # Overpass: ilk açılışta veriyi indirip veritabanını kurar (OVERPASS_MODE=init), sonra günlük farklarla güncellenir.
+  overpass:
+    image: wiktorn/overpass-api:${OVERPASS_TAG:-latest}
+    environment:
+      OVERPASS_META: "no"
+      OVERPASS_MODE: init
+      OVERPASS_PLANET_URL: ${OVERPASS_PLANET_URL:-https://download.geofabrik.de/europe/turkey-latest.osm.bz2}
+      OVERPASS_DIFF_URL: ${OVERPASS_DIFF_URL:-https://download.geofabrik.de/europe/turkey-updates/}
+      OVERPASS_RULES_LOAD: "10"
+    volumes:
+      - overpassdb:/db
+    ports:
+      - "12345:80"
+    restart: unless-stopped
+
+  api:
+    environment:
+      Routing__FootBaseUrl: http://osrm-foot:5000/
+      Routing__CarBaseUrl: http://osrm-car:5000/
+      # Önce kendi sunucumuz; o yavaşlarsa (3,5 sn) genel uç paralel başlar.
+      Overpass__Endpoints__0: http://overpass/api/interpreter
+      Overpass__Endpoints__1: https://overpass-api.de/api/interpreter
+    depends_on:
+      osrm-foot:
+        condition: service_started
+      osrm-car:
+        condition: service_started
+      overpass:
+        condition: service_started
+
+volumes:
+  osmdata:
+  overpassdb:

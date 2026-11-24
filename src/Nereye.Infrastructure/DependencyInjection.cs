@@ -134,6 +134,9 @@ public static class DependencyInjection
         services.AddSingleton<FakeGeoSuggest>();
 
         services.AddSingleton<FakePlacesClient>();
+        // Kendi OSRM/Overpass sunucularımız (docs/kendi-sunucular.md); boşsa genel sunucular.
+        services.Configure<RoutingOptions>(configuration.GetSection(RoutingOptions.Section));
+        services.Configure<OverpassOptions>(configuration.GetSection(OverpassOptions.Section));
         services.AddHttpClient<GooglePlacesClient>();
         services.AddHttpClient<OverpassPlacesClient>();
         // Public Nominatim: süreç genelinde saniyede en fazla bir istek (kullanım politikası).
