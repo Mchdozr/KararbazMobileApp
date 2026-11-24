@@ -1,0 +1,103 @@
+@page "/metrics"
+@attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
+@rendermode InteractiveServer
+@inject Nereye.Application.Telemetry.IMetricsReader Reader
+
+<h1>Ölçümler</h1>
+<p class="text-muted">
+    API'nin son @(_snap?.WindowMinutes ?? 15) dakikası. Özet 30 saniyede bir paylaşılan önbelleğe (Redis) yazılır.
+    Uzun süreli grafik için OTLP dışa aktarımı açılır (docs/olcumler.md).
+</p>
+<button class="btn btn-sm btn-outline-secondary mb-3" @onclick="Load">Yenile</button>
+
+@if (_loading)
+{
+    <p>Yükleniyor…</p>
+}
+else if (_snap is null)
+{
+    <p class="text-muted">Henüz özet yok. API çalışıyor ve aynı Redis'e bağlı mı?</p>
+}
+else
+{
+    <p class="small text-muted">@_snap.Instance · @_snap.CapturedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</p>
+
+    <h2 class="h5 mt-3">Uçlar</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Uç</th><th class="text-end">İstek</th><th class="text-end">5xx</th><th class="text-end">p50</th><th class="text-end">p95</th><th class="text-end">p99</th></tr></thead>
+        <tbody>
+            @foreach (var r in _snap.Routes)
+            {
+                <tr class="@(r.P95Ms > 1500 ? "table-warning" : "")">
+                    <td><code>@r.Route</code></td>
+                    <td class="text-end">@r.Count</td>
+                    <td class="text-end">@(r.ServerErrors > 0 ? r.ServerErrors.ToString() : "—")</td>
+                    <td class="text-end">@Ms(r.P50Ms)</td>
+                    <td class="text-end"><strong>@Ms(r.P95Ms)</strong></td>
+                    <td class="text-end">@Ms(r.P99Ms)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h2 class="h5 mt-4">Dış servisler</h2>
+    @if (_snap.Upstreams.Count == 0)
+    {
+        <p class="text-muted">Bu pencerede dış çağrı yok (her şey önbellekten).</p>
+    }
+    else
+    {
+        <table class="table table-sm">
+            <thead><tr><th>Servis</th><th class="text-end">Çağrı</th><th class="text-end">Hata</th><th class="text-end">429</th><th class="text-end">p50</th><th class="text-end">p95</th></tr></thead>
+            <tbody>
+                @foreach (var u in _snap.Upstreams)
+                {
+                    <tr class="@(u.Count > 0 && (u.Errors + u.Limited) * 10 > u.Count ? "table-danger" : "")">
+                        <td>@u.Service</td>
+                        <td class="text-end">@u.Count</td>
+                        <td class="text-end">@Pct(u.Errors, u.Count)</td>
+                        <td class="text-end">@Pct(u.Limited, u.Count)</td>
+                        <td class="text-end">@Ms(u.P50Ms)</td>
+                        <td class="text-end"><strong>@Ms(u.P95Ms)</strong></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 class="h5 mt-4">Önbellek</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Katman</th><th class="text-end">Bakış</th><th class="text-end">Taze</th><th class="text-end">Bayat (arkada tazelendi)</th><th class="text-end">Iska</th><th class="text-end">İsabet</th></tr></thead>
+        <tbody>
+            @foreach (var c in _snap.Caches)
+            {
+                <tr>
+                    <td>@(c.Layer == "nearby" ? "Öneri listesi" : c.Layer == "osm" ? "OSM (Overpass)" : c.Layer)</td>
+                    <td class="text-end">@c.Lookups</td>
+                    <td class="text-end">@c.Hits</td>
+                    <td class="text-end">@c.Stale</td>
+                    <td class="text-end">@c.Misses</td>
+                    <td class="text-end"><strong>@(c.HitRatio is { } h ? $"%{h * 100:0}" : "—")</strong></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Nereye.Application.Telemetry.MetricsSnapshot? _snap;
+    private bool _loading = true;
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _snap = await Reader.LatestAsync();
+        _loading = false;
+    }
+
+    private static string Ms(double? v) => v is { } x ? (x >= 1000 ? $"{x / 1000:0.0} sn" : $"{x:0} ms") : "—";
+
+    private static string Pct(long part, long total) => total == 0 || part == 0 ? "—" : $"%{100.0 * part / total:0}";
+}

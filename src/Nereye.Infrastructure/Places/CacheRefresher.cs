@@ -49,9 +49,9 @@ public sealed class CacheRefresher
 
     /// <summary>
     /// Kayıt bayatsa arka planda tazelemeyi başlatır ve hemen döner. fetch'in sonucu keep'ten geçerse
-    /// kayıt ve damga yazılır, ardından afterStore (ör. detay önbelleği) çalışır.
+    /// kayıt ve damga yazılır, ardından afterStore (ör. detay önbelleği) çalışır. Kayıt bayatsa true.
     /// </summary>
-    public async Task RevalidateIfStaleAsync<T>(
+    public async Task<bool> RevalidateIfStaleAsync<T>(
         string key,
         TimeSpan ttl,
         TimeSpan softTtl,
@@ -60,9 +60,14 @@ public sealed class CacheRefresher
         Func<T, CancellationToken, Task>? afterStore = null,
         CancellationToken cancellationToken = default)
     {
-        if (_running.ContainsKey(key) || !await IsStaleAsync(key, softTtl, cancellationToken))
+        if (_running.ContainsKey(key))
         {
-            return;
+            return true;
+        }
+
+        if (!await IsStaleAsync(key, softTtl, cancellationToken))
+        {
+            return false;
         }
 
         TryStart(key, async ct =>
@@ -72,6 +77,7 @@ public sealed class CacheRefresher
                 await WriteStampAsync(key, ttl, CacheFreshness.RetryStamp(_clock.UtcNow, softTtl, PlacesCacheTtl.Empty), ct);
             }
         });
+        return true;
     }
 
     /// <summary>Kaydı hemen (beklenerek) tazeler. Isıtma işi kullanır. Yazıldıysa true.</summary>

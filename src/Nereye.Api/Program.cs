@@ -1,3 +1,6 @@
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -28,6 +31,24 @@ if (builder.Configuration.GetValue("Logging:Json", builder.Environment.IsProduct
 }
 
 builder.Services.AddNereyeInfrastructure(builder.Configuration);
+// Ölçümler: süreç içi özet (yönetim paneli) her zaman; OTLP dışa aktarımı yalnızca uç verilirse
+// (OTEL_EXPORTER_OTLP_ENDPOINT ya da OpenTelemetry:Endpoint). Bkz. docs/olcumler.md
+builder.Services.AddSingleton<Nereye.Infrastructure.Telemetry.MetricsCollector>();
+builder.Services.AddSingleton<Nereye.Infrastructure.Telemetry.MetricsPublisher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<Nereye.Infrastructure.Telemetry.MetricsPublisher>());
+var otlp = builder.Configuration["OpenTelemetry:Endpoint"] ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+if (!string.IsNullOrWhiteSpace(otlp))
+{
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r.AddService(builder.Configuration["OpenTelemetry:ServiceName"] ?? "nereye-api"))
+        .WithMetrics(m => m
+            .AddMeter(Nereye.Infrastructure.Telemetry.NereyeMetrics.MeterName,
+                "Microsoft.AspNetCore.Hosting", "Microsoft.AspNetCore.Server.Kestrel", "System.Net.Http")
+            .AddOtlpExporter(o => o.Endpoint = new Uri(otlp)))
+        .WithTracing(t => t
+            .AddSource("Microsoft.AspNetCore", "System.Net.Http")
+            .AddOtlpExporter(o => o.Endpoint = new Uri(otlp)));
+}
 builder.Services.PostConfigure<JwtOptions>(o =>
 {
     var envKey = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY");

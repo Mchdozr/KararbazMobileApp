@@ -20,6 +20,11 @@ public sealed class AdminController : ControllerBase
         _claims = claims;
     }
 
+    /// <summary>Bu örneğin son 15 dakikası: uç başına p50/p95/p99, dış servis hata oranı, önbellek isabeti.</summary>
+    [HttpGet("metrics")]
+    public ActionResult<Application.Telemetry.MetricsSnapshot> Metrics([FromServices] Infrastructure.Telemetry.MetricsCollector collector) =>
+        Ok(collector.Snapshot());
+
     [HttpGet("reports")]
     public async Task<ActionResult<IReadOnlyList<ReportAdminDto>>> Reports([FromQuery] bool unresolvedOnly = true, CancellationToken ct = default) =>
         Ok(await _admin.ListReportsAsync(unresolvedOnly, ct));

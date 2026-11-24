@@ -34,9 +34,10 @@ public sealed class CachedOsmPlacesClient : IPlacesClient
         var hit = await _cache.TryGetAsync<List<PlaceSnapshot>>(key, cancellationToken);
         if (hit is not null)
         {
+            var stale = false;
             if (_refresher is not null && hit.Count > 0)
             {
-                await _refresher.RevalidateIfStaleAsync(
+                stale = await _refresher.RevalidateIfStaleAsync(
                     key,
                     PlacesCacheTtl.OsmNearby,
                     PlacesCacheTtl.OsmNearbySoft,
@@ -45,8 +46,11 @@ public sealed class CachedOsmPlacesClient : IPlacesClient
                     cancellationToken: cancellationToken);
             }
 
+            Telemetry.NereyeMetrics.CacheLookup("osm", stale ? "stale" : "hit");
             return hit;
         }
+
+        Telemetry.NereyeMetrics.CacheLookup("osm", "miss");
 
         var fetched = false;
         var list = await _cache.GetOrSetAsync(

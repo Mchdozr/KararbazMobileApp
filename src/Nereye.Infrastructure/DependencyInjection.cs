@@ -130,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ISavedPlaceService, SavedPlaceService>();
         services.AddScoped<Application.Telemetry.ITelemetryService, Telemetry.TelemetryService>();
+        services.AddSingleton<Application.Telemetry.IMetricsReader, Telemetry.DistributedMetricsReader>();
         services.AddSingleton<AvatarStorage>();
         // Küçültülmüş görseller: yapılandırılmazsa geçici klasör (kaybolursa yeniden üretilir).
         services.AddSingleton(sp => new MediaVariantStore(
@@ -144,15 +145,15 @@ public static class DependencyInjection
         // Kendi OSRM/Overpass sunucularımız (docs/kendi-sunucular.md); boşsa genel sunucular.
         services.Configure<RoutingOptions>(configuration.GetSection(RoutingOptions.Section));
         services.Configure<OverpassOptions>(configuration.GetSection(OverpassOptions.Section));
-        services.AddHttpClient<GooglePlacesClient>();
-        services.AddHttpClient<OverpassPlacesClient>();
+        services.AddHttpClient<GooglePlacesClient>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("google"));
+        services.AddHttpClient<OverpassPlacesClient>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("overpass"));
         // Public Nominatim: süreç genelinde saniyede en fazla bir istek (kullanım politikası).
         services.AddSingleton<NominatimGate>();
-        services.AddHttpClient<NominatimPlacesClient>();
-        services.AddHttpClient<WikimediaPhotoClient>();
-        services.AddHttpClient<WebsitePhotoClient>();
-        services.AddHttpClient<MapillaryPhotoClient>();
-        services.AddHttpClient<OsrmRouteClient>();
+        services.AddHttpClient<NominatimPlacesClient>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("nominatim"));
+        services.AddHttpClient<WikimediaPhotoClient>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("wikimedia"));
+        services.AddHttpClient<WebsitePhotoClient>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("website"));
+        services.AddHttpClient<MapillaryPhotoClient>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("mapillary"));
+        services.AddHttpClient<OsrmRouteClient>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("osrm"));
         services.AddScoped<IRouteService, RouteService>();
         services.AddScoped<IPlacePhotoEnricher, PlacePhotoEnricher>();
         services.AddScoped<IPlacesClient>(sp =>

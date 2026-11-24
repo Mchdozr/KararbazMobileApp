@@ -194,17 +194,16 @@ public sealed class RecommendationService : IRecommendationService
             if (snapshots is not null)
             {
                 // Bayatsa bu istek beklemeden eski listeyi alır; yenisi arkada (kendi kapsamında) çekilir.
-                if (snapshots.Count > 0)
-                {
-                    await RevalidateNearbyAsync(key, query.Latitude, query.Longitude, query.Intent, bucket, cancellationToken);
-                }
-
+                var stale = snapshots.Count > 0
+                            && await RevalidateNearbyAsync(key, query.Latitude, query.Longitude, query.Intent, bucket, cancellationToken);
+                Telemetry.NereyeMetrics.CacheLookup("nearby", stale ? "stale" : "hit");
                 break;
             }
         }
 
         if (snapshots is null)
         {
+            Telemetry.NereyeMetrics.CacheLookup("nearby", "miss");
             var bucket = PlacesCacheKey.BucketMeters(query.RadiusMeters);
             var key = PlacesCacheKey.Nearby(geohash, query.Intent, bucket);
             var places = _places;
@@ -236,7 +235,7 @@ public sealed class RecommendationService : IRecommendationService
         return NearbyPlaces.WithinRadius(snapshots, query.Latitude, query.Longitude, query.RadiusMeters);
     }
 
-    private Task RevalidateNearbyAsync(
+    private Task<bool> RevalidateNearbyAsync(
         string key,
         double latitude,
         double longitude,
