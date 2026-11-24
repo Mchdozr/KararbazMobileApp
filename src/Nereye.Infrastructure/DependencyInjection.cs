@@ -102,6 +102,7 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddMemoryCache();
         services.AddSingleton<IPlacesCache, DistributedPlacesCache>();
+        services.AddSingleton<CacheRefresher>();
         // Sandbox ödeme yalnızca geliştirme ve testte. Başka ortamda tahsilat denemesi açıkça başarısız olur.
         services.AddScoped<IPaymentGateway>(sp =>
         {
@@ -158,7 +159,11 @@ public static class DependencyInjection
             var nominatim = sp.GetRequiredService<NominatimPlacesClient>();
             var google = sp.GetRequiredService<GooglePlacesClient>();
             var cache = sp.GetRequiredService<IPlacesCache>();
-            var osm = new FallbackPlacesClient(new CachedOsmPlacesClient(overpass, cache), nominatim, fallbackOnEmpty: true, log);
+            var osm = new FallbackPlacesClient(
+                new CachedOsmPlacesClient(overpass, cache, sp.GetRequiredService<CacheRefresher>()),
+                nominatim,
+                fallbackOnEmpty: true,
+                log);
             var nearby = new GoogleAugmentedPlacesClient(
                 osm,
                 google,
@@ -174,6 +179,19 @@ public static class DependencyInjection
                 sp.GetService<ILogger<GoogleAugmentedPlacesClient>>());
             return new CompositePlacesClient(nearby, search, nearby);
         });
+        // Popüler semtlerin OSM listesini önceden ısıtma. Sahte veriyle ve testte hiç çalışmaz.
+        services.Configure<PlacesWarmupOptions>(configuration.GetSection(PlacesWarmupOptions.Section));
+        if (configuration.GetValue("Places:Warmup:Enabled", false) && !configuration.GetValue("Places:UseFake", false))
+        {
+            services.AddHostedService(sp => new PlacesWarmupService(
+                sp.GetRequiredService<IOptions<PlacesWarmupOptions>>().Value,
+                sp.GetRequiredService<IPlacesCache>(),
+                sp.GetRequiredService<CacheRefresher>(),
+                sp.GetRequiredService<IClock>(),
+                sp.GetRequiredService<IServiceScopeFactory>(),
+                sp.GetService<ILogger<PlacesWarmupService>>()));
+        }
+
         services.AddScoped<IGeoSuggest>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<GooglePlacesOptions>>().Value;

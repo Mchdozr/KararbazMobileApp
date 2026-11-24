@@ -40,6 +40,9 @@ public static class PlacesCacheKey
         string.Create(System.Globalization.CultureInfo.InvariantCulture,
             $"routes:v1:{mode}:{fromLat:F4}:{fromLng:F4}:{toLat:F5}:{toLng:F5}");
 
+    /// <summary>Bir kaydın çekildiği an (yumuşak süre için). Kaydın kendi biçimine dokunmaz.</summary>
+    public static string Stamp(string entryKey) => "stamp:v1:" + entryKey;
+
     public static string TextSearch(string geohash, string query) =>
         $"places:text:v2:{geohash}:{query.Trim().ToLowerInvariant()}";
 

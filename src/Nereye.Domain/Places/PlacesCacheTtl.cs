@@ -10,6 +10,9 @@ public static class PlacesCacheTtl
     /// <summary>Liste (OSM + Google birleşimi).</summary>
     public static readonly TimeSpan Nearby = TimeSpan.FromHours(6);
 
+    /// <summary>Liste bu yaştan sonra sunulmaya devam eder ama arka planda tazelenir (bkz. CacheFreshness).</summary>
+    public static readonly TimeSpan NearbySoft = TimeSpan.FromHours(4);
+
     /// <summary>Tek mekan detayı (Google özet, yorum, olanak).</summary>
     public static readonly TimeSpan Rich = TimeSpan.FromHours(24);
 
@@ -29,6 +32,9 @@ public static class PlacesCacheTtl
 
     /// <summary>Yalnızca OSM verisi: politikası önbelleği teşvik eder; Google içeriği yok.</summary>
     public static readonly TimeSpan OsmNearby = TimeSpan.FromDays(3);
+
+    /// <summary>OSM listesi iki günden sonra arkada tazelenir; kullanıcı Overpass'i (15–22 sn) hiç beklemez.</summary>
+    public static readonly TimeSpan OsmNearbySoft = TimeSpan.FromDays(2);
 
     public static readonly TimeSpan OsmDetails = TimeSpan.FromDays(7);
 

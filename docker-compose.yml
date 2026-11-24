@@ -49,6 +49,8 @@ services:
       Places__UseFake: "false"
       # Anahtarı repoya yazma: kök dizindeki .env dosyasına GOOGLE_PLACES_API_KEY=... olarak koy.
       Places__ApiKey: ${GOOGLE_PLACES_API_KEY:-}
+      # Popüler semtlerin OSM listesini arka planda taze tut (Redis kalıcı olduğu için tekrar açılışta baştan çekilmez).
+      Places__Warmup__Enabled: "true"
     volumes:
       - media:/app/wwwroot/media/uploads
       - avatars:/app/wwwroot/media/avatars

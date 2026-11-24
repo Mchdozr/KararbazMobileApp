@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Nereye.Application.Places;
 using Nereye.Application.Recommendations;
 using Nereye.Domain.Geo;
@@ -16,15 +17,21 @@ public sealed class RecommendationService : IRecommendationService
     private readonly NereyeDbContext _db;
     private readonly Application.Common.IClock _clock;
     private readonly Places.PlaceCovers _covers;
+    private readonly Places.CacheRefresher _refresher;
+    private readonly IServiceScopeFactory _scopes;
 
     public RecommendationService(
         IPlacesClient places,
         IPlacesCache cache,
         NereyeDbContext db,
         Application.Common.IClock clock,
-        Places.PlaceCovers covers)
+        Places.PlaceCovers covers,
+        Places.CacheRefresher refresher,
+        IServiceScopeFactory scopes)
     {
         _covers = covers;
+        _refresher = refresher;
+        _scopes = scopes;
         _places = places;
         _cache = cache;
         _db = db;
@@ -186,6 +193,12 @@ public sealed class RecommendationService : IRecommendationService
             snapshots = await _cache.TryGetAsync<List<PlaceSnapshot>>(key, cancellationToken);
             if (snapshots is not null)
             {
+                // Bayatsa bu istek beklemeden eski listeyi alır; yenisi arkada (kendi kapsamında) çekilir.
+                if (snapshots.Count > 0)
+                {
+                    await RevalidateNearbyAsync(key, query.Latitude, query.Longitude, query.Intent, bucket, cancellationToken);
+                }
+
                 break;
             }
         }
@@ -210,13 +223,47 @@ public sealed class RecommendationService : IRecommendationService
             // (Önceden her öneri isteğinde, önbellekten gelse bile, mekan başına sırayla bir yazma yapılıyordu.)
             if (fresh)
             {
-                await Task.WhenAll(snapshots.Select(place =>
-                    _cache.SetAsync(PlacesCacheKey.Details(place.PlaceId), PlacesCacheTtl.Nearby, place, cancellationToken)));
+                await StoreDetailsAsync(_cache, snapshots, cancellationToken);
+                if (snapshots.Count > 0)
+                {
+                    await _refresher.MarkFreshAsync(key, PlacesCacheTtl.Nearby, cancellationToken);
+                }
             }
         }
 
         return NearbyPlaces.WithinRadius(snapshots, query.Latitude, query.Longitude, query.RadiusMeters);
     }
+
+    private Task RevalidateNearbyAsync(
+        string key,
+        double latitude,
+        double longitude,
+        Intent intent,
+        int bucket,
+        CancellationToken cancellationToken)
+    {
+        var cache = _cache;
+        var scopes = _scopes;
+        return _refresher.RevalidateIfStaleAsync(
+            key,
+            PlacesCacheTtl.Nearby,
+            PlacesCacheTtl.NearbySoft,
+            async ct =>
+            {
+                // İstek kapsamı (DbContext, HttpClient) bitmiş olabilir: tazeleme kendi kapsamını açar.
+                await using var scope = scopes.CreateAsyncScope();
+                var places = scope.ServiceProvider.GetRequiredService<IPlacesClient>();
+                return (await places.NearbyAsync(latitude, longitude, intent, bucket, ct)).ToList();
+            },
+            list => list.Count > 0,
+            (list, ct) => StoreDetailsAsync(cache, list, ct),
+            cancellationToken);
+    }
+
+    // Kart için yeten detay kaydı, liste her yeni çekildiğinde hepsi birden yazılır.
+    private static Task StoreDetailsAsync(IPlacesCache cache, List<PlaceSnapshot> places, CancellationToken cancellationToken) =>
+        Task.WhenAll(places.Select(place =>
+            cache.SetAsync(PlacesCacheKey.Details(place.PlaceId), PlacesCacheTtl.Nearby, place, cancellationToken)));
 
     private async Task<IReadOnlyList<RankedCard>> LoadSponsoredAsync(Intent intent, string geohash, CancellationToken cancellationToken)
     {
