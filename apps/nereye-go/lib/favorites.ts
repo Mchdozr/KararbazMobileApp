@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { friendlyError } from '@/lib/empty';
 import { haptic } from '@/lib/haptics';
 import { toast } from '@/lib/toast';
@@ -72,6 +73,7 @@ export async function toggleFavorite(card: Pick<VenueCard, 'placeId' | 'name'> &
       toast.info('Kaydedilenlerden çıkarıldı', { label: 'Geri al', onPress: () => void toggleFavorite(card) });
     } else {
       await api.favorite(card.placeId);
+      track('save', { placeId: card.placeId });
       toast.success('Kaydedildi');
     }
   } catch (e) {

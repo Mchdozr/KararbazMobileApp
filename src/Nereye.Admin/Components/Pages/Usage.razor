@@ -1,0 +1,97 @@
+@page "/usage"
+@attribute [Authorize(Roles = Nereye.Application.RoleNames.Admin)]
+@rendermode InteractiveServer
+@inject Nereye.Application.Analytics.IAnalyticsService Analytics
+
+<h1>Kullanım</h1>
+<p class="text-muted">
+    Yalnızca analitiğe izin veren kullanıcıların olayları; kimlik ve konum yok, gün x olay sayacı.
+</p>
+
+<div class="mb-3">
+    @foreach (var d in new[] { 1, 7, 30 })
+    {
+        <button class="btn btn-sm @(d == _days ? "btn-primary" : "btn-outline-secondary") me-1" @onclick="() => Load(d)">Son @d gün</button>
+    }
+</div>
+
+@if (_funnel is null)
+{
+    <p>Yükleniyor…</p>
+}
+else
+{
+    <h2 class="h5">Huni</h2>
+    <table class="table table-sm" style="max-width:720px">
+        <thead><tr><th>Adım</th><th class="text-end">Olay</th><th class="text-end">Önceki adımdan</th><th class="text-end">Açılıştan</th></tr></thead>
+        <tbody>
+            @foreach (var s in _funnel.Steps)
+            {
+                <tr>
+                    <td>@Label(s.Name)</td>
+                    <td class="text-end">@s.Count</td>
+                    <td class="text-end">@Pct(s.FromPrevious)</td>
+                    <td class="text-end">@Pct(s.FromStart)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <h2 class="h6">Niyetler (liste açılışı)</h2>
+            <table class="table table-sm">
+                @foreach (var i in _funnel.Intents)
+                {
+                    <tr><td>@i.Key</td><td class="text-end">@i.Count</td></tr>
+                }
+            </table>
+        </div>
+        <div class="col-md-5">
+            <h2 class="h6">En çok açılan mekanlar</h2>
+            <table class="table table-sm">
+                @foreach (var v in _funnel.TopVenues)
+                {
+                    <tr><td><code>@v.Key</code></td><td class="text-end">@v.Count</td></tr>
+                }
+            </table>
+        </div>
+        <div class="col-md-3">
+            <h2 class="h6">Diğer</h2>
+            <table class="table table-sm">
+                @foreach (var o in _funnel.Others.OrderByDescending(x => x.Value))
+                {
+                    <tr><td>@Label(o.Key)</td><td class="text-end">@o.Value</td></tr>
+                }
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private Nereye.Application.Analytics.FunnelDto? _funnel;
+    private int _days = 7;
+
+    protected override Task OnInitializedAsync() => Load(7);
+
+    private async Task Load(int days)
+    {
+        _days = days;
+        _funnel = await Analytics.FunnelAsync(days);
+    }
+
+    private static string Pct(double? v) => v is { } x ? $"%{x * 100:0.#}" : "—";
+
+    private static string Label(string name) => name switch
+    {
+        "app_open" => "Uygulama açılışı",
+        "list_view" => "Liste görüntüleme",
+        "venue_view" => "Mekan sayfası",
+        "directions" => "Yol tarifi",
+        "save" => "Kaydetme",
+        "share" => "Paylaşma",
+        "decide_open" => "Benim için seç",
+        "search" => "Arama",
+        _ => name
+    };
+}

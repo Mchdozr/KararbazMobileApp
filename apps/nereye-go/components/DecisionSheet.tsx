@@ -1,6 +1,7 @@
 import { Button } from '@/components/Button';
 import { VenueImage } from '@/components/VenueImage';
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { pickForMe, type Decision } from '@/lib/decide';
 import { haptic } from '@/lib/haptics';
 import { openDirections } from '@/lib/maps';
@@ -58,6 +59,7 @@ export function DecisionSheet({
       setSeen([]);
       show(pickForMe(cards, [], minutesOfDay()));
       haptic.success();
+      track('decide_open');
     } else {
       enter.value = withTiming(0, { duration: 120 });
     }
@@ -125,6 +127,7 @@ export function DecisionSheet({
                 icon="navigate"
                 onPress={() => {
                   haptic.press();
+                  track('directions', { placeId: card.placeId });
                   void openDirections(card.latitude, card.longitude, origin.lat, origin.lng);
                 }}
                 style={{ flex: 1 }}

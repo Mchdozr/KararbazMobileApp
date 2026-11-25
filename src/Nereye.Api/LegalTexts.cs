@@ -40,6 +40,11 @@ public static class LegalTexts
                 "Uygulama bir hatayla karşılaşırsa hatanın teknik kaydını (hata metni, ekran adı, uygulama sürümü, işletim sistemi türü) " +
                 "sunucumuza gönderir. Kayıt hesabına bağlanmaz; e-posta, konum, telefon numarası ve oturum anahtarı gönderilmeden önce " +
                 "cihazında ve sunucuda ayıklanır. Kayıtlar 30 gün sonra silinir ve yalnızca hataları düzeltmek için kullanılır."),
+            new("Kullanım istatistikleri (isteğe bağlı)",
+                "Yalnızca izin verirsen hangi ekranların açıldığını anonim olarak sayarız: uygulama açılışı, seçilen niyet, açılan mekan, " +
+                "yol tarifi, kaydetme ve paylaşma. Olaylar kimliğine, cihazına ya da konumuna bağlanmaz; sunucuda yalnızca günlük toplam " +
+                "sayılar tutulur. Mekan sahipleri kendi mekanlarının toplam görüntülenme ve yol tarifi sayısını görür. İzni Profil " +
+                "ekranından istediğin an kapatabilirsin."),
             new("Kimlerle paylaşıyoruz?",
                 "Mekan ve adres bilgisi için sunucumuz OpenStreetMap tabanlı servislere (Overpass, Nominatim, OSRM) ve Google Places'e " +
                 "arama metni ve koordinat iletir; bu isteklere kimliğin eklenmez. Android'de harita Google Haritalar ile gösterilir; " +

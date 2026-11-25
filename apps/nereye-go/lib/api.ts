@@ -9,6 +9,7 @@ import { putRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { EtagCache } from '@/lib/etag-cache';
 import { linkAbort, recommendPath } from '@/lib/request-control';
 import { Platform } from 'react-native';
+import type { AnalyticsEvent } from '@/lib/analytics-queue';
 import type { CrashReport } from '@/lib/crash-queue';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
@@ -24,6 +25,7 @@ import type {
   Session,
   VenueCard,
   VenueDetail,
+  VenueStats,
 } from '@/lib/types';
 
 export { ApiError };
@@ -300,6 +302,16 @@ async function request<T>(path: string, init: RequestInit = {}, opts: RequestOpt
 }
 
 export const api = {
+  /** Kullanım olayları (yalnızca rıza varsa, lib/analytics.ts). Hata sessizdir. */
+  sendEvents: async (events: readonly AnalyticsEvent[]) => {
+    try {
+      await raw('/api/telemetry/events', { method: 'POST', body: JSON.stringify({ events }) }, { skipAuth: true, timeoutMs: 8000 });
+    } catch {
+      /* analitik kaybı kabul edilebilir */
+    }
+  },
+  /** Mekan sahibinin son 30 günü (görüntülenme, yol tarifi, kaydetme). */
+  venueStats: (placeId: string) => request<VenueStats>(`/api/venues/${encodeURIComponent(placeId)}/stats`),
   /** Hata raporları (lib/crash.ts). Oturumsuz; başarısızsa false döner, kuyruk sonra yeniden dener. */
   reportErrors: async (reports: readonly CrashReport[]) => {
     try {

@@ -5,6 +5,7 @@ import { FilterSheet } from '@/components/FilterSheet';
 import { VenueGridSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { useLatestRequest } from '@/lib/use-latest-request';
 import { advancePage } from '@/lib/paging';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
@@ -86,6 +87,7 @@ export default function Discover() {
         return;
       }
       offset.current = page.fetched;
+      track('list_view', { intent });
       setItems(page.cards);
       setHasMore(page.hasMore);
     } catch (e) {

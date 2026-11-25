@@ -130,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ISavedPlaceService, SavedPlaceService>();
         services.AddScoped<Application.Telemetry.ITelemetryService, Telemetry.TelemetryService>();
+        services.AddScoped<Application.Analytics.IAnalyticsService, Analytics.AnalyticsService>();
         services.AddSingleton<Application.Telemetry.IMetricsReader, Telemetry.DistributedMetricsReader>();
         services.AddSingleton<AvatarStorage>();
         // Küçültülmüş görseller: yapılandırılmazsa geçici klasör (kaybolursa yeniden üretilir).

@@ -3,6 +3,7 @@ import { ErrorBanner } from '@/components/ErrorBanner';
 import { SearchingOverlay } from '@/components/SearchingOverlay';
 import { VenueCardSkeleton, VenueRowSkeleton } from '@/components/Skeleton';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
+import { AnalyticsPrompt } from '@/components/AnalyticsPrompt';
 import { DecisionSheet } from '@/components/DecisionSheet';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HorizontalVenueRow } from '@/components/home/HorizontalVenueRow';
@@ -16,6 +17,7 @@ import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
 import { recentAsCard, useRecentVenues } from '@/lib/recent-venues';
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { useLatestRequest } from '@/lib/use-latest-request';
 import { isOffline, offlineBanner, savedListName, toSaved, usableSaved, type SavedList } from '@/lib/offline';
 import { advancePage } from '@/lib/paging';
@@ -117,6 +119,7 @@ export default function Home() {
       }
       const page = advancePage(0, res, filters.minRating);
       offset.current = page.nextSkip;
+      track('list_view', { intent: filters.intent });
       setItems(page.cards);
       setHasMore(page.hasMore);
       if (res.items.length > 0) {
@@ -281,6 +284,7 @@ export default function Home() {
                 <Ionicons name="chevron-forward" size={18} color={colors.white} />
               </Pressable>
             ) : null}
+            <AnalyticsPrompt sawList={organic.length > 0} />
             {sponsored.length > 0 ? (
               <PromoBanner
                 onOpenNow={() => {

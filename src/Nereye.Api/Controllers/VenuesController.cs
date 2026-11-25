@@ -100,6 +100,15 @@ public sealed class VenuesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Sahiplenilmiş mekanın son 30 günü: görüntülenme, yol tarifi (analitiğe izin verenler) ve kaydetme.</summary>
+    [Authorize(Roles = RoleNames.VenueOwner)]
+    [HttpGet("{placeId}/stats")]
+    public async Task<ActionResult<Nereye.Application.Analytics.VenueStatsDto>> Stats(
+        string placeId,
+        [FromServices] Nereye.Application.Analytics.IAnalyticsService analytics,
+        CancellationToken ct) =>
+        Ok(await analytics.OwnerStatsAsync(placeId, User.Id(), 30, ct));
+
     [Authorize(Roles = RoleNames.VenueOwner)]
     [HttpPut("{placeId}/owner")]
     public async Task<IActionResult> Owner(string placeId, [FromBody] OwnerUpdateBody body, CancellationToken ct)

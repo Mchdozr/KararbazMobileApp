@@ -204,6 +204,38 @@ namespace Nereye.Infrastructure.Persistence.Migrations
                     b.ToTable("CultureEvents");
                 });
 
+            modelBuilder.Entity("Nereye.Domain.Entities.DailyCount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Count")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("Day")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key", "Day");
+
+                    b.HasIndex("Day", "Name", "Key")
+                        .IsUnique();
+
+                    b.ToTable("DailyCounts");
+                });
+
             modelBuilder.Entity("Nereye.Domain.Entities.ErrorReport", b =>
                 {
                     b.Property<Guid>("Id")

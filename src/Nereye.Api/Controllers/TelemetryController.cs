@@ -18,8 +18,30 @@ namespace Nereye.Api.Controllers;
 public sealed class TelemetryController : ControllerBase
 {
     private readonly ITelemetryService _telemetry;
+    private readonly Nereye.Application.Analytics.IAnalyticsService _analytics;
 
-    public TelemetryController(ITelemetryService telemetry) => _telemetry = telemetry;
+    public TelemetryController(ITelemetryService telemetry, Nereye.Application.Analytics.IAnalyticsService analytics)
+    {
+        _telemetry = telemetry;
+        _analytics = analytics;
+    }
+
+    /// <summary>
+    /// Kullanım olayları. İstemci yalnızca kullanıcı analitiğe izin verdiyse gönderir; olaylar kimlik ve konum
+    /// taşımaz, gün x olay x (mekan ya da niyet) sayacına eklenir. Bilinmeyen olaylar sessizce atlanır.
+    /// </summary>
+    [HttpPost("events")]
+    [RequestSizeLimit(32 * 1024)]
+    public async Task<IActionResult> Events(Nereye.Application.Analytics.AnalyticsBatch batch, CancellationToken ct)
+    {
+        if (batch.Events is not { Count: > 0 and <= Nereye.Domain.Analytics.AnalyticsRules.MaxBatch } events)
+        {
+            throw new ValidationException("Geçersiz olay paketi.");
+        }
+
+        await _analytics.RecordAsync(events, ct);
+        return Accepted();
+    }
 
     [HttpPost("errors")]
     [RequestSizeLimit(64 * 1024)]

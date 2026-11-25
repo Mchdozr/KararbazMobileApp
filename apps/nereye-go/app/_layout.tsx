@@ -3,6 +3,7 @@ import { BackButton } from '@/components/BackButton';
 import { gradientHeader } from '@/components/ScreenHeader';
 import { hydrateCovers } from '@/lib/covers';
 import { installCrashReporting, setCrashScreen } from '@/lib/crash';
+import { hydrateAnalytics, track } from '@/lib/analytics';
 import { SessionProvider, useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
 import { ToastHost } from '@/lib/toast';
@@ -43,6 +44,8 @@ function SplashGate() {
 void hydrateCovers();
 // Hata ve çökme raporları (kişisel veri ayıklanmış, hesaba bağlanmaz).
 installCrashReporting();
+// Kullanım istatistiği yalnızca açık rızayla (lib/analytics.ts); rıza yoksa track hiçbir şey yapmaz.
+void hydrateAnalytics().then(() => track('app_open'));
 
 /** Hata raporuna hangi ekranda olduğunu ekler (yol kalıbı; mekan kimliği gibi değerler değil). */
 function CrashScreenTracker() {

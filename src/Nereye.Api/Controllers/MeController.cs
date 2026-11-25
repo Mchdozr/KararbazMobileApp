@@ -30,7 +30,7 @@ public sealed class MeController : ControllerBase
     private readonly NereyeDbContext _db;
     private readonly IAuthService _auth;
 
-    private static readonly HashSet<string> ConsentPurposes = ["location", "kvkk", "marketing"];
+    private static readonly HashSet<string> ConsentPurposes = ["location", "kvkk", "marketing", "analytics"];
 
     public MeController(
         IPreferenceService preferences,

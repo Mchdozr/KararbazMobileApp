@@ -5,6 +5,7 @@ import { GeoSuggestGroup } from '@/components/GeoSuggestRow';
 import { VenueCardSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { api } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { INTENTS, intentLabel } from '@/lib/constants';
 import { emptySearch, friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
@@ -66,6 +67,7 @@ export default function Search() {
           if (n !== seq.current) {
             return;
           }
+          track('search');
           setItems(venues);
           setSuggest(geo.slice(0, 5));
           setDone(true);

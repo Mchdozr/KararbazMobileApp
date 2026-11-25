@@ -33,6 +33,7 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
     public DbSet<SavedPlace> SavedPlaces => Set<SavedPlace>();
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<ErrorReport> ErrorReports => Set<ErrorReport>();
+    public DbSet<DailyCount> DailyCounts => Set<DailyCount>();
 
     /// <summary>
     /// Her DateTime UTC'dir: yazarken türü belirsiz değer UTC sayılır, yerel saat UTC'ye çevrilir; okurken Kind=Utc.
@@ -66,6 +67,14 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
             e.Property(x => x.Screen).HasMaxLength(80);
             e.Property(x => x.Message).HasMaxLength(500);
             e.Property(x => x.Stack).HasMaxLength(4000);
+        });
+
+        builder.Entity<DailyCount>(e =>
+        {
+            e.HasIndex(x => new { x.Day, x.Name, x.Key }).IsUnique();
+            e.HasIndex(x => new { x.Key, x.Day });
+            e.Property(x => x.Name).HasMaxLength(32);
+            e.Property(x => x.Key).HasMaxLength(128);
         });
 
         builder.Entity<VenueTag>().HasKey(x => new { x.VenueId, x.Tag });

@@ -4,6 +4,7 @@ import { RadiusPicker } from '@/components/RadiusPicker';
 import { INTENTS, VIBES, intentLabel, vibeLabel } from '@/lib/constants';
 import { clampRadius, radiusLabel as formatRadius } from '@/lib/radius';
 import { api, mediaUrl } from '@/lib/api';
+import { setAnalyticsConsent, useAnalyticsConsent } from '@/lib/analytics';
 import { friendlyError } from '@/lib/empty';
 import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
@@ -23,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EMPTY: Preferences = { defaultRadiusMeters: 1500, intents: [], vibes: [] };
@@ -68,6 +69,7 @@ export default function Profile() {
   const [info, setInfo] = useState<ProfileInfo | null>(null);
   const [uploading, setUploading] = useState(false);
   const favorites = useFavorites();
+  const analytics = useAnalyticsConsent();
 
   useEffect(() => {
     if (!session) {
@@ -394,6 +396,21 @@ export default function Profile() {
         ) : null}
         <Row icon="navigate-outline" label="Konumu değiştir" value={filters.label} onPress={() => router.push('/places')} />
         <View style={styles.divider} />
+        <View style={styles.row}>
+          <Ionicons name="stats-chart-outline" size={20} color={colors.ink} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleText}>Anonim kullanım istatistikleri</Text>
+            <Text style={styles.rowHint}>Kimlik ve konum gönderilmez</Text>
+          </View>
+          <Switch
+            value={analytics === 'granted'}
+            onValueChange={(v) => void setAnalyticsConsent(v, Boolean(session))}
+            trackColor={{ true: colors.sage, false: colors.line }}
+            thumbColor={colors.white}
+            accessibilityLabel="Anonim kullanım istatistikleri"
+          />
+        </View>
+        <View style={styles.divider} />
         <Row icon="shield-checkmark-outline" label="Gizlilik ve KVKK" onPress={() => router.push('/legal')} />
         {session ? (
           <>
@@ -570,4 +587,6 @@ const styles = StyleSheet.create({
   danger: { color: colors.danger },
   muted: { color: colors.muted },
   divider: { height: 1, backgroundColor: colors.line, marginLeft: 48 },
+  toggleText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 15 },
+  rowHint: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 1 },
 });

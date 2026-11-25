@@ -161,3 +161,12 @@ export type Profile = {
 export type LegalSection = { title: string; body: string };
 export type LegalDocument = { title: string; lead: string; sections: LegalSection[] };
 export type Legal = { privacy: LegalDocument; terms: LegalDocument; contact: string | null; draft: string };
+
+/** Mekan sahibi istatistiği. Görüntülenme ve yol tarifi yalnızca analitiğe izin verenlerden sayılır. */
+export type VenueStats = {
+  views: number;
+  directions: number;
+  saves: number;
+  shares: number;
+  days: { day: string; views: number; directions: number; saves: number }[];
+};

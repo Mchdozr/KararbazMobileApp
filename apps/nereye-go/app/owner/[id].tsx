@@ -10,7 +10,8 @@ import { useSession } from '@/lib/session';
 import { colors, fonts, shadows } from '@/lib/theme';
 import { promoContactUrl } from '@/lib/promo-contact';
 import { toast } from '@/lib/toast';
-import type { PromotionItem, ReviewItem } from '@/lib/types';
+import type { PromotionItem, ReviewItem, VenueStats } from '@/lib/types';
+import { statBars, statTiles } from '@/lib/venue-stats';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -53,6 +54,7 @@ export default function Owner() {
   const [reply, setReply] = useState('');
   const [mine, setMine] = useState<PromotionItem[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [stats, setStats] = useState<VenueStats | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -65,6 +67,7 @@ export default function Owner() {
     if (owner) {
       setReviews((await api.reviews(id!).catch(() => [])) ?? []);
       setMine(await api.myPromotions().catch(() => []));
+      setStats(await api.venueStats(id!).catch(() => null));
     }
   }, [id, owner]);
 
@@ -149,6 +152,29 @@ export default function Owner() {
           </Section>
         ) : (
           <>
+            {stats ? (
+              <Section
+                title="Son 30 gün"
+                sub="Görüntülenme ve yol tarifi, kullanım istatistiğine izin veren kullanıcılardan sayılır; kaydetme tüm kullanıcıların toplamıdır.">
+                <View style={styles.tiles}>
+                  {statTiles(stats).map((t) => (
+                    <View key={t.label} style={styles.tile} accessible accessibilityLabel={`${t.label}: ${t.value}${t.note ? `, ${t.note}` : ''}`}>
+                      <Text style={styles.tileValue}>{t.value}</Text>
+                      <Text style={styles.tileLabel}>{t.label}</Text>
+                      {t.note ? <Text style={styles.tileNote}>{t.note}</Text> : null}
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.bars} accessibilityLabel="Son 14 günün günlük görüntülenmesi">
+                  {statBars(stats.days, 14).map((b) => (
+                    <View key={b.label} style={styles.barCol}>
+                      <View style={[styles.bar, { height: 4 + b.ratio * 56, opacity: b.value ? 1 : 0.35 }]} />
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.fine}>Son 14 gün, günlük görüntülenme</Text>
+              </Section>
+            ) : null}
             <Section title="İşletme profili" sub="Mekan sayfasında görünen ad ve açıklama.">
               <TextField label="Görünen ad" value={name} onChangeText={setName} maxLength={80} />
               <TextField
@@ -280,4 +306,12 @@ const styles = StyleSheet.create({
   status: { color: colors.sage, fontFamily: fonts.sansBold, fontSize: 12 },
   label: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 13 },
   fine: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, textAlign: 'center' },
+  tiles: { flexDirection: 'row', gap: 10 },
+  tile: { flex: 1, backgroundColor: colors.bg, borderRadius: 16, padding: 12 },
+  tileValue: { color: colors.ink, fontFamily: fonts.display, fontSize: 26 },
+  tileLabel: { color: colors.muted, fontFamily: fonts.sansBold, fontSize: 12 },
+  tileNote: { color: colors.coral, fontFamily: fonts.sansMed, fontSize: 11, marginTop: 2 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 64 },
+  barCol: { flex: 1, justifyContent: 'flex-end' },
+  bar: { borderRadius: 4, backgroundColor: colors.coral },
 });

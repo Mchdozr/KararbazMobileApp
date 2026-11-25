@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/Skeleton';
 import { Stars } from '@/components/Stars';
 import { VenueImage } from '@/components/VenueImage';
 import { api, mediaUrl } from '@/lib/api';
+import { track } from '@/lib/analytics';
 import { vibeText } from '@/lib/constants';
 import { friendlyError } from '@/lib/empty';
 import { useFilters } from '@/lib/filters';
@@ -149,6 +150,7 @@ export default function Venue() {
           return;
         }
         setDetail(v);
+        track('venue_view', { placeId: v.placeId });
         rememberVenue({
           placeId: v.placeId,
           name: v.name,
@@ -379,7 +381,10 @@ export default function Venue() {
             <View style={styles.headRight}>
               <Pressable
                 style={styles.glass}
-                onPress={() => void shareVenue(detail.placeId, detail.name, detail.address)}
+                onPress={() => {
+                track('share', { placeId: detail.placeId });
+                void shareVenue(detail.placeId, detail.name, detail.address);
+              }}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Paylaş">
@@ -497,7 +502,10 @@ export default function Venue() {
             <Action
               icon="navigate"
               label="Yol tarifi"
-              onPress={() => void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'))}
+              onPress={() => {
+                track('directions', { placeId: detail.placeId });
+                void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'));
+              }}
             />
             {detail.phone ? <Action icon="call" label="Ara" onPress={() => void open(`tel:${detail.phone!.replace(/\s/g, '')}`)} /> : null}
             {detail.website ? (
@@ -511,7 +519,10 @@ export default function Venue() {
             <Action
               icon="share-social-outline"
               label="Paylaş"
-              onPress={() => void shareVenue(detail.placeId, detail.name, detail.address)}
+              onPress={() => {
+                track('share', { placeId: detail.placeId });
+                void shareVenue(detail.placeId, detail.name, detail.address);
+              }}
             />
           </View>
 
@@ -777,7 +788,10 @@ export default function Venue() {
           label="Yol tarifi al"
           icon="navigate"
           style={{ flex: 1 }}
-          onPress={() => void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'))}
+          onPress={() => {
+                track('directions', { placeId: detail.placeId });
+                void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'));
+              }}
         />
         <Button label={mine ? 'Düzenle' : 'Yorum yaz'} icon="create-outline" variant="outline" onPress={writeReview} />
       </View>
