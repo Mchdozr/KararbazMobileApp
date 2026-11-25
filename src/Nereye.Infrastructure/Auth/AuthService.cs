@@ -305,6 +305,11 @@ public sealed class AuthService : IAuthService
         _db.SavedPlaces.RemoveRange(await _db.SavedPlaces.Where(p => p.UserId == userId).ToListAsync(cancellationToken));
         // Listeler (paylaşılmış olanlar dahil) ve içerikleri: paylaşım bağlantısı da çalışmaz olur.
         _db.VenueLists.RemoveRange(await _db.VenueLists.Include(l => l.Items).Where(l => l.UserId == userId).ToListAsync(cancellationToken));
+        // Bildirim cihazları ve gönderim kayıtları.
+        var devices = await _db.PushDevices.Where(d => d.UserId == userId).ToListAsync(cancellationToken);
+        var deviceIds = devices.Select(d => d.Id).ToList();
+        _db.PushLogs.RemoveRange(await _db.PushLogs.Where(l => deviceIds.Contains(l.DeviceId)).ToListAsync(cancellationToken));
+        _db.PushDevices.RemoveRange(devices);
         var pref = await _db.UserPreferences
             .Include(p => p.Intents)
             .Include(p => p.Vibes)

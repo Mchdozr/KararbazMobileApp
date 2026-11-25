@@ -39,6 +39,8 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
     public DbSet<GroupPollVote> GroupPollVotes => Set<GroupPollVote>();
     public DbSet<VenueList> VenueLists => Set<VenueList>();
     public DbSet<VenueListItem> VenueListItems => Set<VenueListItem>();
+    public DbSet<PushDevice> PushDevices => Set<PushDevice>();
+    public DbSet<PushLog> PushLogs => Set<PushLog>();
 
     /// <summary>
     /// Her DateTime UTC'dir: yazarken türü belirsiz değer UTC sayılır, yerel saat UTC'ye çevrilir; okurken Kind=Utc.
@@ -119,6 +121,20 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
             e.Property(x => x.Name).HasMaxLength(120);
             e.Property(x => x.Category).HasMaxLength(60);
             e.Property(x => x.PhotoUrl).HasMaxLength(500);
+        });
+
+        builder.Entity<PushDevice>(e =>
+        {
+            e.HasIndex(x => x.Token).IsUnique();
+            e.HasIndex(x => x.UserId);
+            e.Property(x => x.Token).HasMaxLength(200);
+            e.Property(x => x.Platform).HasMaxLength(16);
+        });
+        builder.Entity<PushLog>(e =>
+        {
+            e.HasIndex(x => new { x.DeviceId, x.Key }).IsUnique();
+            e.HasIndex(x => new { x.DeviceId, x.SentAt });
+            e.Property(x => x.Key).HasMaxLength(64);
         });
 
         builder.Entity<VenueTag>().HasKey(x => new { x.VenueId, x.Tag });

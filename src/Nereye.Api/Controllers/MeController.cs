@@ -30,7 +30,7 @@ public sealed class MeController : ControllerBase
     private readonly NereyeDbContext _db;
     private readonly IAuthService _auth;
 
-    private static readonly HashSet<string> ConsentPurposes = ["location", "kvkk", "marketing", "analytics"];
+    private static readonly HashSet<string> ConsentPurposes = ["location", "kvkk", "marketing", "analytics", "notifications"];
 
     public MeController(
         IPreferenceService preferences,
@@ -156,6 +156,53 @@ public sealed class MeController : ControllerBase
             Granted = body.Granted,
             CreatedAt = DateTime.UtcNow
         });
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Bildirim izni: cihazın Expo belirteci kaydedilir ve rıza günlüğüne "notifications" yazılır. Aynı belirteç başka
+    /// hesaba bağlıysa bu hesaba geçer (cihazda oturum değişti).
+    /// </summary>
+    [HttpPost("push")]
+    [EnableRateLimiting("write")]
+    public async Task<IActionResult> RegisterPush(Nereye.Application.Push.PushRegistration body, CancellationToken ct)
+    {
+        if (!Nereye.Domain.Push.PushRules.IsExpoToken(body.Token))
+        {
+            throw new ValidationException("Bildirim belirteci geçersiz.");
+        }
+
+        var uid = User.Id();
+        var now = DateTime.UtcNow;
+        var platform = body.Platform is "ios" or "android" ? body.Platform : "unknown";
+        var device = await _db.PushDevices.FirstOrDefaultAsync(d => d.Token == body.Token, ct);
+        if (device is null)
+        {
+            _db.PushDevices.Add(new PushDevice { Id = Guid.NewGuid(), UserId = uid, Token = body.Token!, Platform = platform, CreatedAt = now, LastSeenAt = now });
+        }
+        else
+        {
+            device.UserId = uid;
+            device.Platform = platform;
+            device.LastSeenAt = now;
+        }
+
+        _db.ConsentLogs.Add(new ConsentLog { Id = Guid.NewGuid(), UserId = uid, Purpose = "notifications", Granted = true, CreatedAt = now });
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    /// <summary>Bildirim izni geri alındı: belirteç silinir, rıza günlüğüne yazılır.</summary>
+    [HttpDelete("push")]
+    public async Task<IActionResult> UnregisterPush([FromBody] Nereye.Application.Push.PushRegistration body, CancellationToken ct)
+    {
+        var uid = User.Id();
+        var devices = await _db.PushDevices.Where(d => d.UserId == uid && (body.Token == null || d.Token == body.Token)).ToListAsync(ct);
+        var ids = devices.Select(d => d.Id).ToList();
+        _db.PushLogs.RemoveRange(await _db.PushLogs.Where(l => ids.Contains(l.DeviceId)).ToListAsync(ct));
+        _db.PushDevices.RemoveRange(devices);
+        _db.ConsentLogs.Add(new ConsentLog { Id = Guid.NewGuid(), UserId = uid, Purpose = "notifications", Granted = false, CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }

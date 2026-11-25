@@ -5,6 +5,7 @@ import { INTENTS, VIBES, intentLabel, vibeLabel } from '@/lib/constants';
 import { clampRadius, radiusLabel as formatRadius } from '@/lib/radius';
 import { api, mediaUrl } from '@/lib/api';
 import { setAnalyticsConsent, useAnalyticsConsent } from '@/lib/analytics';
+import { disablePush, enablePush, pushSupported, pushToken } from '@/lib/push';
 import { friendlyError } from '@/lib/empty';
 import { useFavorites } from '@/lib/favorites';
 import { useFilters } from '@/lib/filters';
@@ -70,6 +71,34 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const favorites = useFavorites();
   const analytics = useAnalyticsConsent();
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  useEffect(() => {
+    void pushToken().then((t) => setPushOn(Boolean(t)));
+  }, []);
+
+  async function togglePush(on: boolean) {
+    setPushBusy(true);
+    try {
+      if (!on) {
+        await disablePush();
+        setPushOn(false);
+        toast.info('Etkinlik hatırlatmaları kapandı');
+        return;
+      }
+      const result = await enablePush();
+      if (result === 'ok') {
+        setPushOn(true);
+        toast.success('Kaydettiğin mekanlardaki etkinlikleri hatırlatacağız');
+      } else if (result === 'denied') {
+        toast.error('Bildirim izni verilmedi. Telefon ayarlarından açabilirsin.');
+      } else {
+        toast.error('Bildirimler şu an açılamadı. Biraz sonra tekrar dene.');
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!session) {
@@ -398,6 +427,26 @@ export default function Profile() {
         ) : null}
         <Row icon="navigate-outline" label="Konumu değiştir" value={filters.label} onPress={() => router.push('/places')} />
         <View style={styles.divider} />
+        {session && pushSupported ? (
+          <>
+            <View style={styles.row}>
+              <Ionicons name="notifications-outline" size={20} color={colors.ink} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleText}>Etkinlik hatırlatmaları</Text>
+                <Text style={styles.rowHint}>Kaydettiğin mekanlarda bu akşam etkinlik varsa</Text>
+              </View>
+              <Switch
+                value={pushOn}
+                disabled={pushBusy}
+                onValueChange={(v) => void togglePush(v)}
+                trackColor={{ true: colors.sage, false: colors.line }}
+                thumbColor={colors.white}
+                accessibilityLabel="Etkinlik hatırlatmaları"
+              />
+            </View>
+            <View style={styles.divider} />
+          </>
+        ) : null}
         <View style={styles.row}>
           <Ionicons name="stats-chart-outline" size={20} color={colors.ink} />
           <View style={{ flex: 1 }}>

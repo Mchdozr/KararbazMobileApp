@@ -45,6 +45,10 @@ public static class LegalTexts
                 "yol tarifi, kaydetme ve paylaşma. Olaylar kimliğine, cihazına ya da konumuna bağlanmaz; sunucuda yalnızca günlük toplam " +
                 "sayılar tutulur. Mekan sahipleri kendi mekanlarının toplam görüntülenme ve yol tarifi sayısını görür. İzni Profil " +
                 "ekranından istediğin an kapatabilirsin."),
+            new("Bildirimler (isteğe bağlı)",
+                "Profil ekranından açarsan, kaydettiğin mekanlarda o akşam bir etkinlik olduğunda başlamadan önce bildirim göndeririz " +
+                "(günde en fazla 3). Bunun için cihazının bildirim belirteci hesabınla birlikte saklanır ve Expo'nun bildirim servisi " +
+                "üzerinden iletilir. Konumun bu amaçla kullanılmaz. Bildirimi kapattığında ya da hesabını sildiğinde belirteç silinir."),
             new("Kimlerle paylaşıyoruz?",
                 "Mekan ve adres bilgisi için sunucumuz OpenStreetMap tabanlı servislere (Overpass, Nominatim, OSRM) ve Google Places'e " +
                 "arama metni ve koordinat iletir; bu isteklere kimliğin eklenmez. Android'de harita Google Haritalar ile gösterilir; " +

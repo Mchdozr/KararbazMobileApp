@@ -3,6 +3,7 @@ import { BackButton } from '@/components/BackButton';
 import { gradientHeader } from '@/components/ScreenHeader';
 import { hydrateCovers } from '@/lib/covers';
 import { installCrashReporting, setCrashScreen } from '@/lib/crash';
+import { installPushHandlers } from '@/lib/push';
 import { hydrateAnalytics, track } from '@/lib/analytics';
 import { SessionProvider, useSession } from '@/lib/session';
 import { colors, fonts } from '@/lib/theme';
@@ -14,7 +15,7 @@ import {
 } from '@expo-google-fonts/dm-sans';
 import { Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, Stack, ThemeProvider, useSegments } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -46,6 +47,13 @@ void hydrateCovers();
 installCrashReporting();
 // Kullanım istatistiği yalnızca açık rızayla (lib/analytics.ts); rıza yoksa track hiçbir şey yapmaz.
 void hydrateAnalytics().then(() => track('app_open'));
+
+/** Bildirime dokununca ilgili mekan/oylama/liste ekranı açılır. */
+function PushRouter() {
+  const router = useRouter();
+  useEffect(() => installPushHandlers(router), [router]);
+  return null;
+}
 
 /** Hata raporuna hangi ekranda olduğunu ekler (yol kalıbı; mekan kimliği gibi değerler değil). */
 function CrashScreenTracker() {
@@ -84,6 +92,7 @@ export default function RootLayout() {
       <SessionProvider>
         <SplashGate />
         <CrashScreenTracker />
+        <PushRouter />
         <ThemeProvider value={navTheme}>
           <StatusBar style="dark" />
           <Stack

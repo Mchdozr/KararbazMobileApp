@@ -306,6 +306,11 @@ async function request<T>(path: string, init: RequestInit = {}, opts: RequestOpt
 }
 
 export const api = {
+  /** Bildirim izni: cihaz belirteci kaydı (rıza) ve geri alma. */
+  registerPush: (token: string, platform: string) =>
+    request('/api/me/push', { method: 'POST', body: JSON.stringify({ token, platform }) }),
+  unregisterPush: (token: string | null) =>
+    request('/api/me/push', { method: 'DELETE', body: JSON.stringify({ token }) }, { optional: true }),
   /** Adlandırılmış listeler. placeId verilirse her listede o mekanın olup olmadığı da gelir. */
   collections: (placeId?: string) =>
     request<ListSummary[]>(`/api/me/collections${placeId ? `?placeId=${encodeURIComponent(placeId)}` : ''}`),

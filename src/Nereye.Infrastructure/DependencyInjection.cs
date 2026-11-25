@@ -134,6 +134,18 @@ public static class DependencyInjection
         services.AddScoped<Application.Polls.IPollService, Polls.PollService>();
         services.AddScoped<Application.Events.IEventService, Events.EventService>();
         services.AddScoped<Application.Collections.ICollectionService, Collections.CollectionService>();
+        // Bildirimler: Push:Enabled kapalıysa gönderici hiçbir şey yollamaz ve hatırlatma işi kaydedilmez.
+        services.Configure<Push.PushOptions>(configuration.GetSection(Push.PushOptions.Section));
+        services.AddHttpClient<Push.ExpoPushSender>().AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("expo-push"));
+        services.AddScoped<Application.Push.IPushSender>(sp =>
+            sp.GetRequiredService<IOptions<Push.PushOptions>>().Value.Enabled
+                ? sp.GetRequiredService<Push.ExpoPushSender>()
+                : new Push.DisabledPushSender());
+        services.AddScoped<Push.EventReminderJob>();
+        if (configuration.GetValue("Push:Enabled", false))
+        {
+            services.AddHostedService<Push.EventReminderService>();
+        }
         services.AddSingleton<Application.Telemetry.IMetricsReader, Telemetry.DistributedMetricsReader>();
         services.AddSingleton<AvatarStorage>();
         // Küçültülmüş görseller: yapılandırılmazsa geçici klasör (kaybolursa yeniden üretilir).
