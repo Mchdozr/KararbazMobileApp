@@ -46,4 +46,5 @@ public sealed record RecommendationResponse(
     IReadOnlyList<RecommendationItemDto> Items,
     string Geohash,
     string Attribution,
-    bool HasMore = false);
+    bool HasMore = false,
+    Weather.WeatherDto? Weather = null);

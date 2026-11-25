@@ -51,6 +51,8 @@ services:
       Places__ApiKey: ${GOOGLE_PLACES_API_KEY:-}
       # Popüler semtlerin OSM listesini arka planda taze tut (Redis kalıcı olduğu için tekrar açılışta baştan çekilmez).
       Places__Warmup__Enabled: "true"
+      # Hava durumu (Open-Meteo, anahtarsız uç ticari olmayan kullanım içindir: docs/hava-durumu.md).
+      Weather__Enabled: "true"
     volumes:
       - media:/app/wwwroot/media/uploads
       - avatars:/app/wwwroot/media/avatars

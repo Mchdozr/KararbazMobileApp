@@ -33,6 +33,8 @@ export default defineConfig({
         Database__Name: 'nereye-e2e',
         Redis__UseMemory: 'true',
         Places__UseFake: 'true',
+        // Hava durumuna göre öneri: belirlenimci olsun diye sahte yağmur.
+        Weather__Fake: 'rain',
       },
     },
     {

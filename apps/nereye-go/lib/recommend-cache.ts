@@ -1,6 +1,6 @@
 import type { VenueCard } from '@/lib/types';
 
-export type RecommendPage = { items: VenueCard[]; hasMore: boolean };
+export type RecommendPage = { items: VenueCard[]; hasMore: boolean; weather?: import('./weather').WeatherInfo | null };
 
 const mem = new Map<string, RecommendPage>();
 

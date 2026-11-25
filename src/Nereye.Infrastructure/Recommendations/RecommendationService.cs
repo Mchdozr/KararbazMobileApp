@@ -6,6 +6,7 @@ using Nereye.Domain.Geo;
 using Nereye.Domain.Places;
 using Nereye.Domain.Promotion;
 using Nereye.Domain.Recommendation;
+using Nereye.Domain.Weather;
 using Nereye.Infrastructure.Persistence;
 
 namespace Nereye.Infrastructure.Recommendations;
@@ -19,6 +20,10 @@ public sealed class RecommendationService : IRecommendationService
     private readonly Places.PlaceCovers _covers;
     private readonly Places.CacheRefresher _refresher;
     private readonly IServiceScopeFactory _scopes;
+    private readonly Application.Weather.IWeatherProvider _weather;
+
+    /// <summary>Hava bu süreden uzun sürerse öneri havasız döner (liste hiç beklemez).</summary>
+    internal static readonly TimeSpan WeatherBudget = TimeSpan.FromMilliseconds(600);
 
     public RecommendationService(
         IPlacesClient places,
@@ -27,8 +32,10 @@ public sealed class RecommendationService : IRecommendationService
         Application.Common.IClock clock,
         Places.PlaceCovers covers,
         Places.CacheRefresher refresher,
-        IServiceScopeFactory scopes)
+        IServiceScopeFactory scopes,
+        Application.Weather.IWeatherProvider weather)
     {
+        _weather = weather;
         _covers = covers;
         _refresher = refresher;
         _scopes = scopes;
@@ -41,7 +48,18 @@ public sealed class RecommendationService : IRecommendationService
     public async Task<RecommendationResponse> RecommendAsync(RecommendationQuery query, CancellationToken cancellationToken = default)
     {
         var geohash = Geohash.Encode(query.Latitude, query.Longitude, 7);
+        // Hava listeyle paralel istenir; bütçeyi aşarsa yok sayılır.
+        var weatherTask = _weather.CurrentAsync(query.Latitude, query.Longitude, cancellationToken);
         var snapshots = await LoadSnapshotsAsync(query, geohash, cancellationToken);
+        WeatherNow? weather;
+        try
+        {
+            weather = await weatherTask.WaitAsync(WeatherBudget, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            weather = null;
+        }
 
         var placeIds = snapshots.Select(s => s.PlaceId).ToList();
         var overlays = await _db.Venues
@@ -124,7 +142,7 @@ public sealed class RecommendationService : IRecommendationService
                 VibeMatcher.Score(userVibes, venueVibes),
                 recentSaves,
                 recentFavorites.Contains(place.PlaceId),
-                query.Intent));
+                query.Intent)) * WeatherRules.Factor(weather, place.Types, place.OutdoorSeating);
 
             organic.Add(new RankedCard(place.PlaceId, score, CardKind.Organic));
             scored[place.PlaceId] = (place, overlay, score, distance, openState);
@@ -178,7 +196,11 @@ public sealed class RecommendationService : IRecommendationService
         // Görseli olmayan kartlara daha önce bulunmuş gerçek kapak: istemci stok görsel göstermez, ek istek atmaz.
         items = await _covers.FillAsync(items, cancellationToken);
         var attribution = snapshots.FirstOrDefault()?.Attribution ?? "Harita verisi: OpenStreetMap";
-        return new RecommendationResponse(items, geohash, attribution, hasMore);
+        var note = WeatherRules.Note(weather, query.Intent);
+        var weatherDto = weather is null
+            ? null
+            : new Application.Weather.WeatherDto(weather.Kind.ToString(), Math.Round(weather.TemperatureC, 1), note?.Text, note?.Suggest?.ToString());
+        return new RecommendationResponse(items, geohash, attribution, hasMore, weatherDto);
     }
 
     private async Task<IReadOnlyList<PlaceSnapshot>> LoadSnapshotsAsync(

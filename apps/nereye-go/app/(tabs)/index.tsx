@@ -5,6 +5,8 @@ import { VenueCardSkeleton, VenueRowSkeleton } from '@/components/Skeleton';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { AnalyticsPrompt } from '@/components/AnalyticsPrompt';
 import { TonightBand } from '@/components/TonightBand';
+import { WeatherNote } from '@/components/WeatherNote';
+import type { WeatherInfo } from '@/lib/weather';
 import { DecisionSheet } from '@/components/DecisionSheet';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HorizontalVenueRow } from '@/components/home/HorizontalVenueRow';
@@ -45,6 +47,7 @@ export default function Home() {
   const [showAll, setShowAll] = useState(false);
   const [deciding, setDeciding] = useState(false);
   const [tonight, setTonight] = useState<TonightEvent[]>([]);
+  const [weather, setWeather] = useState<WeatherInfo | null>(null);
   // Ağ yokken son başarılı liste gösteriliyorsa bandın metni.
   const [offline, setOffline] = useState<string | null>(null);
   const recents = useRecentVenues();
@@ -121,6 +124,7 @@ export default function Home() {
       }
       const page = advancePage(0, res, filters.minRating);
       offset.current = page.nextSkip;
+      setWeather(res.weather ?? null);
       track('list_view', { intent: filters.intent });
       setItems(page.cards);
       setHasMore(page.hasMore);
@@ -299,6 +303,7 @@ export default function Home() {
                 <Ionicons name="chevron-forward" size={18} color={colors.white} />
               </Pressable>
             ) : null}
+            <WeatherNote weather={weather} onSuggest={goDiscover} />
             <TonightBand events={tonight} />
             <AnalyticsPrompt sawList={organic.length > 0} />
             {sponsored.length > 0 ? (

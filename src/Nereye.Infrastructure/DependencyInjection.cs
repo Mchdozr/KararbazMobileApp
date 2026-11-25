@@ -206,6 +206,22 @@ public static class DependencyInjection
                 sp.GetService<ILogger<PlacesWarmupService>>()));
         }
 
+        // Hava: sahte veriyle sahte; değilse yalnızca Weather:Enabled ile Open-Meteo (docs/hava-durumu.md).
+        services.Configure<Weather.WeatherOptions>(configuration.GetSection(Weather.WeatherOptions.Section));
+        services.AddHttpClient<Weather.OpenMeteoWeatherProvider>()
+            .AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("open-meteo"));
+        services.AddScoped<Application.Weather.IWeatherProvider>(sp =>
+        {
+            if (sp.GetRequiredService<IOptions<GooglePlacesOptions>>().Value.UseFake)
+            {
+                return new Weather.FakeWeatherProvider(sp.GetRequiredService<IOptions<Weather.WeatherOptions>>());
+            }
+
+            return sp.GetRequiredService<IOptions<Weather.WeatherOptions>>().Value.Enabled
+                ? sp.GetRequiredService<Weather.OpenMeteoWeatherProvider>()
+                : new Weather.NoWeatherProvider();
+        });
+
         services.AddScoped<IGeoSuggest>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<GooglePlacesOptions>>().Value;

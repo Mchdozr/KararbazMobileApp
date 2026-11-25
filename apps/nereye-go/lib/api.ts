@@ -11,6 +11,7 @@ import { linkAbort, recommendPath } from '@/lib/request-control';
 import { Platform } from 'react-native';
 import type { AnalyticsEvent } from '@/lib/analytics-queue';
 import type { Poll, PollOptionInput } from '@/lib/poll';
+import type { WeatherInfo } from '@/lib/weather';
 import type { CrashReport } from '@/lib/crash-queue';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
@@ -419,12 +420,12 @@ export const api = {
     opts: { signal?: AbortSignal } = {},
   ) => {
     const key = recommendCacheKey({ lat, lng, intent, radiusMeters, openNow, vibes, skip, take });
-    const res = await request<{ items?: VenueCard[]; hasMore?: boolean }>(
+    const res = await request<{ items?: VenueCard[]; hasMore?: boolean; weather?: WeatherInfo | null }>(
       recommendPath({ lat, lng, intent, radiusMeters, openNow, vibes, skip, take }),
       {},
       { timeoutMs: RECOMMEND_TIMEOUT_MS, signal: opts.signal, conditional: true },
     );
-    const page = { items: res.items ?? [], hasMore: Boolean(res.hasMore) };
+    const page = { items: res.items ?? [], hasMore: Boolean(res.hasMore), weather: res.weather ?? null };
     putRecommend(key, page);
     warmCards(page.items, skip === 0 ? 8 : 4);
     return page;
