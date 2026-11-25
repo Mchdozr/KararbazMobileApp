@@ -121,6 +121,13 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="poll/[code]"
+              options={{
+                title: 'Birlikte karar',
+                header: gradientHeader('Arkadaşlarınla oyla'),
+              }}
+            />
+            <Stack.Screen
               name="owner/[id]"
               options={{
                 title: 'İşletme',

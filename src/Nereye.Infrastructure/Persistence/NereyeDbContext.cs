@@ -34,6 +34,9 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
     public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
     public DbSet<ErrorReport> ErrorReports => Set<ErrorReport>();
     public DbSet<DailyCount> DailyCounts => Set<DailyCount>();
+    public DbSet<GroupPoll> GroupPolls => Set<GroupPoll>();
+    public DbSet<GroupPollOption> GroupPollOptions => Set<GroupPollOption>();
+    public DbSet<GroupPollVote> GroupPollVotes => Set<GroupPollVote>();
 
     /// <summary>
     /// Her DateTime UTC'dir: yazarken türü belirsiz değer UTC sayılır, yerel saat UTC'ye çevrilir; okurken Kind=Utc.
@@ -75,6 +78,28 @@ public sealed class NereyeDbContext : IdentityDbContext<AppUser, IdentityRole<Gu
             e.HasIndex(x => new { x.Key, x.Day });
             e.Property(x => x.Name).HasMaxLength(32);
             e.Property(x => x.Key).HasMaxLength(128);
+        });
+
+        builder.Entity<GroupPoll>(e =>
+        {
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(8);
+            e.Property(x => x.Title).HasMaxLength(60);
+            e.HasMany(x => x.Options).WithOne().HasForeignKey(x => x.PollId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Votes).WithOne().HasForeignKey(x => x.PollId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<GroupPollOption>(e =>
+        {
+            e.Property(x => x.PlaceId).HasMaxLength(128);
+            e.Property(x => x.Name).HasMaxLength(120);
+            e.Property(x => x.Category).HasMaxLength(60);
+            e.Property(x => x.PhotoUrl).HasMaxLength(500);
+        });
+        builder.Entity<GroupPollVote>(e =>
+        {
+            e.HasIndex(x => new { x.PollId, x.VoterHash }).IsUnique();
+            e.Property(x => x.VoterHash).HasMaxLength(32);
+            e.Property(x => x.PlaceId).HasMaxLength(128);
         });
 
         builder.Entity<VenueTag>().HasKey(x => new { x.VenueId, x.Tag });

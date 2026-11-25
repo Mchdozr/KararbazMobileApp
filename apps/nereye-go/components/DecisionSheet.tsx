@@ -3,6 +3,9 @@ import { VenueImage } from '@/components/VenueImage';
 import { api } from '@/lib/api';
 import { track } from '@/lib/analytics';
 import { pickForMe, type Decision } from '@/lib/decide';
+import { friendlyError } from '@/lib/empty';
+import { pollOptionsFrom, pollShareText } from '@/lib/poll';
+import { toast } from '@/lib/toast';
 import { haptic } from '@/lib/haptics';
 import { openDirections } from '@/lib/maps';
 import { minutesOfDay } from '@/lib/open-status';
@@ -12,7 +15,7 @@ import { metaLine } from '@/lib/venue-format';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -64,6 +67,24 @@ export function DecisionSheet({
       enter.value = withTiming(0, { duration: 120 });
     }
   }, [visible]);
+
+  const [creating, setCreating] = useState(false);
+
+  /** Kısa listeyi (en iyi 4) oylamaya açar, paylaşım sayfasını gösterir ve oylama ekranına geçer. */
+  async function startPoll() {
+    setCreating(true);
+    try {
+      const poll = await api.createPoll(`${intentLabel} için nereye?`, pollOptionsFrom(cards));
+      haptic.success();
+      onClose();
+      router.push({ pathname: '/poll/[code]', params: { code: poll.code } });
+      setTimeout(() => void Share.share({ message: pollShareText(poll), title: poll.title }).catch(() => {}), 400);
+    } catch (e) {
+      toast.error(friendlyError(e));
+    } finally {
+      setCreating(false);
+    }
+  }
 
   function another() {
     haptic.tap();
@@ -145,10 +166,21 @@ export function DecisionSheet({
               />
             </View>
             {decision.total > 1 ? (
-              <Pressable onPress={another} style={styles.another} accessibilityRole="button" accessibilityLabel="Başka bir mekan öner">
-                <Ionicons name="shuffle" size={18} color={colors.coral} />
-                <Text style={styles.anotherText}>Başka öner</Text>
-              </Pressable>
+              <View style={styles.links}>
+                <Pressable onPress={another} style={styles.another} accessibilityRole="button" accessibilityLabel="Başka bir mekan öner">
+                  <Ionicons name="shuffle" size={18} color={colors.coral} />
+                  <Text style={styles.anotherText}>Başka öner</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => void startPoll()}
+                  disabled={creating}
+                  style={styles.another}
+                  accessibilityRole="button"
+                  accessibilityLabel="Arkadaşlarla karar ver: kısa listeyi oylamaya aç">
+                  <Ionicons name="people-outline" size={18} color={colors.coral} />
+                  <Text style={styles.anotherText}>{creating ? 'Hazırlanıyor…' : 'Arkadaşlarla karar ver'}</Text>
+                </Pressable>
+              </View>
             ) : null}
           </Animated.View>
         ) : (
@@ -204,6 +236,7 @@ const styles = StyleSheet.create({
   reasonText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 13 },
   note: { marginTop: 10, color: colors.muted, fontFamily: fonts.sans, fontSize: 13, lineHeight: 19 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 20 },
   another: {
     marginTop: 10,
     minHeight: 44,

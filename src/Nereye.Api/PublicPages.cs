@@ -5,7 +5,7 @@ namespace Nereye.Api;
 /// <summary>API'nin kendi hostunda sunulan sade web sayfaları (hesap silme, gizlilik, şifre sıfırlama).</summary>
 public static class PublicPages
 {
-    public static string Render(string title, string body) => $$"""
+    public static string Render(string title, string body, string? head = null) => $$"""
         <!doctype html>
         <html lang="tr">
         <head>
@@ -29,6 +29,7 @@ public static class PublicPages
           button.danger { background: var(--danger); }
           .note { border-left:3px solid var(--danger); padding-left:12px; }
         </style>
+        {{head ?? ""}}
         </head>
         <body><main>
         <h1>{{Encode(title)}}</h1>
@@ -39,8 +40,8 @@ public static class PublicPages
 
     public static string Encode(string? value) => WebUtility.HtmlEncode(value ?? "");
 
-    public static IResult Html(string title, string body, int status = 200) =>
-        Results.Content(Render(title, body), "text/html; charset=utf-8", statusCode: status);
+    public static IResult Html(string title, string body, int status = 200, string? head = null) =>
+        Results.Content(Render(title, body, head), "text/html; charset=utf-8", statusCode: status);
 
     /// <summary>
     /// E-postadaki bağlantıların kökü. Yayında yalnızca insanın verdiği <c>Api:PublicBaseUrl</c> (https);

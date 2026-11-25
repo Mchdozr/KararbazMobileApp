@@ -10,6 +10,7 @@ import { EtagCache } from '@/lib/etag-cache';
 import { linkAbort, recommendPath } from '@/lib/request-control';
 import { Platform } from 'react-native';
 import type { AnalyticsEvent } from '@/lib/analytics-queue';
+import type { Poll, PollOptionInput } from '@/lib/poll';
 import type { CrashReport } from '@/lib/crash-queue';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
@@ -302,6 +303,17 @@ async function request<T>(path: string, init: RequestInit = {}, opts: RequestOpt
 }
 
 export const api = {
+  /** Arkadaşlarla karar ver: kısa liste oylaması (hesap gerekmez). */
+  createPoll: (title: string, options: PollOptionInput[]) =>
+    request<Poll>('/api/polls', { method: 'POST', body: JSON.stringify({ title, options }) }, { skipAuth: true }),
+  poll: (code: string, voterKey: string) =>
+    request<Poll>(`/api/polls/${encodeURIComponent(code)}`, { headers: { 'X-Voter': voterKey } }, { skipAuth: true }),
+  vote: (code: string, voterKey: string, placeId: string) =>
+    request<Poll>(
+      `/api/polls/${encodeURIComponent(code)}/votes`,
+      { method: 'POST', body: JSON.stringify({ voterKey, placeId }) },
+      { skipAuth: true },
+    ),
   /** Kullanım olayları (yalnızca rıza varsa, lib/analytics.ts). Hata sessizdir. */
   sendEvents: async (events: readonly AnalyticsEvent[]) => {
     try {
