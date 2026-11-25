@@ -37,7 +37,7 @@ export function TonightBand({ events }: { events: readonly TonightEvent[] }) {
               <View style={styles.photo}>
                 <VenueImage placeId={e.placeId} photoUrl={e.photoUrl} name={e.venueName} style={StyleSheet.absoluteFill} radius={0} widthPt={220} />
                 <View style={[styles.when, e.live && styles.live]}>
-                  <Text style={styles.whenText}>{when}</Text>
+                  <Text style={[styles.whenText, e.live && styles.liveText]}>{when}</Text>
                 </View>
               </View>
               <View style={styles.body}>
@@ -74,7 +74,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.coral,
   },
   live: { backgroundColor: colors.accent },
-  whenText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 12 },
+  liveText: { color: colors.onAccent },
+  whenText: { color: colors.onCoral, fontFamily: fonts.sansBold, fontSize: 12 },
   body: { padding: 12, gap: 2 },
   eventTitle: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 15 },
   venue: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12 },

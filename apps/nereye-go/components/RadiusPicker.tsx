@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.coral, borderColor: colors.coral },
   chipText: { color: colors.ink, fontWeight: '700' },
-  chipTextOn: { color: colors.white },
+  chipTextOn: { color: colors.onCoral },
   custom: { marginTop: 12 },
   hint: { color: colors.muted, fontWeight: '700', fontSize: 12, marginBottom: 8 },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -41,5 +41,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
-  ctaText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+  ctaText: { color: colors.onCoral, fontWeight: '800', fontSize: 13 },
 });

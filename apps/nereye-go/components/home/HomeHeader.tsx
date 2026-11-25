@@ -161,7 +161,7 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
               onPress={() => goSearch()}
               accessibilityRole="button"
               accessibilityLabel="Aramaya git">
-              <Ionicons name="arrow-forward" size={16} color={colors.white} />
+              <Ionicons name="arrow-forward" size={16} color={colors.onCoral} />
             </Pressable>
           )}
         </View>

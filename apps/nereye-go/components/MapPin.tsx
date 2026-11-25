@@ -46,7 +46,7 @@ export const VenuePin = memo(function VenuePin({
           </Text>
         ) : null}
         <View style={[styles.dot, selected && styles.dotOn]}>
-          <Ionicons name={icon} size={selected ? 18 : 14} color={colors.white} />
+          <Ionicons name={icon} size={selected ? 18 : 14} color={selected ? colors.onAccent : colors.onCoral} />
         </View>
         <View style={[styles.tip, selected && styles.tipOn]} />
       </View>

@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   },
   on: { backgroundColor: colors.coral, borderColor: colors.coral },
   chipText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 14 },
-  chipTextOn: { color: colors.white, fontFamily: fonts.sansBold },
+  chipTextOn: { color: colors.onCoral, fontFamily: fonts.sansBold },
   thumb: { width: 76, height: 76, borderRadius: 14, overflow: 'hidden', backgroundColor: colors.line },
   add: {
     alignItems: 'center',
@@ -314,6 +314,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   err: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.dangerSoft, borderRadius: 12, padding: 12 },
-  errText: { flex: 1, color: colors.espresso, fontFamily: fonts.sansMed, fontSize: 14 },
+  errText: { flex: 1, color: colors.ink, fontFamily: fonts.sansMed, fontSize: 14 },
   foot: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.bg },
 });

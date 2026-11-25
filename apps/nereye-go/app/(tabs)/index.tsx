@@ -300,7 +300,7 @@ export default function Home() {
                   <Text style={styles.decideTitle}>Benim için seç</Text>
                   <Text style={styles.decideSub}>Kararsız mısın? Şu an için en iyisini seçeyim.</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.white} />
+                <Ionicons name="chevron-forward" size={18} color={colors.onCoral} />
               </Pressable>
             ) : null}
             <WeatherNote weather={weather} onSuggest={goDiscover} />
@@ -444,8 +444,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  decideTitle: { color: colors.white, fontFamily: fonts.display, fontSize: 18 },
-  decideSub: { color: colors.onDarkMuted, fontFamily: fonts.sans, fontSize: 13, marginTop: 1 },
+  decideTitle: { color: colors.onCoral, fontFamily: fonts.display, fontSize: 18 },
+  decideSub: { color: colors.onCoral, opacity: 0.82, fontFamily: fonts.sans, fontSize: 13, marginTop: 1 },
   feat: { paddingHorizontal: 20, marginTop: 20 },
   gridTitle: {
     marginBottom: 12,

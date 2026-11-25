@@ -43,5 +43,5 @@ const styles = StyleSheet.create({
   h: { fontFamily: fonts.display, fontSize: 28, color: colors.ink },
   p: { color: colors.muted, marginTop: 8, textAlign: 'center' },
   btn: { marginTop: 16, minHeight: 44, justifyContent: 'center', backgroundColor: colors.coral, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 16 },
-  btnText: { color: colors.white, fontWeight: '800' },
+  btnText: { color: colors.onCoral, fontWeight: '800' },
 });

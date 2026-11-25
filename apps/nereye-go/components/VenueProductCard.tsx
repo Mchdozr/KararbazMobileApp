@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 88,
   },
-  boost: { backgroundColor: colors.accent, color: colors.white },
+  boost: { backgroundColor: colors.accent, color: colors.onAccent },
   badges: {
     position: 'absolute',
     top: 10,

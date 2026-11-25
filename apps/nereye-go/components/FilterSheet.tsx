@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.coral, borderColor: colors.coral },
   chipText: { color: colors.ink, fontWeight: '700' },
-  chipTextOn: { color: colors.white },
+  chipTextOn: { color: colors.onCoral },
   toggle: {
     marginTop: 8,
     padding: 14,

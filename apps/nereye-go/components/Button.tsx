@@ -31,10 +31,12 @@ export function Button({
 }) {
   const off = disabled || loading;
   const fg =
-    variant === 'primary' || variant === 'danger'
-      ? colors.white
-      : variant === 'secondary'
-        ? colors.espresso
+    variant === 'primary'
+      ? colors.onCoral
+      : variant === 'danger'
+        ? colors.onDanger
+        : variant === 'secondary'
+        ? colors.ink
         : variant === 'ghost'
           ? colors.coral
           : colors.ink;

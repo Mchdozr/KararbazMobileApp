@@ -24,7 +24,7 @@ import { shareVenue } from '@/lib/share';
 import { itemFrom } from '@/lib/collections';
 import { AddToListSheet } from '@/components/AddToListSheet';
 import { rememberCover } from '@/lib/covers';
-import { colors, fonts, radii } from '@/lib/theme';
+import { colors, fonts, radii, statusBarOnBg } from '@/lib/theme';
 import { toast } from '@/lib/toast';
 import { peekVenue } from '@/lib/venue-cache';
 import { displayPhotos, uniqueStrings } from '@/lib/venue-photos';
@@ -398,7 +398,7 @@ export default function Venue() {
           ),
         }}
       />
-      <StatusBar style={pastHero ? 'dark' : 'light'} />
+      <StatusBar style={pastHero ? statusBarOnBg : 'light'} />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
         showsVerticalScrollIndicator={false}
@@ -668,7 +668,7 @@ export default function Venue() {
                     accessibilityState={{ selected: mode === key }}
                     aria-selected={mode === key}
                     accessibilityLabel={`${label}${r ? `, ${formatRouteLine(r.distanceMeters, r.durationSeconds)}` : ''}`}>
-                    <Ionicons name={icon} size={18} color={mode === key ? colors.white : colors.ink} />
+                    <Ionicons name={icon} size={18} color={mode === key ? colors.onCoral : colors.ink} />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.routeLabel, mode === key && styles.routeOnText]}>{label}</Text>
                       <Text style={[styles.routeMeta, mode === key && styles.routeOnText]}>
@@ -998,7 +998,7 @@ const styles = StyleSheet.create({
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   vibe: {
     backgroundColor: colors.bg,
-    color: colors.espresso,
+    color: colors.ink,
     fontFamily: fonts.sansMed,
     fontSize: 13,
     paddingHorizontal: 12,
@@ -1046,7 +1046,7 @@ const styles = StyleSheet.create({
   routeChipOn: { backgroundColor: colors.coral, borderColor: colors.coral },
   routeLabel: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 13 },
   routeMeta: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 1 },
-  routeOnText: { color: colors.white },
+  routeOnText: { color: colors.onCoral },
   miniMapWrap: { height: 180, borderRadius: 16, marginTop: 12, overflow: 'hidden' },
   miniMap: { flex: 1 },
   review: { marginTop: 12, backgroundColor: colors.bg, padding: 14, borderRadius: 16 },
@@ -1061,7 +1061,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   tag: {
     backgroundColor: colors.coralSoft,
-    color: colors.espresso,
+    color: colors.ink,
     fontFamily: fonts.sansMed,
     fontSize: 12,
     paddingHorizontal: 9,

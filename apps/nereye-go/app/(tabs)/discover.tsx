@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   sort: { flex: 1, minHeight: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   sortOn: { backgroundColor: colors.coral },
   sortText: { color: colors.muted, fontFamily: fonts.sansMed, fontSize: 13 },
-  sortTextOn: { color: colors.white, fontFamily: fonts.sansBold },
+  sortTextOn: { color: colors.onCoral, fontFamily: fonts.sansBold },
   column: { paddingHorizontal: 20, gap: 12, marginBottom: 16 },
   cell: { flex: 1, maxWidth: '50%' },
   foot: { marginVertical: 20 },

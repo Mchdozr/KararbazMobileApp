@@ -286,7 +286,7 @@ export default function MapScreen() {
             onPress={() => setSheet(true)}
             accessibilityRole="button"
             accessibilityLabel={badge > 0 ? `Filtre, ${badge} etkin` : 'Filtre'}>
-            <Ionicons name="options" size={18} color={badge > 0 ? colors.white : colors.ink} />
+            <Ionicons name="options" size={18} color={badge > 0 ? colors.onCoral : colors.ink} />
           </Pressable>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.intents}>
@@ -301,7 +301,7 @@ export default function MapScreen() {
                 accessibilityLabel={intentLabel(i)}
                 accessibilityState={{ selected: on }}
                 aria-selected={on}>
-                <Ionicons name={INTENT_ICONS[i]} size={14} color={on ? colors.white : colors.coral} />
+                <Ionicons name={INTENT_ICONS[i]} size={14} color={on ? colors.onCoral : colors.coral} />
                 <Text style={[styles.intentText, on && styles.intentTextOn]}>{intentLabel(i)}</Text>
               </Pressable>
             );
@@ -309,7 +309,7 @@ export default function MapScreen() {
         </ScrollView>
         {canSearchHere ? (
           <Pressable style={styles.searchHere} onPress={() => void searchHere()} accessibilityRole="button" accessibilityLabel="Bu bölgede ara">
-            <Ionicons name="refresh" size={14} color={colors.white} />
+            <Ionicons name="refresh" size={14} color={colors.onAccent} />
             <Text style={styles.searchHereText}>Bu bölgede ara</Text>
           </Pressable>
         ) : null}
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   },
   intentOn: { backgroundColor: colors.coral },
   intentText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 13 },
-  intentTextOn: { color: colors.white, fontFamily: fonts.sansBold },
+  intentTextOn: { color: colors.onCoral, fontFamily: fonts.sansBold },
   searchHere: {
     alignSelf: 'center',
     flexDirection: 'row',
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     ...shadows.float,
   },
-  searchHereText: { color: colors.white, fontFamily: fonts.sansBold, fontSize: 13 },
+  searchHereText: { color: colors.onAccent, fontFamily: fonts.sansBold, fontSize: 13 },
   recenter: { position: 'absolute', right: 16 },
   sheet: {
     position: 'absolute',

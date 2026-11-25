@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   h: { fontSize: 22, fontFamily: fonts.display, color: colors.ink },
   sub: { color: colors.muted, fontFamily: fonts.sans, fontSize: 14, lineHeight: 20, marginTop: 4 },
   done: { flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: colors.coralSoft, borderRadius: 14, padding: 14 },
-  doneText: { flex: 1, color: colors.espresso, fontFamily: fonts.sansMed, fontSize: 14, lineHeight: 20 },
+  doneText: { flex: 1, color: colors.ink, fontFamily: fonts.sansMed, fontSize: 14, lineHeight: 20 },
   review: { backgroundColor: colors.bg, borderRadius: 16, padding: 14, gap: 10 },
   reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   author: { fontFamily: fonts.sansBold, color: colors.ink, fontSize: 14 },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.coral, borderColor: colors.coral },
   chipText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 14 },
-  chipTextOn: { color: colors.white },
+  chipTextOn: { color: colors.onCoral },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   eventWhen: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 2 },
 });

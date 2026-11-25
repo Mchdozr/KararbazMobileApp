@@ -103,7 +103,7 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
         accessibilityRole="button"
         accessibilityLabel="Konumumu kullan"
         accessibilityState={{ busy }}>
-        {busy ? <ActivityIndicator color={colors.white} /> : <Ionicons name="navigate" size={16} color={colors.white} />}
+        {busy ? <ActivityIndicator color={colors.onCoral} /> : <Ionicons name="navigate" size={16} color={colors.onCoral} />}
         <Text style={styles.gpsText}>Konumum</Text>
       </Pressable>
 
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 16,
   },
-  gpsText: { color: colors.white, fontWeight: '800', fontSize: 16 },
+  gpsText: { color: colors.onCoral, fontWeight: '800', fontSize: 16 },
   kicker: {
     marginTop: 22,
     marginBottom: 10,

@@ -270,7 +270,7 @@ export default function AuthScreen() {
                 aria-checked={terms}
                 accessibilityLabel="Kullanım koşullarını okudum ve kabul ediyorum">
                 <View style={[styles.box, terms && styles.boxOn]}>
-                  {terms ? <Ionicons name="checkmark" size={16} color={colors.white} /> : null}
+                  {terms ? <Ionicons name="checkmark" size={16} color={colors.onCoral} /> : null}
                 </View>
                 <Text style={styles.kvkkText}>
                   <Text style={styles.link} onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}>
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, minHeight: 44, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   tabOn: { backgroundColor: colors.coral },
   tabText: { fontFamily: fonts.sansMed, color: colors.muted, fontSize: 15 },
-  tabTextOn: { fontFamily: fonts.sansBold, color: colors.white },
+  tabTextOn: { fontFamily: fonts.sansBold, color: colors.onCoral },
   meter: { flexDirection: 'row', gap: 6, marginTop: -6 },
   meterBar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.line },
   meterWeak: { backgroundColor: colors.gold },
@@ -375,5 +375,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
   },
-  errText: { flex: 1, color: colors.espresso, fontFamily: fonts.sansMed, fontSize: 14 },
+  errText: { flex: 1, color: colors.ink, fontFamily: fonts.sansMed, fontSize: 14 },
 });

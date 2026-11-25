@@ -6,7 +6,7 @@ import { installCrashReporting, setCrashScreen } from '@/lib/crash';
 import { installPushHandlers } from '@/lib/push';
 import { hydrateAnalytics, track } from '@/lib/analytics';
 import { SessionProvider, useSession } from '@/lib/session';
-import { colors, fonts } from '@/lib/theme';
+import { colors, fonts, scheme, statusBarOnBg } from '@/lib/theme';
 import { ToastHost } from '@/lib/toast';
 import {
   DMSans_400Regular,
@@ -15,15 +15,16 @@ import {
 } from '@expo-google-fonts/dm-sans';
 import { Fraunces_700Bold } from '@expo-google-fonts/fraunces';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
+const baseNav = scheme === 'dark' ? DarkTheme : DefaultTheme;
 const navTheme = {
-  ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, primary: colors.coral, background: colors.bg, card: colors.surface },
+  ...baseNav,
+  colors: { ...baseNav.colors, primary: colors.coral, background: colors.bg, card: colors.surface, text: colors.ink, border: colors.line },
 };
 
 // Yerel açılış ekranı fontlar ve oturum hazır olana dek kalır: arada boş ekran ya da yükleniyor çarkı görünmez.
@@ -94,7 +95,7 @@ export default function RootLayout() {
         <CrashScreenTracker />
         <PushRouter />
         <ThemeProvider value={navTheme}>
-          <StatusBar style="dark" />
+          <StatusBar style={statusBarOnBg} />
           <Stack
             screenOptions={{
               headerTintColor: colors.ink,

@@ -14,7 +14,8 @@ import { toast } from '@/lib/toast';
 import { hydrateSavedPlaces, useSavedPlaces } from '@/lib/saved-places';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
-import { colors, fonts, gradients, shadows } from '@/lib/theme';
+import { colors, fonts, gradients, setThemeMode, shadows, themeMode } from '@/lib/theme';
+import type { ThemeMode } from '@/lib/palette';
 import { isEvening } from '@/lib/copy';
 import type { Preferences, Profile as ProfileInfo } from '@/lib/types';
 import Constants from 'expo-constants';
@@ -27,6 +28,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const THEME_CHOICES: [ThemeMode, string][] = [
+  ['system', 'Sistem'],
+  ['light', 'Açık'],
+  ['dark', 'Koyu'],
+];
 
 const EMPTY: Preferences = { defaultRadiusMeters: 1500, intents: [], vibes: [] };
 
@@ -71,6 +78,14 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const favorites = useFavorites();
   const analytics = useAnalyticsConsent();
+  const [mode, setMode] = useState<ThemeMode>(themeMode);
+
+  async function chooseTheme(next: ThemeMode) {
+    setMode(next);
+    if (await setThemeMode(next)) {
+      toast.info('Görünüm, uygulamayı yeniden açtığında değişecek.');
+    }
+  }
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   useEffect(() => {
@@ -427,6 +442,24 @@ export default function Profile() {
         ) : null}
         <Row icon="navigate-outline" label="Konumu değiştir" value={filters.label} onPress={() => router.push('/places')} />
         <View style={styles.divider} />
+        <View style={styles.themeRow}>
+          <Ionicons name="contrast-outline" size={20} color={colors.ink} />
+          <Text style={styles.toggleText}>Görünüm</Text>
+          <View style={styles.themeChips}>
+            {THEME_CHOICES.map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => void chooseTheme(value)}
+                style={[styles.chip, mode === value && styles.chipOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: mode === value }} aria-selected={mode === value}
+                accessibilityLabel={`Görünüm: ${label}`}>
+                <Text style={mode === value ? styles.chipOnText : styles.chipOffText}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <View style={styles.divider} />
         {session && pushSupported ? (
           <>
             <View style={styles.row}>
@@ -521,7 +554,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: colors.white, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
+  avatarText: { color: colors.onCoral, fontFamily: fonts.display, fontSize: 24, fontWeight: '700' },
   avatarImg: { width: 66, height: 66, borderRadius: 33 },
   name: { fontFamily: fonts.display, fontSize: 28, color: colors.ink, marginTop: 12 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
@@ -531,7 +564,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 999,
   },
-  badgeText: { color: colors.espresso, fontWeight: '800', fontSize: 12 },
+  badgeText: { color: colors.ink, fontWeight: '800', fontSize: 12 },
   loc: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -599,7 +632,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
   },
   chipOn: { backgroundColor: colors.coral, borderColor: colors.coral },
-  chipOnText: { color: colors.white, fontWeight: '700', fontSize: 13 },
+  chipOnText: { color: colors.onCoral, fontWeight: '700', fontSize: 13 },
   chipOffText: { color: colors.ink, fontWeight: '600', fontSize: 13 },
   radiusRow: { flexDirection: 'row', gap: 8 },
   radius: {
@@ -639,5 +672,7 @@ const styles = StyleSheet.create({
   muted: { color: colors.muted },
   divider: { height: 1, backgroundColor: colors.line, marginLeft: 48 },
   toggleText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 15 },
+  themeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, minHeight: 56, flexWrap: 'wrap', paddingVertical: 8 },
+  themeChips: { flexDirection: 'row', gap: 6, marginLeft: 'auto' },
   rowHint: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 1 },
 });

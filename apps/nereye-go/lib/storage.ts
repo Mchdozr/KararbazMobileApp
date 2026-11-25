@@ -24,6 +24,17 @@ export async function getItem(key: string): Promise<string | null> {
   }
 }
 
+/**
+ * Eşzamanlı okuma: yalnızca modül yüklenirken gereken küçük ayarlar için (ör. tema). Hiç fırlatmaz.
+ */
+export function getItemSync(key: string): string | null {
+  try {
+    return web ? (local()?.getItem(key) ?? null) : SecureStore.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
 export async function setItem(key: string, value: string): Promise<void> {
   try {
     if (web) {

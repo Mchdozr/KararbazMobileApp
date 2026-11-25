@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  text: { flex: 1, color: colors.espresso, fontFamily: fonts.sansMed, fontSize: 14, lineHeight: 19 },
+  text: { flex: 1, color: colors.ink, fontFamily: fonts.sansMed, fontSize: 14, lineHeight: 19 },
   retry: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 4 },
   retryText: { color: colors.danger, fontFamily: fonts.sansBold, fontSize: 14 },
 });
