@@ -25,3 +25,8 @@ app.json.*
 
 # Çalışırken yüklenen kullanıcı dosyaları
 src/Nereye.Api/wwwroot/media/uploads/*
+
+# Uçtan uca testler
+e2e/.web/
+e2e/test-results/
+e2e/playwright-report/

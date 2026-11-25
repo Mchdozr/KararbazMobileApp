@@ -1,0 +1,27 @@
+appId: com.mchdozr.nereye
+name: Kullanım istatistiği izni varsayılan kapalı, reddedilince bir daha sorulmaz
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- tapOn: "Kadıköy ile başla"
+- extendedWaitUntil:
+    visible: "Sana özel"
+    timeout: 45000
+- scrollUntilVisible:
+    element: "Nereye'yi geliştirmemize yardım eder misin?"
+    direction: DOWN
+- tapOn: "Kullanım istatistiğine izin verme"
+- assertNotVisible: "Nereye'yi geliştirmemize yardım eder misin?"
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: "Sana özel"
+    timeout: 45000
+- assertNotVisible: "Nereye'yi geliştirmemize yardım eder misin?"
+- tapOn: "Profil"
+- scrollUntilVisible:
+    element: "Anonim kullanım istatistikleri"
+    direction: DOWN
+- assertVisible: "Anonim kullanım istatistikleri"

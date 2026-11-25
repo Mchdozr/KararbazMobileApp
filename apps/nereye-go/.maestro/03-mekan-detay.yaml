@@ -1,0 +1,20 @@
+appId: com.mchdozr.nereye
+name: Karttan mekan sayfasına
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- tapOn: "Kadıköy ile başla"
+- extendedWaitUntil:
+    visible: "Sana özel"
+    timeout: 45000
+# İlk kartın içindeki açılış saati satırı: dokunuş kartı açar.
+- tapOn:
+    text: ".*(kadar açık|Şu an açık|açılıyor|Şu an kapalı|Yakında kapanıyor).*"
+    index: 0
+- extendedWaitUntil:
+    visible: ".*Yol tarifi.*"
+    timeout: 20000
+- back
+- assertVisible: "Sana özel"

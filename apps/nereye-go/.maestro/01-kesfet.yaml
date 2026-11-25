@@ -1,0 +1,14 @@
+appId: com.mchdozr.nereye
+name: Karşılama ekranından öneri listesine
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+# Konum izni istemeden başla: sahte veri ve gerçek veri iki durumda da Kadıköy'de sonuç var.
+- tapOn: "Kadıköy ile başla"
+- extendedWaitUntil:
+    visible: "Sana özel"
+    timeout: 45000
+- assertVisible: ".*Benim için seç.*"
+- assertVisible: "Kahve"

@@ -1,0 +1,5 @@
+# Maestro akışları (Android/iOS yerel derleme). Çalıştırma: docs/uctan-uca-testler.md
+flows:
+  - "*.yaml"
+excludeTags:
+  - wip

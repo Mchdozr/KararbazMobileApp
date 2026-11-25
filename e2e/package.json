@@ -1,0 +1,13 @@
+{
+  "name": "nereye-e2e",
+  "private": true,
+  "description": "Web arayüzü uçtan uca testleri (Playwright). API sahte mekan verisiyle, bellek içi veritabanıyla kendiliğinden başlar.",
+  "scripts": {
+    "test": "playwright test --trace off",
+    "test:debug": "playwright test --trace on --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "serve": "14.2.7"
+  }
+}

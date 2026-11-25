@@ -1,0 +1,19 @@
+appId: com.mchdozr.nereye
+name: Benim için seç
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- tapOn: "Kadıköy ile başla"
+- extendedWaitUntil:
+    visible: "Sana özel"
+    timeout: 45000
+- tapOn: ".*Benim için seç.*"
+- assertVisible: "Senin için seçtim"
+- assertVisible: ".*(dk yürüme|km uzakta).*"
+- tapOn: "Başka bir mekan öner"
+- assertVisible: ".*· 2/.*"
+- tapOn:
+    text: "Kapat"
+- assertNotVisible: "Senin için seçtim"
