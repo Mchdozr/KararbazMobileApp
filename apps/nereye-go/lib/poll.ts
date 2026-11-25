@@ -1,4 +1,5 @@
 // Arkadaşlarla karar ver: kısa liste, sonuçlar, paylaşım metni. React Native içe aktarmaz: node ile test edilir.
+import { t } from './i18n.ts';
 import { rankForDecision } from './decide.ts';
 import type { VenueCard } from './types.ts';
 
@@ -55,22 +56,22 @@ export function resultRows(poll: Poll): ResultRow[] {
 }
 
 export function pollShareText(poll: Poll): string {
-  const lines = [`${poll.title} — oyunu ver:`, poll.options.map((o) => o.name).join(' · ')];
+  const lines = [t('{title} — oyunu ver:', { title: poll.title }), poll.options.map((o) => o.name).join(' · ')];
   if (poll.webUrl) {
     lines.push(poll.webUrl);
   }
-  lines.push(`Uygulamada: ${poll.appUrl}`);
+  lines.push(t('Uygulamada: {url}', { url: poll.appUrl }));
   return lines.join('\n');
 }
 
 export function timeLeft(expiresAt: string, now = Date.now()): string {
   const minutes = Math.floor((Date.parse(expiresAt) - now) / 60_000);
   if (minutes <= 0) {
-    return 'Sona erdi';
+    return t('Sona erdi');
   }
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h > 0 ? `${h} sa ${m} dk kaldı` : `${m} dk kaldı`;
+  return h > 0 ? t('{h} sa {m} dk kaldı', { h, m }) : t('{m} dk kaldı', { m });
 }
 
 export function hexKey(bytes: Uint8Array): string {

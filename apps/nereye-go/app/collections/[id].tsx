@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { ListItemRow } from '@/components/ListItemRow';
@@ -64,15 +65,15 @@ export default function CollectionScreen() {
   }
 
   function confirmDelete() {
-    Alert.alert('Listeyi sil', `"${list?.name}" ve içindeki mekan kayıtları silinsin mi? Paylaşım bağlantısı da çalışmaz olur.`, [
-      { text: 'Vazgeç', style: 'cancel' },
+    Alert.alert('Listeyi sil', t('"{p0}" ve içindeki mekan kayıtları silinsin mi? Paylaşım bağlantısı da çalışmaz olur.', { p0: list?.name ?? '' }), [
+      { text: t('Vazgeç'), style: 'cancel' },
       {
-        text: 'Sil',
+        text: t('Sil'),
         style: 'destructive',
         onPress: () =>
           void run('delete', async () => {
             await api.deleteCollection(id!);
-            toast.success('Liste silindi');
+            toast.success(t('Liste silindi'));
             router.back();
           }),
       },
@@ -80,11 +81,11 @@ export default function CollectionScreen() {
   }
 
   if (error && !list) {
-    return <EmptyState icon="bookmarks-outline" title="Liste açılamadı" body={error} action="Tekrar dene" onAction={() => void load()} />;
+    return <EmptyState icon="bookmarks-outline" title={t('Liste açılamadı')} body={error} action={t('Tekrar dene')} onAction={() => void load()} />;
   }
   if (!list) {
     return (
-      <View style={[styles.bg, styles.wrap]} accessibilityLabel="Liste yükleniyor">
+      <View style={[styles.bg, styles.wrap]} accessibilityLabel={t('Liste yükleniyor')}>
         <Skeleton height={28} width="60%" />
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} height={84} radius={radii.md} style={{ marginTop: 10 }} />
@@ -98,10 +99,10 @@ export default function CollectionScreen() {
     <ScrollView style={styles.bg} contentContainerStyle={[styles.wrap, { paddingBottom: insets.bottom + 32 }]} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{list.name}</Text>
       <Text style={styles.sub}>
-        {list.items.length} mekan{list.share ? ' · bağlantıyla paylaşılıyor' : ''}
+        {list.items.length} mekan{list.share ? t(' · bağlantıyla paylaşılıyor') : ''}
       </Text>
       {list.items.length === 0 ? (
-        <Text style={styles.empty}>Liste boş. Mekan sayfasındaki "Listeye ekle" ile doldur.</Text>
+        <Text style={styles.empty}>{t('Liste boş. Mekan sayfasındaki "Listeye ekle" ile doldur.')}</Text>
       ) : (
         list.items.map((item) => (
           <ListItemRow
@@ -111,7 +112,7 @@ export default function CollectionScreen() {
               void run(`rm:${item.placeId}`, async () => {
                 await api.removeFromCollection(list.id, item.placeId);
                 setList((prev) => (prev ? { ...prev, items: prev.items.filter((i) => i.placeId !== item.placeId) } : prev));
-                toast.info(`${item.name} listeden çıkarıldı`);
+                toast.info(t('{p0} listeden çıkarıldı', { p0: item.name }));
               })
             }
           />
@@ -119,35 +120,35 @@ export default function CollectionScreen() {
       )}
 
       <View style={styles.actions}>
-        <Button label="Bağlantıyla paylaş" icon="share-outline" loading={busy === 'share'} disabled={list.items.length === 0} onPress={() => void share()} />
+        <Button label={t('Bağlantıyla paylaş')} icon="share-outline" loading={busy === 'share'} disabled={list.items.length === 0} onPress={() => void share()} />
         {list.share ? (
           <Button
-            label="Paylaşımı durdur"
+            label={t('Paylaşımı durdur')}
             variant="secondary"
             loading={busy === 'unshare'}
             onPress={() =>
               void run('unshare', async () => {
                 await api.unshareCollection(list.id);
                 setList((prev) => (prev ? { ...prev, share: null } : prev));
-                toast.info('Bağlantı artık çalışmıyor');
+                toast.info(t('Bağlantı artık çalışmıyor'));
               })
             }
           />
         ) : null}
-        <TextField label="Liste adı" value={name} onChangeText={setName} maxLength={LIST_NAME_MAX} />
+        <TextField label={t('Liste adı')} value={name} onChangeText={setName} maxLength={LIST_NAME_MAX} />
         <Button
-          label="Adı kaydet"
+          label={t('Adı kaydet')}
           variant="outline"
           loading={busy === 'rename'}
           disabled={!renamed || renamed === list.name}
           onPress={() =>
             void run('rename', async () => {
               setList(await api.renameCollection(list.id, renamed!));
-              toast.success('Liste adı güncellendi');
+              toast.success(t('Liste adı güncellendi'));
             })
           }
         />
-        <Button label="Listeyi sil" variant="danger" icon="trash-outline" loading={busy === 'delete'} onPress={confirmDelete} />
+        <Button label={t('Listeyi sil')} variant="danger" icon="trash-outline" loading={busy === 'delete'} onPress={confirmDelete} />
       </View>
     </ScrollView>
   );

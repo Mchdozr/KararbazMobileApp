@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { reportError } from '@/lib/crash';
@@ -24,14 +25,14 @@ export class AppErrorBoundary extends Component<Props, State> {
     }
     return (
       <View style={styles.wrap}>
-        <Text style={styles.h}>Bir şey kaçtı</Text>
-        <Text style={styles.p}>Ekranı yenile, konum veya niyeti değiştir.</Text>
+        <Text style={styles.h}>{t('Bir şey kaçtı')}</Text>
+        <Text style={styles.p}>{t('Ekranı yenile, konum veya niyeti değiştir.')}</Text>
         <Pressable
           style={styles.btn}
           onPress={() => this.setState({ error: null })}
           accessibilityRole="button"
-          accessibilityLabel="Yeniden dene">
-          <Text style={styles.btnText}>Yeniden dene</Text>
+          accessibilityLabel={t('Yeniden dene')}>
+          <Text style={styles.btnText}>{t('Yeniden dene')}</Text>
         </Pressable>
       </View>
     );

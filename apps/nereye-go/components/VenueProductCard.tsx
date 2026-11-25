@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { CARD_IMAGE_PT } from '@/lib/media-width';
 import { VenueImage } from '@/components/VenueImage';
@@ -80,7 +81,7 @@ export const VenueProductCard = memo(function VenueProductCard({
         }}
         onPress={() => router.push({ pathname: '/venue/[id]', params: { id: card.placeId, name: card.name, photo: card.photoUrl ?? card.photoReference ?? '' } })}
         accessibilityRole="button"
-        accessibilityHint="Mekan detayını açar"
+        accessibilityHint={t('Mekan detayını açar')}
         accessibilityLabel={a11yLabel}>
         <View style={[styles.photo, { height: photoH }]}>
           <VenueImage
@@ -96,7 +97,7 @@ export const VenueProductCard = memo(function VenueProductCard({
           />
           <LinearGradient colors={gradients.photo} style={styles.fade} />
           <View style={styles.badges}>
-            {card.kind === 'Sponsored' ? <Text style={[styles.pill, styles.boost]}>Öne çıkan</Text> : null}
+            {card.kind === 'Sponsored' ? <Text style={[styles.pill, styles.boost]}>{t('Öne çıkan')}</Text> : null}
             {card.distanceMeters >= 0 ? <Text style={styles.pill}>{formatDistance(card.distanceMeters)}</Text> : null}
             {hours ? (
               <Text style={[styles.pill, hours.tone === 'open' ? styles.open : hours.tone === 'soon' ? styles.soon : styles.closed]}>
@@ -116,7 +117,7 @@ export const VenueProductCard = memo(function VenueProductCard({
               {rated.count ? <Text style={styles.count}>({rated.count})</Text> : null}
             </View>
           ) : (
-            <Text style={styles.fresh}>Yeni</Text>
+            <Text style={styles.fresh}>{t('Yeni')}</Text>
           )}
           {meta ? (
             <Text numberOfLines={1} style={styles.meta}>

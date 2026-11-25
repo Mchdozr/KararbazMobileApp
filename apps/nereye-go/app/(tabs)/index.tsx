@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { SearchingOverlay } from '@/components/SearchingOverlay';
@@ -148,7 +149,7 @@ export default function Home() {
           return;
         }
         if (cached) {
-          setOffline('Çevrimdışısın. Son yüklenen liste gösteriliyor; bilgiler güncel olmayabilir.');
+          setOffline(t('Çevrimdışısın. Son yüklenen liste gösteriliyor; bilgiler güncel olmayabilir.'));
           setHasMore(false);
           return;
         }
@@ -275,11 +276,11 @@ export default function Home() {
                   goDiscover(filters.intent);
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="Akşam oldu, şu an açık yerleri göster">
+                accessibilityLabel={t('Akşam oldu, şu an açık yerleri göster')}>
                 <View style={styles.eveIcon}>
                   <Ionicons name="moon" size={16} color={colors.accent} />
                 </View>
-                <Text style={styles.eveText}>Akşam oldu — şu an açık yerlere bak</Text>
+                <Text style={styles.eveText}>{t('Akşam oldu — şu an açık yerlere bak')}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.white} />
               </Pressable>
             ) : null}
@@ -292,13 +293,13 @@ export default function Home() {
                   setDeciding(true);
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="Benim için seç: şu an için en uygun mekanı gerekçeleriyle göster">
+                accessibilityLabel={t('Benim için seç: şu an için en uygun mekanı gerekçeleriyle göster')}>
                 <View style={styles.decideIcon}>
                   <Ionicons name="sparkles" size={18} color={colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.decideTitle}>Benim için seç</Text>
-                  <Text style={styles.decideSub}>Kararsız mısın? Şu an için en iyisini seçeyim.</Text>
+                  <Text style={styles.decideTitle}>{t('Benim için seç')}</Text>
+                  <Text style={styles.decideSub}>{t('Kararsız mısın? Şu an için en iyisini seçeyim.')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.onCoral} />
               </Pressable>
@@ -316,9 +317,9 @@ export default function Home() {
             ) : null}
             {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
             {first ? (
-              <View accessibilityLabel="Öneriler yükleniyor">
+              <View accessibilityLabel={t('Öneriler yükleniyor')}>
                 <View style={styles.feat}>
-                  <Text style={styles.gridTitle}>Sana özel</Text>
+                  <Text style={styles.gridTitle}>{t('Sana özel')}</Text>
                   <VenueCardSkeleton photoHeight={210} />
                 </View>
                 <View style={styles.skelRow}>
@@ -328,20 +329,20 @@ export default function Home() {
             ) : null}
             {featured ? (
               <View style={styles.feat}>
-                <Text style={styles.gridTitle}>Sana özel</Text>
+                <Text style={styles.gridTitle}>{t('Sana özel')}</Text>
                 <VenueProductCard card={featured} featured intent={filters.intent} loadPhoto />
               </View>
             ) : null}
             <HorizontalVenueRow
               title={`${intentLabel(filters.intent)} · ${filters.label}`}
-              subtitle="Kısa liste"
+              subtitle={t('Kısa liste')}
               items={special.slice(featured ? 1 : 0)}
               onSeeAll={() => void expand()}
               intent={filters.intent}
             />
             <HorizontalVenueRow
-              title="Şu an açık"
-              subtitle="Kapıya git, otur"
+              title={t('Şu an açık')}
+              subtitle={t('Kapıya git, otur')}
               items={open}
               onSeeAll={() => {
                 filters.setOpenNow(true);
@@ -353,22 +354,22 @@ export default function Home() {
               <EmptyState
                 icon="map-outline"
                 title={emptyNearby(filters.intent, filters.label)}
-                action="Yarıçapı büyüt"
+                action={t('Yarıçapı büyüt')}
                 onAction={() => {
                   filters.setRadius(filters.radiusMeters * 2);
                 }}
-                secondary="Konumu değiştir"
+                secondary={t('Konumu değiştir')}
                 onSecondary={() => router.push('/places')}
               />
             ) : null}
             <HorizontalVenueRow
-              title="Kaydettiklerin"
+              title={t('Kaydettiklerin')}
               items={favorites.cards}
               onSeeAll={() => router.push('/favorites')}
               compact
             />
-            <HorizontalVenueRow title="Son baktıkların" items={recentCards} compact />
-            {showAll && organic.length > 0 ? <Text style={[styles.gridTitle, styles.listTitle]}>Yakındakiler</Text> : null}
+            <HorizontalVenueRow title={t('Son baktıkların')} items={recentCards} compact />
+            {showAll && organic.length > 0 ? <Text style={[styles.gridTitle, styles.listTitle]}>{t('Yakındakiler')}</Text> : null}
           </>
         }
         ListFooterComponent={
@@ -378,9 +379,9 @@ export default function Home() {
               onPress={() => void expand()}
               disabled={loadingMore}
               accessibilityRole="button"
-              accessibilityLabel={`Daha fazla ${intentLabel(filters.intent).toLowerCase()} göster`}>
+              accessibilityLabel={t('Daha fazla {p0} göster', { p0: intentLabel(filters.intent).toLowerCase() })}>
               <Text style={styles.moreText}>
-                {loadingMore ? 'Yükleniyor…' : `Daha fazla ${intentLabel(filters.intent).toLowerCase()}`}
+                {loadingMore ? t('Yükleniyor…') : t('Daha fazla {p0}', { p0: intentLabel(filters.intent).toLowerCase() })}
               </Text>
             </Pressable>
           ) : undefined

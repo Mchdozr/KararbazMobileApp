@@ -53,7 +53,7 @@ test('resending verification never claims success when nothing was sent', () => 
   const send = account.slice(account.indexOf('async function sendVerification'), account.indexOf('async function saveName'));
   assert.ok(send.indexOf('res.alreadyVerified') < send.indexOf("toast.success('Doğrulama bağlantısı"));
   assert.match(send, /if \(!res\.sent\)/);
-  assert.match(read('../app/(tabs)/profile.tsx'), /emailVerified === false \? 'E-postanı doğrula'/);
+  assert.match(read('../app/(tabs)/profile.tsx'), /emailVerified === false \? t\('E-postanı doğrula'\)/);
 });
 
 test('review screen does not offer photos or submit to an unverified account, and reuses uploaded urls', () => {

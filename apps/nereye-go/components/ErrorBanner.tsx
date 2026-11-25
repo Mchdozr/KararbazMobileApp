@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { colors, fonts } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,8 +9,8 @@ export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: (
       <Ionicons name="cloud-offline-outline" size={20} color={colors.danger} />
       <Text style={styles.text}>{message}</Text>
       {onRetry ? (
-        <Pressable onPress={onRetry} style={styles.retry} accessibilityRole="button" accessibilityLabel="Tekrar dene" hitSlop={8}>
-          <Text style={styles.retryText}>Tekrar dene</Text>
+        <Pressable onPress={onRetry} style={styles.retry} accessibilityRole="button" accessibilityLabel={t('Tekrar dene')} hitSlop={8}>
+          <Text style={styles.retryText}>{t('Tekrar dene')}</Text>
         </Pressable>
       ) : null}
     </View>

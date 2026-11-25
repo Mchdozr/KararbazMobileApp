@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
@@ -62,7 +63,7 @@ export default function Collections() {
   }
 
   if (error && !lists) {
-    return <EmptyState icon="bookmarks-outline" title="Listeler açılamadı" body={error} action="Tekrar dene" onAction={() => void load()} />;
+    return <EmptyState icon="bookmarks-outline" title={t('Listeler açılamadı')} body={error} action={t('Tekrar dene')} onAction={() => void load()} />;
   }
 
   return (
@@ -70,7 +71,7 @@ export default function Collections() {
       {lists === null ? (
         [0, 1, 2].map((i) => <Skeleton key={i} height={84} radius={radii.md} style={{ marginTop: 10 }} />)
       ) : lists.length === 0 ? (
-        <Text style={styles.empty}>Henüz listen yok. "Kahve rotam", "Hafta sonu" gibi bir liste oluştur; mekan sayfasından "Listeye ekle" ile doldur.</Text>
+        <Text style={styles.empty}>{t('Henüz listen yok. "Kahve rotam", "Hafta sonu" gibi bir liste oluştur; mekan sayfasından "Listeye ekle" ile doldur.')}</Text>
       ) : (
         lists.map((l) => (
           <Pressable
@@ -78,7 +79,7 @@ export default function Collections() {
             style={styles.card}
             onPress={() => router.push({ pathname: '/collections/[id]', params: { id: l.id } })}
             accessibilityRole="button"
-            accessibilityLabel={`${l.name}, ${l.count} mekan${l.shared ? ', paylaşılıyor' : ''}`}>
+            accessibilityLabel={t('{p0}, {p1} mekan{p2}', { p0: l.name, p1: l.count, p2: l.shared ? t(', paylaşılıyor') : '' })}>
             <View style={styles.cover}>
               {l.coverUrl ? (
                 <VenueImage placeId={`list:${l.id}`} photoUrl={l.coverUrl} name={l.name} style={StyleSheet.absoluteFill} radius={radii.sm} widthPt={72} />
@@ -91,7 +92,7 @@ export default function Collections() {
                 {l.name}
               </Text>
               <Text style={styles.sub}>
-                {l.count} mekan{l.shared ? ' · paylaşılıyor' : ''}
+                {l.count} mekan{l.shared ? t(' · paylaşılıyor') : ''}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
@@ -99,8 +100,8 @@ export default function Collections() {
         ))
       )}
       <View style={styles.newBox}>
-        <TextField label="Yeni liste" value={name} onChangeText={setName} maxLength={LIST_NAME_MAX} placeholder="Kahve rotam" />
-        <Button label="Liste oluştur" icon="add" loading={busy} disabled={!cleanListName(name)} onPress={() => void create()} />
+        <TextField label={t('Yeni liste')} value={name} onChangeText={setName} maxLength={LIST_NAME_MAX} placeholder={t('Kahve rotam')} />
+        <Button label={t('Liste oluştur')} icon="add" loading={busy} disabled={!cleanListName(name)} onPress={() => void create()} />
       </View>
     </ScrollView>
   );

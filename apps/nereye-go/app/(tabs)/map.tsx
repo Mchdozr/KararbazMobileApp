@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { FilterSheet } from '@/components/FilterSheet';
 import { SearchingOverlay } from '@/components/SearchingOverlay';
@@ -197,10 +198,10 @@ export default function MapScreen() {
       if (fix) {
         filters.setLoc(fix.lat, fix.lng, fix.label, false);
       } else {
-        toast.info('Konum izni kapalı. Semtini listeden seçebilirsin.');
+        toast.info(t('Konum izni kapalı. Semtini listeden seçebilirsin.'));
       }
     } catch {
-      toast.error('Konum alınamadı. Tekrar dene.');
+      toast.error(t('Konum alınamadı. Tekrar dene.'));
     } finally {
       setBusy(false);
     }
@@ -209,7 +210,7 @@ export default function MapScreen() {
   async function searchHere() {
     setPicked(null);
     const label = await reverseLabel(region.latitude, region.longitude);
-    filters.setLoc(region.latitude, region.longitude, label === 'Konumun' ? 'Harita merkezi' : label, true);
+    filters.setLoc(region.latitude, region.longitude, label === 'Konumun' ? t('Harita merkezi') : label, true);
   }
 
   function pick(card: VenueCard | null) {
@@ -266,7 +267,7 @@ export default function MapScreen() {
             style={styles.chip}
             onPress={() => router.push('/places')}
             accessibilityRole="button"
-            accessibilityLabel={`Konum ${filters.label}, değiştir`}>
+            accessibilityLabel={t('Konum {p0}, değiştir', { p0: filters.label })}>
             <Ionicons name="location" size={16} color={colors.coral} />
             <Text style={styles.chipText} numberOfLines={1}>
               {filters.label}
@@ -278,7 +279,7 @@ export default function MapScreen() {
             onPress={() => void here()}
             disabled={busy}
             accessibilityRole="button"
-            accessibilityLabel="Konumumu kullan">
+            accessibilityLabel={t('Konumumu kullan')}>
             {busy ? <ActivityIndicator size="small" color={colors.coral} /> : <Ionicons name="navigate" size={18} color={colors.coral} />}
           </Pressable>
           <Pressable
@@ -308,9 +309,9 @@ export default function MapScreen() {
           })}
         </ScrollView>
         {canSearchHere ? (
-          <Pressable style={styles.searchHere} onPress={() => void searchHere()} accessibilityRole="button" accessibilityLabel="Bu bölgede ara">
+          <Pressable style={styles.searchHere} onPress={() => void searchHere()} accessibilityRole="button" accessibilityLabel={t('Bu bölgede ara')}>
             <Ionicons name="refresh" size={14} color={colors.onAccent} />
-            <Text style={styles.searchHereText}>Bu bölgede ara</Text>
+            <Text style={styles.searchHereText}>{t('Bu bölgede ara')}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -320,7 +321,7 @@ export default function MapScreen() {
           style={[styles.round, styles.recenter, { bottom: SHEET + 16 }]}
           onPress={recenter}
           accessibilityRole="button"
-          accessibilityLabel="Arama noktasına dön">
+          accessibilityLabel={t('Arama noktasına dön')}>
           <Ionicons name="locate" size={20} color={colors.coral} />
         </Pressable>
       ) : null}
@@ -333,12 +334,12 @@ export default function MapScreen() {
               {picked ? picked.name : `${intentLabel(filters.intent)} · ${filters.label}`}
             </Text>
             <Text style={styles.sheetSub}>
-              {picked ? 'Haritada seçili' : loading ? 'Aranıyor…' : `${visible.length} yer bu görünümde`}
+              {picked ? t('Haritada seçili') : loading ? t('Aranıyor…') : t('{p0} yer bu görünümde', { p0: visible.length })}
             </Text>
           </View>
           {picked ? (
-            <Pressable style={styles.all} onPress={() => setPicked(null)} accessibilityRole="button" accessibilityLabel="Tüm mekanları göster">
-              <Text style={styles.allText}>Tümü</Text>
+            <Pressable style={styles.all} onPress={() => setPicked(null)} accessibilityRole="button" accessibilityLabel={t('Tüm mekanları göster')}>
+              <Text style={styles.allText}>{t('Tümü')}</Text>
             </Pressable>
           ) : null}
         </View>

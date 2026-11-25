@@ -1,18 +1,20 @@
+import { t } from './i18n.ts';
+
 export function timeGreeting() {
   const h = new Date().getHours();
   if (h < 5) {
-    return 'Gece yarısı nereye?';
+    return t('Gece yarısı nereye?');
   }
   if (h < 12) {
-    return 'Günaydın, nereye gidelim?';
+    return t('Günaydın, nereye gidelim?');
   }
   if (h < 17) {
-    return 'İyi günler — bir mola?';
+    return t('İyi günler — bir mola?');
   }
   if (h < 21) {
-    return 'İyi akşamlar, bu akşam nereye?';
+    return t('İyi akşamlar, bu akşam nereye?');
   }
-  return 'Gece için sakin bir yer?';
+  return t('Gece için sakin bir yer?');
 }
 
 export function isEvening() {
@@ -37,7 +39,7 @@ export function searchNotes(intent: string) {
 
 export function noteFor(intent: string, tick: number) {
   const list = searchNotes(intent);
-  return list[tick % list.length];
+  return t(list[tick % list.length]);
 }
 
 export const QUICK_PLACES = [

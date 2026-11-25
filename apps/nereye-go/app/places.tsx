@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { LocationPicker } from '@/components/LocationPicker';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { colors } from '@/lib/theme';
@@ -9,7 +10,7 @@ export default function PlacesScreen() {
 
   return (
     <View style={styles.bg}>
-      <ScreenHeader back={router.canGoBack()} title="Neredesin?" subtitle="Öneriler bu konuma göre sıralanır." />
+      <ScreenHeader back={router.canGoBack()} title={t('Neredesin?')} subtitle={t('Öneriler bu konuma göre sıralanır.')} />
       <View style={styles.body}>
         <LocationPicker
           onPicked={() => {

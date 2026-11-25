@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { BrandLogo } from '@/components/BrandLogo';
 import { LocationPicker } from '@/components/LocationPicker';
 import { api } from '@/lib/api';
@@ -72,14 +73,14 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
             <View style={styles.logoTile}>
               <BrandLogo size={34} />
             </View>
-            <Text style={styles.brandName}>Nereye</Text>
+            <Text style={styles.brandName}>{t('Nereye')}</Text>
           </View>
           <View style={styles.locRow}>
             <Pressable
               style={styles.loc}
               onPress={() => setSheet(true)}
               accessibilityRole="button"
-              accessibilityLabel={`Konum ${filters.label}, değiştir`}>
+              accessibilityLabel={t('Konum {p0}, değiştir', { p0: filters.label })}>
               <Ionicons name="location" size={14} color={colors.white} />
               <Text style={styles.locText} numberOfLines={1}>
                 {filters.label}
@@ -102,15 +103,15 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
                         void api.consent('location', true);
                       }
                     } else {
-                      toast.info('Konum izni kapalı. Semtini listeden seçebilirsin.');
+                      toast.info(t('Konum izni kapalı. Semtini listeden seçebilirsin.'));
                       setSheet(true);
                     }
                   })
-                  .catch(() => toast.error('Konum alınamadı. Tekrar dene.'))
+                  .catch(() => toast.error(t('Konum alınamadı. Tekrar dene.')))
                   .finally(() => setLocating(false));
               }}
               accessibilityRole="button"
-              accessibilityLabel="Konumumu kullan"
+              accessibilityLabel={t('Konumumu kullan')}
               hitSlop={8}>
               {locating ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="navigate" size={16} color={colors.white} />}
             </Pressable>
@@ -143,16 +144,16 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
           <Ionicons name="search" size={18} color={colors.coral} />
           <TextInput
             style={styles.input}
-            placeholder="Mekan, semt ya da tür ara"
+            placeholder={t('Mekan, semt ya da tür ara')}
             placeholderTextColor={colors.muted}
             value={q}
             onChangeText={setQ}
             onSubmitEditing={() => goSearch()}
             returnKeyType="search"
-            accessibilityLabel="Mekan ara"
+            accessibilityLabel={t('Mekan ara')}
           />
           {q ? (
-            <Pressable onPress={() => setQ('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Aramayı temizle">
+            <Pressable onPress={() => setQ('')} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('Aramayı temizle')}>
               <Ionicons name="close-circle" size={18} color={colors.muted} />
             </Pressable>
           ) : (
@@ -160,7 +161,7 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
               style={styles.go}
               onPress={() => goSearch()}
               accessibilityRole="button"
-              accessibilityLabel="Aramaya git">
+              accessibilityLabel={t('Aramaya git')}>
               <Ionicons name="arrow-forward" size={16} color={colors.onCoral} />
             </Pressable>
           )}
@@ -170,8 +171,8 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
       <Modal visible={sheet} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSheet(false)}>
         <View style={[styles.sheet, { paddingTop: 16 }]}>
           <View style={styles.sheetHead}>
-            <Text style={styles.sheetTitle}>Neredesin?</Text>
-            <Pressable style={styles.close} onPress={() => setSheet(false)} accessibilityRole="button" accessibilityLabel="Kapat">
+            <Text style={styles.sheetTitle}>{t('Neredesin?')}</Text>
+            <Pressable style={styles.close} onPress={() => setSheet(false)} accessibilityRole="button" accessibilityLabel={t('Kapat')}>
               <Ionicons name="close" size={20} color={colors.ink} />
             </Pressable>
           </View>

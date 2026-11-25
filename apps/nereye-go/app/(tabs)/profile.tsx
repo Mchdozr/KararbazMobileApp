@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { initialsOf } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { RadiusPicker } from '@/components/RadiusPicker';
@@ -16,6 +17,8 @@ import { INTENT_PHOTOS } from '@/lib/photos';
 import { useSession } from '@/lib/session';
 import { colors, fonts, gradients, setThemeMode, shadows, themeMode } from '@/lib/theme';
 import type { ThemeMode } from '@/lib/palette';
+import type { LangPref } from '@/lib/i18n';
+import { languagePref, setLanguagePref } from '@/lib/locale';
 import { isEvening } from '@/lib/copy';
 import type { Preferences, Profile as ProfileInfo } from '@/lib/types';
 import Constants from 'expo-constants';
@@ -33,6 +36,13 @@ const THEME_CHOICES: [ThemeMode, string][] = [
   ['system', 'Sistem'],
   ['light', 'Açık'],
   ['dark', 'Koyu'],
+];
+
+// Dil adları her dilde kendi adıyla gösterilir.
+const LANG_CHOICES: [LangPref, string][] = [
+  ['system', 'Sistem'],
+  ['tr', 'Türkçe'],
+  ['en', 'English'],
 ];
 
 const EMPTY: Preferences = { defaultRadiusMeters: 1500, intents: [], vibes: [] };
@@ -79,11 +89,19 @@ export default function Profile() {
   const favorites = useFavorites();
   const analytics = useAnalyticsConsent();
   const [mode, setMode] = useState<ThemeMode>(themeMode);
+  const [lang, setLang] = useState<LangPref>(languagePref);
+
+  async function chooseLanguage(next: LangPref) {
+    setLang(next);
+    if (await setLanguagePref(next)) {
+      toast.info(t('Dil, uygulamayı yeniden açtığında değişecek.'));
+    }
+  }
 
   async function chooseTheme(next: ThemeMode) {
     setMode(next);
     if (await setThemeMode(next)) {
-      toast.info('Görünüm, uygulamayı yeniden açtığında değişecek.');
+      toast.info(t('Görünüm, uygulamayı yeniden açtığında değişecek.'));
     }
   }
   const [pushOn, setPushOn] = useState(false);
@@ -98,17 +116,17 @@ export default function Profile() {
       if (!on) {
         await disablePush();
         setPushOn(false);
-        toast.info('Etkinlik hatırlatmaları kapandı');
+        toast.info(t('Etkinlik hatırlatmaları kapandı'));
         return;
       }
       const result = await enablePush();
       if (result === 'ok') {
         setPushOn(true);
-        toast.success('Kaydettiğin mekanlardaki etkinlikleri hatırlatacağız');
+        toast.success(t('Kaydettiğin mekanlardaki etkinlikleri hatırlatacağız'));
       } else if (result === 'denied') {
-        toast.error('Bildirim izni verilmedi. Telefon ayarlarından açabilirsin.');
+        toast.error(t('Bildirim izni verilmedi. Telefon ayarlarından açabilirsin.'));
       } else {
-        toast.error('Bildirimler şu an açılamadı. Biraz sonra tekrar dene.');
+        toast.error(t('Bildirimler şu an açılamadı. Biraz sonra tekrar dene.'));
       }
     } finally {
       setPushBusy(false);
@@ -139,7 +157,7 @@ export default function Profile() {
   );
 
   const name = session?.displayName ?? 'Gezgin';
-  const role = session?.roles.includes('Admin') ? 'Admin' : session?.roles.includes('VenueOwner') ? 'İşletme' : 'Gezgin';
+  const role = session?.roles.includes('Admin') ? 'Admin' : session?.roles.includes('VenueOwner') ? t('İşletme') : 'Gezgin';
   const selectedCount = (prefs?.intents.length ?? 0) + (prefs?.vibes.length ?? 0);
 
   const radiusLabel = useMemo(
@@ -180,12 +198,12 @@ export default function Profile() {
         }
         setSavedOk(true);
         haptic.success();
-        toast.success('Tercihlerin bu cihazda kaydedildi');
+        toast.success(t('Tercihlerin bu cihazda kaydedildi'));
         return;
       }
       const saved = await api.savePreferences(prefs);
       if (!saved) {
-        toast.error('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.');
+        toast.error(t('Kaydedilemedi. Bağlantını kontrol edip tekrar dene.'));
         return;
       }
       setPrefs(saved);
@@ -196,7 +214,7 @@ export default function Profile() {
       }
       setSavedOk(true);
       haptic.success();
-      toast.success('Tercihlerin kaydedildi');
+      toast.success(t('Tercihlerin kaydedildi'));
     } finally {
       setSaving(false);
     }
@@ -225,9 +243,9 @@ export default function Profile() {
       if (res?.avatarUrl) {
         // Dosya adı aynı kalır; önbelleği aşmak için sürüm ekle.
         await patchSession({ avatarUrl: `${res.avatarUrl.split('?')[0]}?v=${Date.now()}` });
-        toast.success('Profil fotoğrafın güncellendi');
+        toast.success(t('Profil fotoğrafın güncellendi'));
       } else {
-        toast.error('Fotoğraf yüklenemedi. Daha küçük bir fotoğraf dene.');
+        toast.error(t('Fotoğraf yüklenemedi. Daha küçük bir fotoğraf dene.'));
       }
     } catch (e) {
       toast.error(friendlyError(e));
@@ -237,13 +255,13 @@ export default function Profile() {
   }
 
   function confirmSignOut() {
-    Alert.alert('Çıkış yap', 'Bu cihazdaki oturumun kapatılacak.', [
-      { text: 'Vazgeç', style: 'cancel' },
+    Alert.alert('Çıkış yap', t('Bu cihazdaki oturumun kapatılacak.'), [
+      { text: t('Vazgeç'), style: 'cancel' },
       {
-        text: 'Çıkış yap',
+        text: t('Çıkış yap'),
         style: 'destructive',
         onPress: () => {
-          void signOut().then(() => toast.info('Çıkış yapıldı'));
+          void signOut().then(() => toast.info(t('Çıkış yapıldı')));
         },
       },
     ]);
@@ -255,8 +273,8 @@ export default function Profile() {
       {/* Diğer ekranlarla aynı yeşil degrade üst alan. */}
       <LinearGradient colors={isEvening() ? gradients.evening : gradients.hero} style={styles.hero}>
         <View style={[styles.heroCopy, { paddingTop: insets.top + 12 }]}>
-          <Text style={styles.kicker}>Profil</Text>
-          <Text style={styles.heroLine}>Karar tarzın.</Text>
+          <Text style={styles.kicker}>{t('Profil')}</Text>
+          <Text style={styles.heroLine}>{t('Karar tarzın.')}</Text>
         </View>
       </LinearGradient>
 
@@ -266,7 +284,7 @@ export default function Profile() {
           onPress={() => void pickAvatar()}
           disabled={uploading}
           accessibilityRole="button"
-          accessibilityLabel={session ? 'Profil fotoğrafını değiştir' : 'Giriş yap'}>
+          accessibilityLabel={session ? t('Profil fotoğrafını değiştir') : t('Giriş yap')}>
           {session?.avatarUrl ? (
             <Image source={{ uri: mediaUrl(session.avatarUrl) ?? undefined }} style={styles.avatarImg} contentFit="cover" />
           ) : (
@@ -283,7 +301,7 @@ export default function Profile() {
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{role}</Text>
               </View>
-              <Pressable style={styles.loc} onPress={() => router.push('/places')} accessibilityRole="button" accessibilityLabel={`Konum ${filters.label}, değiştir`}>
+              <Pressable style={styles.loc} onPress={() => router.push('/places')} accessibilityRole="button" accessibilityLabel={t('Konum {p0}, değiştir', { p0: filters.label })}>
                 <Ionicons name="location" size={13} color={colors.coral} />
                 <Text style={styles.locText}>{filters.label}</Text>
                 <Ionicons name="chevron-down" size={13} color={colors.ink} />
@@ -292,7 +310,7 @@ export default function Profile() {
             <View style={styles.stats}>
               {(
                 [
-                  ['Kayıt', info?.favoriteCount ?? favorites.cards.length, '/favorites'],
+                  [t('Kayıt'), info?.favoriteCount ?? favorites.cards.length, '/favorites'],
                   ['Yorum', info?.reviewCount ?? 0, '/my-reviews'],
                   ['Konum', savedPlaces.items.length, '/places'],
                 ] as const
@@ -311,17 +329,17 @@ export default function Profile() {
           </>
         ) : (
           <>
-            <Text style={styles.name}>Merhaba, gezgin</Text>
-            <Text style={styles.guest}>Giriş yap; kaydettiklerin, yorumların ve tercihlerin her cihazında seninle olsun.</Text>
-            <Button label="Giriş yap ya da kayıt ol" onPress={() => router.push('/auth')} style={styles.guestBtn} />
+            <Text style={styles.name}>{t('Merhaba, gezgin')}</Text>
+            <Text style={styles.guest}>{t('Giriş yap; kaydettiklerin, yorumların ve tercihlerin her cihazında seninle olsun.')}</Text>
+            <Button label={t('Giriş yap ya da kayıt ol')} onPress={() => router.push('/auth')} style={styles.guestBtn} />
           </>
         )}
       </View>
 
       {savedPlaces.items.length > 0 ? (
         <View style={styles.card}>
-          <Text style={styles.sectionKicker}>Yerlerim</Text>
-          <Text style={styles.sectionTitle}>Kayıtlı konumlar</Text>
+          <Text style={styles.sectionKicker}>{t('Yerlerim')}</Text>
+          <Text style={styles.sectionTitle}>{t('Kayıtlı konumlar')}</Text>
           <View style={styles.chips}>
             {savedPlaces.items.map((p) => (
               <Pressable
@@ -335,23 +353,23 @@ export default function Profile() {
               </Pressable>
             ))}
             <Pressable style={styles.chip} onPress={() => router.push('/places')}>
-              <Text style={styles.chipOffText}>+ Ekle</Text>
+              <Text style={styles.chipOffText}>{t('+ Ekle')}</Text>
             </Pressable>
           </View>
         </View>
       ) : (
         <Pressable style={[styles.card, { marginTop: 16 }]} onPress={() => router.push('/places')}>
-          <Text style={styles.sectionKicker}>Yerlerim</Text>
-          <Text style={styles.sectionTitle}>Ev, iş, mahalle</Text>
-          <Text style={styles.meta}>Kaydet, tek dokunuşla geç.</Text>
+          <Text style={styles.sectionKicker}>{t('Yerlerim')}</Text>
+          <Text style={styles.sectionTitle}>{t('Ev, iş, mahalle')}</Text>
+          <Text style={styles.meta}>{t('Kaydet, tek dokunuşla geç.')}</Text>
         </Pressable>
       )}
 
       {prefs ? (
         <>
           <View style={styles.card}>
-            <Text style={styles.sectionKicker}>Niyet</Text>
-            <Text style={styles.sectionTitle}>Ne arıyorsun?</Text>
+            <Text style={styles.sectionKicker}>{t('Niyet')}</Text>
+            <Text style={styles.sectionTitle}>{t('Ne arıyorsun?')}</Text>
             <View style={styles.grid}>
               {INTENTS.map((intent) => {
                 const on = prefs.intents.includes(intent);
@@ -378,8 +396,8 @@ export default function Profile() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionKicker}>Atmosfer</Text>
-            <Text style={styles.sectionTitle}>Nasıl bir yer?</Text>
+            <Text style={styles.sectionKicker}>{t('Atmosfer')}</Text>
+            <Text style={styles.sectionTitle}>{t('Nasıl bir yer?')}</Text>
             <View style={styles.chips}>
               {VIBES.map((vibe) => {
                 const on = prefs.vibes.includes(vibe);
@@ -399,8 +417,8 @@ export default function Profile() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionKicker}>Mesafe</Text>
-            <Text style={styles.sectionTitle}>Ne kadar uzağa?</Text>
+            <Text style={styles.sectionKicker}>{t('Mesafe')}</Text>
+            <Text style={styles.sectionTitle}>{t('Ne kadar uzağa?')}</Text>
             <RadiusPicker
               meters={prefs.defaultRadiusMeters}
               onChange={(meters) => {
@@ -412,7 +430,7 @@ export default function Profile() {
           </View>
 
           <Button
-            label={savedOk ? 'Kaydedildi' : 'Tercihleri kaydet'}
+            label={savedOk ? 'Kaydedildi' : t('Tercihleri kaydet')}
             icon={savedOk ? 'checkmark' : undefined}
             loading={saving}
             onPress={() => void save()}
@@ -424,27 +442,27 @@ export default function Profile() {
       <View style={styles.account}>
         {session ? (
           <>
-            <Row icon="bookmarks-outline" label="Listelerim" onPress={() => router.push('/collections')} />
+            <Row icon="bookmarks-outline" label={t('Listelerim')} onPress={() => router.push('/collections')} />
             <View style={styles.divider} />
-            <Row icon="heart-outline" label="Kaydedilenler" value={String(info?.favoriteCount ?? favorites.cards.length)} onPress={() => router.push('/favorites')} />
+            <Row icon="heart-outline" label={t('Kaydedilenler')} value={String(info?.favoriteCount ?? favorites.cards.length)} onPress={() => router.push('/favorites')} />
             <View style={styles.divider} />
-            <Row icon="chatbubble-ellipses-outline" label="Yorumlarım" value={String(info?.reviewCount ?? 0)} onPress={() => router.push('/my-reviews')} />
+            <Row icon="chatbubble-ellipses-outline" label={t('Yorumlarım')} value={String(info?.reviewCount ?? 0)} onPress={() => router.push('/my-reviews')} />
             <View style={styles.divider} />
             <Row
               icon={info?.emailVerified === false ? 'mail-unread-outline' : 'person-circle-outline'}
-              label="Hesap ve güvenlik"
+              label={t('Hesap ve güvenlik')}
               // Doğrulanmamış hesap yorum ve fotoğraf yazamaz: kısa uyarı.
-              value={info?.emailVerified === false ? 'E-postanı doğrula' : undefined}
+              value={info?.emailVerified === false ? t('E-postanı doğrula') : undefined}
               onPress={() => router.push('/account')}
             />
             <View style={styles.divider} />
           </>
         ) : null}
-        <Row icon="navigate-outline" label="Konumu değiştir" value={filters.label} onPress={() => router.push('/places')} />
+        <Row icon="navigate-outline" label={t('Konumu değiştir')} value={filters.label} onPress={() => router.push('/places')} />
         <View style={styles.divider} />
         <View style={styles.themeRow}>
           <Ionicons name="contrast-outline" size={20} color={colors.ink} />
-          <Text style={styles.toggleText}>Görünüm</Text>
+          <Text style={styles.toggleText}>{t('Görünüm')}</Text>
           <View style={styles.themeChips}>
             {THEME_CHOICES.map(([value, label]) => (
               <Pressable
@@ -453,8 +471,26 @@ export default function Profile() {
                 style={[styles.chip, mode === value && styles.chipOn]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: mode === value }} aria-selected={mode === value}
-                accessibilityLabel={`Görünüm: ${label}`}>
-                <Text style={mode === value ? styles.chipOnText : styles.chipOffText}>{label}</Text>
+                accessibilityLabel={t('Görünüm: {p0}', { p0: t(label) })}>
+                <Text style={mode === value ? styles.chipOnText : styles.chipOffText}>{t(label)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.themeRow}>
+          <Ionicons name="language-outline" size={20} color={colors.ink} />
+          <Text style={styles.toggleText}>{t('Dil')}</Text>
+          <View style={styles.themeChips}>
+            {LANG_CHOICES.map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => void chooseLanguage(value)}
+                style={[styles.chip, lang === value && styles.chipOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: lang === value }} aria-selected={lang === value}
+                accessibilityLabel={t('Dil: {p0}', { p0: t(label) })}>
+                <Text style={lang === value ? styles.chipOnText : styles.chipOffText}>{t(label)}</Text>
               </Pressable>
             ))}
           </View>
@@ -465,8 +501,8 @@ export default function Profile() {
             <View style={styles.row}>
               <Ionicons name="notifications-outline" size={20} color={colors.ink} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.toggleText}>Etkinlik hatırlatmaları</Text>
-                <Text style={styles.rowHint}>Kaydettiğin mekanlarda bu akşam etkinlik varsa</Text>
+                <Text style={styles.toggleText}>{t('Etkinlik hatırlatmaları')}</Text>
+                <Text style={styles.rowHint}>{t('Kaydettiğin mekanlarda bu akşam etkinlik varsa')}</Text>
               </View>
               <Switch
                 value={pushOn}
@@ -474,7 +510,7 @@ export default function Profile() {
                 onValueChange={(v) => void togglePush(v)}
                 trackColor={{ true: colors.sage, false: colors.line }}
                 thumbColor={colors.white}
-                accessibilityLabel="Etkinlik hatırlatmaları"
+                accessibilityLabel={t('Etkinlik hatırlatmaları')}
               />
             </View>
             <View style={styles.divider} />
@@ -483,27 +519,27 @@ export default function Profile() {
         <View style={styles.row}>
           <Ionicons name="stats-chart-outline" size={20} color={colors.ink} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.toggleText}>Anonim kullanım istatistikleri</Text>
-            <Text style={styles.rowHint}>Kimlik ve konum gönderilmez</Text>
+            <Text style={styles.toggleText}>{t('Anonim kullanım istatistikleri')}</Text>
+            <Text style={styles.rowHint}>{t('Kimlik ve konum gönderilmez')}</Text>
           </View>
           <Switch
             value={analytics === 'granted'}
             onValueChange={(v) => void setAnalyticsConsent(v, Boolean(session))}
             trackColor={{ true: colors.sage, false: colors.line }}
             thumbColor={colors.white}
-            accessibilityLabel="Anonim kullanım istatistikleri"
+            accessibilityLabel={t('Anonim kullanım istatistikleri')}
           />
         </View>
         <View style={styles.divider} />
-        <Row icon="shield-checkmark-outline" label="Gizlilik ve KVKK" onPress={() => router.push('/legal')} />
+        <Row icon="shield-checkmark-outline" label={t('Gizlilik ve KVKK')} onPress={() => router.push('/legal')} />
         {session ? (
           <>
             <View style={styles.divider} />
-            <Row icon="log-out-outline" label="Çıkış yap" tone="danger" onPress={confirmSignOut} />
+            <Row icon="log-out-outline" label={t('Çıkış yap')} tone="danger" onPress={confirmSignOut} />
           </>
         ) : null}
       </View>
-      <Text style={styles.version}>Nereye · sürüm {Constants.expoConfig?.version ?? '1.0.0'}</Text>
+      <Text style={styles.version}>{t('Nereye · sürüm {v}', { v: Constants.expoConfig?.version ?? '1.0.0' })}</Text>
     </ScrollView>
   );
 }

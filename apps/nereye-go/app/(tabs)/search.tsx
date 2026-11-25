@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -21,6 +22,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View , type TextInputInstance } from 'react-native';
 
+// Ham Türkçe: çeviri çizimde (dil, modül yüklendikten sonra seçilir).
 const IDEAS = ['Kahvaltı', 'Sahil', 'Tatlı', 'Canlı müzik', 'Kitap kafe', 'Manzara'];
 
 export default function Search() {
@@ -94,7 +96,7 @@ export default function Search() {
 
   return (
     <View style={styles.bg}>
-      <ScreenHeader title="Ara" subtitle={`${filters.label} çevresinde mekan, semt ya da durak`} overlap={28} />
+      <ScreenHeader title={t('Ara')} subtitle={t('{p0} çevresinde mekan, semt ya da durak', { p0: filters.label })} overlap={28} />
       {/* Arama kutusu yeşil başlığın kavisli kenarına taşar (ana sayfayla aynı). */}
       <View style={styles.searchWrap}>
         <View style={styles.search}>
@@ -102,14 +104,14 @@ export default function Search() {
           <TextInput
             ref={inputRef}
             style={styles.input}
-            placeholder="Mekan, semt ya da durak"
+            placeholder={t('Mekan, semt ya da durak')}
             placeholderTextColor={colors.muted}
             value={q}
             onChangeText={setQ}
             returnKeyType="search"
             autoCorrect={false}
             autoCapitalize="none"
-            accessibilityLabel="Arama"
+            accessibilityLabel={t('Arama')}
           />
           {loading ? <ActivityIndicator size="small" color={colors.coral} /> : null}
           {q && !loading ? (
@@ -120,7 +122,7 @@ export default function Search() {
               }}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Aramayı temizle">
+              accessibilityLabel={t('Aramayı temizle')}>
               <Ionicons name="close-circle" size={20} color={colors.muted} />
             </Pressable>
           ) : null}
@@ -142,13 +144,13 @@ export default function Search() {
             {recent.length > 0 ? (
               <View style={styles.block}>
                 <View style={styles.kickerRow}>
-                  <Text style={styles.kicker}>Son aramalar</Text>
+                  <Text style={styles.kicker}>{t('Son aramalar')}</Text>
                   <Pressable
                     onPress={() => void clearRecentSearches().then(setRecent)}
                     hitSlop={10}
                     accessibilityRole="button"
-                    accessibilityLabel="Son aramaları temizle">
-                    <Text style={styles.clear}>Temizle</Text>
+                    accessibilityLabel={t('Son aramaları temizle')}>
+                    <Text style={styles.clear}>{t('Temizle')}</Text>
                   </Pressable>
                 </View>
                 {recent.map((r) => (
@@ -164,7 +166,7 @@ export default function Search() {
                       hitSlop={10}
                       style={styles.recentX}
                       accessibilityRole="button"
-                      accessibilityLabel={`${r} aramasını sil`}>
+                      accessibilityLabel={t('{p0} aramasını sil', { p0: r })}>
                       <Ionicons name="close" size={16} color={colors.muted} />
                     </Pressable>
                   </View>
@@ -172,7 +174,7 @@ export default function Search() {
               </View>
             ) : null}
             <View style={styles.block}>
-              <Text style={styles.kicker}>Fikir ver</Text>
+              <Text style={styles.kicker}>{t('Fikir ver')}</Text>
               <View style={styles.ideas}>
                 {IDEAS.map((idea) => (
                   <Pressable
@@ -180,17 +182,17 @@ export default function Search() {
                     style={styles.idea}
                     onPress={() => {
                       haptic.tap();
-                      setQ(idea);
+                      setQ(t(idea));
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`${idea} ara`}>
-                    <Text style={styles.ideaText}>{idea}</Text>
+                    accessibilityLabel={t('{p0} ara', { p0: t(idea) })}>
+                    <Text style={styles.ideaText}>{t(idea)}</Text>
                   </Pressable>
                 ))}
               </View>
             </View>
             <View style={styles.block}>
-              <Text style={styles.kicker}>Niyete göre</Text>
+              <Text style={styles.kicker}>{t('Niyete göre')}</Text>
               <View style={styles.intents}>
                 {INTENTS.map((i) => (
                   <Pressable
@@ -202,7 +204,7 @@ export default function Search() {
                       router.push('/(tabs)/discover');
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`${intentLabel(i)} mekanlarını listele`}>
+                    accessibilityLabel={t('{p0} mekanlarını listele', { p0: intentLabel(i) })}>
                     <View style={[styles.intentIcon, { backgroundColor: INTENT_PASTELS[i] ?? colors.coralSoft }]}>
                       <Ionicons name={INTENT_ICONS[i]} size={18} color={colors.coral} />
                     </View>
@@ -215,14 +217,14 @@ export default function Search() {
         ) : null}
 
         {typing && loading && items.length === 0 && suggest.length === 0 ? (
-          <View style={styles.list} accessibilityLabel="Aranıyor">
+          <View style={styles.list} accessibilityLabel={t('Aranıyor')}>
             <VenueCardSkeleton />
             <VenueCardSkeleton />
           </View>
         ) : null}
 
         <GeoSuggestGroup
-          title="Konumlar"
+          title={t('Konumlar')}
           hits={suggest}
           from={{ lat: filters.lat, lng: filters.lng }}
           onPress={(hit) => {
@@ -233,7 +235,7 @@ export default function Search() {
           }}
         />
         {empty ? (
-          <EmptyState icon="search-outline" title={emptySearch(q.trim())} body="Yazımı kontrol et ya da daha genel bir kelime dene." />
+          <EmptyState icon="search-outline" title={emptySearch(q.trim())} body={t('Yazımı kontrol et ya da daha genel bir kelime dene.')} />
         ) : null}
         {items.length ? <Text style={styles.kicker}>Mekanlar · {items.length}</Text> : null}
         <View style={styles.list}>

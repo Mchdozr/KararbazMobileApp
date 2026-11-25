@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { api } from '@/lib/api';
@@ -38,10 +39,10 @@ export function AddToListSheet({ visible, item, onClose }: { visible: boolean; i
     try {
       if (list.contains) {
         await api.removeFromCollection(list.id, item.placeId);
-        toast.info(`"${list.name}" listesinden çıkarıldı`);
+        toast.info(t('"{p0}" listesinden çıkarıldı', { p0: list.name }));
       } else {
         await api.addToCollection(list.id, item);
-        toast.success(`"${list.name}" listesine eklendi`);
+        toast.success(t('"{p0}" listesine eklendi', { p0: list.name }));
       }
       setLists((prev) =>
         prev?.map((l) => (l.id === list.id ? { ...l, contains: !l.contains, count: l.count + (l.contains ? -1 : 1) } : l)) ?? prev,
@@ -63,7 +64,7 @@ export function AddToListSheet({ visible, item, onClose }: { visible: boolean; i
       const created = await api.createCollection(clean);
       await api.addToCollection(created.id, item);
       haptic.success();
-      toast.success(`"${clean}" oluşturuldu, ${item.name} eklendi`);
+      toast.success(t('"{p0}" oluşturuldu, {p1} eklendi', { p0: clean, p1: item.name }));
       setName('');
       setLists((prev) => [{ id: created.id, name: clean, count: 1, coverUrl: item.photoUrl, shared: false, contains: true }, ...(prev ?? [])]);
     } catch (e) {
@@ -75,18 +76,18 @@ export function AddToListSheet({ visible, item, onClose }: { visible: boolean; i
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Listeleri kapat" />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('Listeleri kapat')} />
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]} accessibilityViewIsModal>
         <View style={styles.grip} />
-        <Text style={styles.title}>Listeye ekle</Text>
+        <Text style={styles.title}>{t('Listeye ekle')}</Text>
         <Text style={styles.sub} numberOfLines={1}>
           {item.name}
         </Text>
         {lists === null ? (
-          <ActivityIndicator color={colors.coral} style={{ marginVertical: 24 }} accessibilityLabel="Listeler yükleniyor" />
+          <ActivityIndicator color={colors.coral} style={{ marginVertical: 24 }} accessibilityLabel={t('Listeler yükleniyor')} />
         ) : (
           <ScrollView style={{ maxHeight: 280 }} contentContainerStyle={{ gap: 8 }}>
-            {lists.length === 0 ? <Text style={styles.sub}>Henüz listen yok. Aşağıdan ilkini oluştur.</Text> : null}
+            {lists.length === 0 ? <Text style={styles.sub}>{t('Henüz listen yok. Aşağıdan ilkini oluştur.')}</Text> : null}
             {lists.map((l) => (
               <Pressable
                 key={l.id}
@@ -108,17 +109,17 @@ export function AddToListSheet({ visible, item, onClose }: { visible: boolean; i
         )}
         <View style={styles.newRow}>
           <View style={{ flex: 1 }}>
-            <TextField label="Yeni liste" value={name} onChangeText={setName} maxLength={LIST_NAME_MAX} placeholder="Kahve rotam" />
+            <TextField label={t('Yeni liste')} value={name} onChangeText={setName} maxLength={LIST_NAME_MAX} placeholder={t('Kahve rotam')} />
           </View>
         </View>
         <Button
-          label="Oluştur ve ekle"
+          label={t('Oluştur ve ekle')}
           icon="add"
           loading={busy === 'new'}
           disabled={!cleanListName(name)}
           onPress={() => void create()}
         />
-        <Button label="Tamam" variant="ghost" onPress={onClose} />
+        <Button label={t('Tamam')} variant="ghost" onPress={onClose} />
       </View>
     </Modal>
   );

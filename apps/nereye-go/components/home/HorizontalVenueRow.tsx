@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { VenueProductCard } from '@/components/VenueProductCard';
 import { colors, fonts } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,7 +39,7 @@ export function HorizontalVenueRow({
             style={styles.allBtn}
             accessibilityRole="button"
             accessibilityLabel={`${title}, tümünü gör`}>
-            <Text style={styles.all}>Tümü</Text>
+            <Text style={styles.all}>{t('Tümü')}</Text>
             <Ionicons name="arrow-forward" size={14} color={colors.accent} />
           </Pressable>
         ) : null}

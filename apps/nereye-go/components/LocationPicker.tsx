@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { GeoSuggestGroup } from '@/components/GeoSuggestRow';
 import { api } from '@/lib/api';
 import { QUICK_PLACES } from '@/lib/copy';
@@ -66,29 +67,29 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
       if (fix) {
         pick(fix.lat, fix.lng, fix.label, false);
       } else {
-        setNote('Konum izni yok. Mahalle yaz veya listeden seç.');
+        setNote(t('Konum izni yok. Mahalle yaz veya listeden seç.'));
       }
     } catch {
-      setNote('Konum alınamadı. Mahalle yaz veya listeden seç.');
+      setNote(t('Konum alınamadı. Mahalle yaz veya listeden seç.'));
     } finally {
       setBusy(false);
     }
   }
 
   function saveHere(kind: 'home' | 'work' | 'custom') {
-    const label = kind === 'home' ? 'Ev' : kind === 'work' ? 'İş' : filters.label;
+    const label = kind === 'home' ? 'Ev' : kind === 'work' ? t('İş') : filters.label;
     void saved.add({ label, kind, latitude: filters.lat, longitude: filters.lng }, Boolean(session));
     setNote(`${label} kaydedildi.`);
   }
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-      <Text style={styles.sub}>Mahalle, ilçe veya durak yaz. Sonuçlarda semt ayrıntısı görünür.</Text>
+      <Text style={styles.sub}>{t('Mahalle, ilçe veya durak yaz. Sonuçlarda semt ayrıntısı görünür.')}</Text>
       <View style={styles.search}>
         <Ionicons name="search" size={18} color={colors.muted} />
         <TextInput
           style={styles.input}
-          placeholder="Esenler, Tuna, Moda…"
+          placeholder={t('Esenler, Tuna, Moda…')}
           placeholderTextColor={colors.muted}
           value={q}
           onChangeText={setQ}
@@ -101,15 +102,15 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
         onPress={() => void here()}
         disabled={busy}
         accessibilityRole="button"
-        accessibilityLabel="Konumumu kullan"
+        accessibilityLabel={t('Konumumu kullan')}
         accessibilityState={{ busy }}>
         {busy ? <ActivityIndicator color={colors.onCoral} /> : <Ionicons name="navigate" size={16} color={colors.onCoral} />}
-        <Text style={styles.gpsText}>Konumum</Text>
+        <Text style={styles.gpsText}>{t('Konumum')}</Text>
       </Pressable>
 
       {saved.items.length > 0 ? (
         <>
-          <Text style={styles.kicker}>Kayıtlı yerlerin</Text>
+          <Text style={styles.kicker}>{t('Kayıtlı yerlerin')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
             {saved.items.map((p) => (
               <Pressable
@@ -117,11 +118,11 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
                 style={styles.chip}
                 accessibilityRole="button"
                 accessibilityLabel={p.label}
-                accessibilityHint="Silmek için basılı tut"
+                accessibilityHint={t('Silmek için basılı tut')}
                 onPress={() => pick(p.latitude, p.longitude, p.label)}
                 onLongPress={() =>
-                  Alert.alert(p.label, 'Kayıttan silinsin mi?', [
-                    { text: 'Vazgeç', style: 'cancel' },
+                  Alert.alert(p.label, t('Kayıttan silinsin mi?'), [
+                    { text: t('Vazgeç'), style: 'cancel' },
                     { text: 'Sil', style: 'destructive', onPress: () => void saved.remove(p.id, Boolean(session)) },
                   ])
                 }>
@@ -137,7 +138,7 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
         </>
       ) : null}
 
-      <Text style={styles.kicker}>İstanbul’dan seç</Text>
+      <Text style={styles.kicker}>{t('İstanbul’dan seç')}</Text>
       <View style={styles.grid}>
         {QUICK_PLACES.map((p) => (
           <Pressable
@@ -153,28 +154,28 @@ export function LocationPicker({ onPicked }: { onPicked: () => void }) {
 
       {hits.length > 0 ? (
         <GeoSuggestGroup
-          title="Sonuçlar"
+          title={t('Sonuçlar')}
           hits={hits}
           from={{ lat: filters.lat, lng: filters.lng }}
           onPress={(hit) => pick(hit.latitude, hit.longitude, geoChip(hit))}
         />
       ) : q.trim().length >= 2 ? (
-        <Text style={styles.empty}>Mahalle, ilçe veya durak yaz — aynı isimli yerler alt satırda ayrılır.</Text>
+        <Text style={styles.empty}>{t('Mahalle, ilçe veya durak yaz — aynı isimli yerler alt satırda ayrılır.')}</Text>
       ) : null}
 
       {note ? <Text style={styles.note}>{note}</Text> : null}
 
-      <Text style={styles.kicker}>Şu anki konumu kaydet</Text>
+      <Text style={styles.kicker}>{t('Şu anki konumu kaydet')}</Text>
       <View style={styles.saveRow}>
-        <Pressable style={styles.saveBtn} onPress={() => saveHere('home')} accessibilityRole="button" accessibilityLabel="Ev olarak kaydet">
+        <Pressable style={styles.saveBtn} onPress={() => saveHere('home')} accessibilityRole="button" accessibilityLabel={t('Ev olarak kaydet')}>
           <Ionicons name="home-outline" size={16} color={colors.ink} />
-          <Text style={styles.saveText}>Ev</Text>
+          <Text style={styles.saveText}>{t('Ev')}</Text>
         </Pressable>
-        <Pressable style={styles.saveBtn} onPress={() => saveHere('work')} accessibilityRole="button" accessibilityLabel="İş olarak kaydet">
+        <Pressable style={styles.saveBtn} onPress={() => saveHere('work')} accessibilityRole="button" accessibilityLabel={t('İş olarak kaydet')}>
           <Ionicons name="briefcase-outline" size={16} color={colors.ink} />
-          <Text style={styles.saveText}>İş</Text>
+          <Text style={styles.saveText}>{t('İş')}</Text>
         </Pressable>
-        <Pressable style={styles.saveBtn} onPress={() => saveHere('custom')} accessibilityRole="button" accessibilityLabel="Bu konumu kaydet">
+        <Pressable style={styles.saveBtn} onPress={() => saveHere('custom')} accessibilityRole="button" accessibilityLabel={t('Bu konumu kaydet')}>
           <Ionicons name="bookmark-outline" size={16} color={colors.ink} />
           <Text style={styles.saveText} numberOfLines={1}>
             {filters.label}

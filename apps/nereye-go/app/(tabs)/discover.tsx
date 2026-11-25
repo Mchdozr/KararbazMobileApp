@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -142,7 +143,7 @@ export default function Discover() {
     <View>
       <ScreenHeader
         title={intentLabel(intent)}
-        subtitle={`${filters.label} · ${radiusLabel(radiusMeters)} çevresi`}
+        subtitle={t('{p0} · {p1} çevresi', { p0: filters.label, p1: radiusLabel(radiusMeters) })}
         right={
           <Pressable
             style={[styles.filter, badge > 0 && styles.filterOn]}
@@ -175,7 +176,7 @@ export default function Discover() {
           })}
         </ScrollView>
       </ScreenHeader>
-      <View style={styles.sortRow} accessibilityRole="radiogroup" accessibilityLabel="Sıralama">
+      <View style={styles.sortRow} accessibilityRole="radiogroup" accessibilityLabel={t('Sıralama')}>
         {SORTS.map((s) => {
           const on = sort === s.key;
           return (
@@ -189,7 +190,7 @@ export default function Discover() {
               accessibilityRole="radio"
               accessibilityState={{ selected: on }}
               aria-selected={on}>
-              <Text style={[styles.sortText, on && styles.sortTextOn]}>{s.label}</Text>
+              <Text style={[styles.sortText, on && styles.sortTextOn]}>{t(s.label)}</Text>
             </Pressable>
           );
         })}
@@ -228,8 +229,8 @@ export default function Discover() {
             <EmptyState
               icon="search-outline"
               title={emptyDiscover(intent)}
-              body={badge > 0 ? 'Etkin filtreler sonucu daraltıyor olabilir.' : undefined}
-              action={badge > 0 ? 'Filtreleri temizle' : 'Yarıçapı büyüt'}
+              body={badge > 0 ? t('Etkin filtreler sonucu daraltıyor olabilir.') : undefined}
+              action={badge > 0 ? t('Filtreleri temizle') : t('Yarıçapı büyüt')}
               onAction={() => (badge > 0 ? filters.resetFilters() : filters.setRadius(Math.max(3000, radiusMeters * 2)))}
             />
           ) : undefined

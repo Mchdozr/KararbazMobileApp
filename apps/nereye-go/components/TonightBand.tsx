@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { VenueImage } from '@/components/VenueImage';
 import { track } from '@/lib/analytics';
 import { distanceReason } from '@/lib/decide';
@@ -18,7 +19,7 @@ export function TonightBand({ events }: { events: readonly TonightEvent[] }) {
     <View style={styles.wrap}>
       <View style={styles.head}>
         <Ionicons name="musical-notes" size={18} color={colors.coral} />
-        <Text style={styles.title}>Bu akşam yakında</Text>
+        <Text style={styles.title}>{t('Bu akşam yakında')}</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {events.map((e) => {

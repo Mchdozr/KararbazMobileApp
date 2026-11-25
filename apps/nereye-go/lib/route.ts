@@ -1,11 +1,12 @@
+import { t } from './i18n.ts';
 export function formatDuration(seconds: number) {
   const m = Math.max(1, Math.round(seconds / 60));
   if (m >= 60) {
     const h = Math.floor(m / 60);
     const rest = m % 60;
-    return rest ? `${h} sa ${rest} dk` : `${h} sa`;
+    return rest ? t('{h} sa {m} dk', { h, m: rest }) : t('{h} sa', { h });
   }
-  return `${m} dk`;
+  return t('{m} dk', { m });
 }
 
 export function formatRouteLine(distanceMeters: number, durationSeconds: number) {

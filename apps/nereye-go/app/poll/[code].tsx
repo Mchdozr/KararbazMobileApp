@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
@@ -71,12 +72,12 @@ export default function PollScreen() {
   }
 
   if (error && !poll) {
-    return <EmptyState icon="people-outline" title="Oylama açılamadı" body={error} action="Tekrar dene" onAction={() => void load()} />;
+    return <EmptyState icon="people-outline" title={t('Oylama açılamadı')} body={error} action={t('Tekrar dene')} onAction={() => void load()} />;
   }
 
   if (!poll) {
     return (
-      <View style={[styles.bg, styles.wrap]} accessibilityLabel="Oylama yükleniyor">
+      <View style={[styles.bg, styles.wrap]} accessibilityLabel={t('Oylama yükleniyor')}>
         <Skeleton height={28} width="70%" />
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} height={84} radius={radii.md} style={{ marginTop: 12 }} />
@@ -94,7 +95,7 @@ export default function PollScreen() {
         {poll.totalVotes} oy · {timeLeft(poll.expiresAt)}
       </Text>
       <Text style={styles.hint}>
-        {poll.expired ? 'Oylama sona erdi.' : poll.myVote ? 'Oyunu değiştirmek için başka mekana dokun.' : 'Bir mekana dokunarak oy ver.'}
+        {poll.expired ? t('Oylama sona erdi.') : poll.myVote ? t('Oyunu değiştirmek için başka mekana dokun.') : t('Bir mekana dokunarak oy ver.')}
       </Text>
 
       {rows.map((r) => (
@@ -106,7 +107,7 @@ export default function PollScreen() {
           accessibilityRole="button"
           accessibilityState={{ selected: r.mine, disabled: poll.expired }}
           aria-selected={r.mine}
-          accessibilityLabel={`${r.name}, ${r.votes} oy${r.mine ? ', senin oyun' : ''}${r.leading ? ', önde' : ''}`}>
+          accessibilityLabel={t('{p0}, {p1} oy{p2}{p3}', { p0: r.name, p1: r.votes, p2: r.mine ? t(', senin oyun') : '', p3: r.leading ? t(', önde') : '' })}>
           <View style={styles.thumb}>
             <VenueImage placeId={r.placeId} photoUrl={r.photoUrl} name={r.name} style={StyleSheet.absoluteFill} radius={radii.sm} widthPt={64} />
           </View>
@@ -129,14 +130,14 @@ export default function PollScreen() {
       <View style={styles.actions}>
         {winner ? (
           <Button
-            label={`${winner.name} için yol tarifi`}
+            label={t('{p0} için yol tarifi', { p0: winner.name })}
             icon="navigate"
             onPress={() => void openDirections(winner.latitude, winner.longitude)}
-            accessibilityLabel={`Önde olan ${winner.name} için yol tarifi`}
+            accessibilityLabel={t('Önde olan {p0} için yol tarifi', { p0: winner.name })}
           />
         ) : null}
-        <Button label="Bağlantıyı paylaş" variant="secondary" icon="share-outline" onPress={() => void share()} />
-        <Button label="Mekanlara dön" variant="ghost" onPress={() => router.back()} />
+        <Button label={t('Bağlantıyı paylaş')} variant="secondary" icon="share-outline" onPress={() => void share()} />
+        <Button label={t('Mekanlara dön')} variant="ghost" onPress={() => router.back()} />
       </View>
     </ScrollView>
   );

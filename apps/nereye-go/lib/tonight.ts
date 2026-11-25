@@ -1,5 +1,6 @@
 // Bu akşam etkinlikleri: saat etiketleri ve sahip formu. Türkiye 2016'dan beri sabit UTC+3 kullanır.
 // React Native içe aktarmaz: node ile test edilir.
+import { language, t } from './i18n.ts';
 import { dativeTime } from './open-status.ts';
 
 const IST_OFFSET_MS = 3 * 60 * 60 * 1000;
@@ -19,13 +20,17 @@ function clock(ms: number) {
 /** "20:30", "Gece 01:00" (gece yarısından sonra), sürüyorsa "Şu an · 22:00’a kadar". */
 export function eventTimeLabel(startsAt: string, endsAt: string | null | undefined, live: boolean, now = Date.now()): string {
   if (live) {
-    return endsAt ? `Şu an · ${dativeTime(clock(Date.parse(endsAt)))} kadar` : 'Şu an sürüyor';
+    if (!endsAt) {
+      return t('Şu an sürüyor');
+    }
+    const end = clock(Date.parse(endsAt));
+    return language() === 'en' ? t('Şu an · {time} kadar', { time: end }) : `Şu an · ${dativeTime(end)} kadar`;
   }
   const start = Date.parse(startsAt);
   const s = istanbulParts(start);
   const n = istanbulParts(now);
   const nextDay = s.d !== n.d || s.mo !== n.mo;
-  return nextDay && s.h < 6 ? `Gece ${clock(start)}` : clock(start);
+  return nextDay && s.h < 6 ? t('Gece {time}', { time: clock(start) }) : clock(start);
 }
 
 export function parseClock(text: string): { h: number; m: number } | null {
@@ -68,6 +73,6 @@ export function eventDayLabel(startsAt: string, now = Date.now()): string {
   const s = istanbulParts(ms);
   const n = istanbulParts(now);
   const days = Math.round((Date.UTC(s.y, s.mo, s.d) - Date.UTC(n.y, n.mo, n.d)) / 86_400_000);
-  const day = days === 0 ? 'Bugün' : days === 1 ? 'Yarın' : `${pad(s.d)}.${pad(s.mo + 1)}`;
+  const day = days === 0 ? t('Bugün') : days === 1 ? t('Yarın') : `${pad(s.d)}.${pad(s.mo + 1)}`;
   return `${day} ${clock(ms)}`;
 }

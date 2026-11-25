@@ -1,3 +1,6 @@
+// Dil, diğer modüllerden önce seçilir (lib/locale.ts).
+import '@/lib/locale';
+import { t } from '@/lib/i18n';
 import { AppErrorBoundary } from '@/components/AppErrorBoundary';
 import { BackButton } from '@/components/BackButton';
 import { gradientHeader } from '@/components/ScreenHeader';
@@ -65,10 +68,6 @@ function CrashScreenTracker() {
   return null;
 }
 
-// Web: sayfa dili Türkçe olsun. Büyük harf dönüşümü "i"yi "İ" yapar, ekran okuyucu doğru telaffuz eder.
-if (Platform.OS === 'web' && typeof document !== 'undefined') {
-  document.documentElement.lang = 'tr';
-}
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -125,37 +124,37 @@ export default function RootLayout() {
             <Stack.Screen
               name="review/[id]"
               options={{
-                title: 'Yorumun',
+                title: t('Yorumun'),
                 presentation: 'modal',
-                header: gradientHeader('Deneyimini paylaş'),
+                header: gradientHeader(t('Deneyimini paylaş')),
               }}
             />
-            <Stack.Screen name="collections/index" options={{ title: 'Listelerim', header: gradientHeader('Adlandırılmış listelerin') }} />
-            <Stack.Screen name="collections/[id]" options={{ title: 'Liste', header: gradientHeader('Mekanlar ve paylaşım') }} />
-            <Stack.Screen name="list/[code]" options={{ title: 'Paylaşılan liste', header: gradientHeader('Nereye ile hazırlandı') }} />
+            <Stack.Screen name="collections/index" options={{ title: 'Listelerim', header: gradientHeader(t('Adlandırılmış listelerin')) }} />
+            <Stack.Screen name="collections/[id]" options={{ title: 'Liste', header: gradientHeader(t('Mekanlar ve paylaşım')) }} />
+            <Stack.Screen name="list/[code]" options={{ title: t('Paylaşılan liste'), header: gradientHeader(t('Nereye ile hazırlandı')) }} />
             <Stack.Screen
               name="poll/[code]"
               options={{
-                title: 'Birlikte karar',
-                header: gradientHeader('Arkadaşlarınla oyla'),
+                title: t('Birlikte karar'),
+                header: gradientHeader(t('Arkadaşlarınla oyla')),
               }}
             />
             <Stack.Screen
               name="owner/[id]"
               options={{
-                title: 'İşletme',
-                header: gradientHeader('Mekanını yönet'),
+                title: t('İşletme'),
+                header: gradientHeader(t('Mekanını yönet')),
               }}
             />
             {[
-              ['favorites', 'Kaydedilenler', 'Kalbe dokunduğun mekanlar'],
-              ['my-reviews', 'Yorumlarım', 'Yazdıkların ve puanların'],
-              ['account', 'Hesap', 'Profil, şifre ve gizlilik'],
-              ['legal', 'Gizlilik ve KVKK', 'Verilerin nasıl işlenir'],
+              ['favorites', 'Kaydedilenler', t('Kalbe dokunduğun mekanlar')],
+              ['my-reviews', t('Yorumlarım'), t('Yazdıkların ve puanların')],
+              ['account', 'Hesap', t('Profil, şifre ve gizlilik')],
+              ['legal', t('Gizlilik ve KVKK'), t('Verilerin nasıl işlenir')],
             ].map(([name, title, subtitle]) => (
               <Stack.Screen key={name} name={name} options={{ title, header: gradientHeader(subtitle) }} />
             ))}
-            <Stack.Screen name="+not-found" options={{ title: 'Sayfa bulunamadı', header: gradientHeader() }} />
+            <Stack.Screen name="+not-found" options={{ title: t('Sayfa bulunamadı'), header: gradientHeader() }} />
           </Stack>
           <ToastHost />
         </ThemeProvider>

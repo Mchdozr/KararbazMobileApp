@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { INTENT_PHOTOS } from '@/lib/photos';
 import { colors, fonts } from '@/lib/theme';
 import { Image } from 'expo-image';
@@ -6,14 +7,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export function PromoBanner({ onOpenNow }: { onOpenNow: () => void }) {
   return (
-    <Pressable style={styles.wrap} onPress={onOpenNow} accessibilityRole="button" accessibilityLabel="Şimdi açık mekanlara bak">
+    <Pressable style={styles.wrap} onPress={onOpenNow} accessibilityRole="button" accessibilityLabel={t('Şimdi açık mekanlara bak')}>
       <Image source={INTENT_PHOTOS.AcikHava} style={StyleSheet.absoluteFill} contentFit="cover" />
       <LinearGradient colors={[colors.scrimSoft, colors.scrim]} style={StyleSheet.absoluteFill} />
       <View style={styles.copy}>
-        <Text style={styles.kicker}>Şimdi açık</Text>
-        <Text style={styles.title}>Sahil, kahve,{'\n'}canlı bir masa.</Text>
+        <Text style={styles.kicker}>{t('Şimdi açık')}</Text>
+        <Text style={styles.title}>{t('Sahil, kahve,\ncanlı bir masa.')}</Text>
         <View style={styles.cta}>
-          <Text style={styles.ctaText}>Açık mekanlar</Text>
+          <Text style={styles.ctaText}>{t('Açık mekanlar')}</Text>
         </View>
       </View>
     </Pressable>

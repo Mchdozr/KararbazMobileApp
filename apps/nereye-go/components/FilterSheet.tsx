@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Button } from '@/components/Button';
 import { RadiusPicker } from '@/components/RadiusPicker';
 import { VIBES, vibeLabel } from '@/lib/constants';
@@ -19,7 +20,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.sheet}>
         <View style={styles.head}>
-          <Text style={styles.title}>Filtre</Text>
+          <Text style={styles.title}>{t('Filtre')}</Text>
           {count > 0 ? (
             <Pressable
               onPress={() => {
@@ -29,26 +30,26 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
               hitSlop={10}
               style={styles.reset}
               accessibilityRole="button"
-              accessibilityLabel="Filtreleri temizle">
-              <Text style={styles.resetText}>Temizle</Text>
+              accessibilityLabel={t('Filtreleri temizle')}>
+              <Text style={styles.resetText}>{t('Temizle')}</Text>
             </Pressable>
           ) : null}
           <Pressable
             style={styles.close}
             onPress={onClose}
             accessibilityRole="button"
-            accessibilityLabel="Filtreyi kapat"
+            accessibilityLabel={t('Filtreyi kapat')}
             hitSlop={8}>
             <Ionicons name="close" size={20} color={colors.ink} />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.body}>
-          <Text style={styles.label}>Mesafe</Text>
+          <Text style={styles.label}>{t('Mesafe')}</Text>
           <RadiusPicker meters={filters.radiusMeters} onChange={filters.setRadius} />
           <View style={styles.toggle}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleText}>Şu an açık</Text>
-              <Text style={styles.toggleSub}>Kapalı mekanları gizle</Text>
+              <Text style={styles.toggleText}>{t('Şu an açık')}</Text>
+              <Text style={styles.toggleSub}>{t('Kapalı mekanları gizle')}</Text>
             </View>
             <Switch
               value={filters.openNow}
@@ -58,10 +59,10 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
               }}
               trackColor={{ true: colors.sage, false: colors.line }}
               thumbColor={colors.white}
-              accessibilityLabel="Şu an açık"
+              accessibilityLabel={t('Şu an açık')}
             />
           </View>
-          <Text style={styles.label}>Min. puan</Text>
+          <Text style={styles.label}>{t('Min. puan')}</Text>
           <View style={styles.row}>
             {RATINGS.map((n) => {
               const on = filters.minRating === n;
@@ -71,14 +72,14 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
                   style={[styles.chip, on && styles.chipOn]}
                   onPress={() => filters.setMinRating(n)}
                   accessibilityRole="button"
-                  accessibilityLabel={n === 0 ? 'Puan yok' : `En az ${n}`}
+                  accessibilityLabel={n === 0 ? t('Puan yok') : `En az ${n}`}
                   accessibilityState={{ selected: on }} aria-selected={on}>
                   <Text style={[styles.chipText, on && styles.chipTextOn]}>{n === 0 ? 'Hepsi' : `★ ${n}+`}</Text>
                 </Pressable>
               );
             })}
           </View>
-          <Text style={styles.label}>Atmosfer</Text>
+          <Text style={styles.label}>{t('Atmosfer')}</Text>
           <View style={styles.row}>
             {VIBES.map((v) => {
               const on = filters.vibes.includes(v);
@@ -97,7 +98,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
           </View>
         </ScrollView>
         <View style={[styles.foot, { paddingBottom: insets.bottom + 12 }]}>
-          <Button label="Sonuçları göster" onPress={onClose} />
+          <Button label={t('Sonuçları göster')} onPress={onClose} />
         </View>
       </View>
     </Modal>

@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { EmptyState } from '@/components/EmptyState';
 import { VenueGridSkeleton } from '@/components/Skeleton';
 import { VenueProductCard } from '@/components/VenueProductCard';
@@ -19,9 +20,9 @@ export default function Favorites() {
       <View style={styles.bg}>
         <EmptyState
           icon="heart-outline"
-          title="Beğendiğin mekanları burada topla"
-          body="Giriş yapınca kaydettiklerin her cihazında seninle olur."
-          action="Giriş yap"
+          title={t('Beğendiğin mekanları burada topla')}
+          body={t('Giriş yapınca kaydettiklerin her cihazında seninle olur.')}
+          action={t('Giriş yap')}
           onAction={() => router.push('/auth')}
         />
       </View>
@@ -69,9 +70,9 @@ export default function Favorites() {
       ListEmptyComponent={
         <EmptyState
           icon="heart-outline"
-          title="Henüz kaydettiğin mekan yok"
-          body="Bir mekanın üstündeki kalbe dokun, burada birikir."
-          action="Keşfet"
+          title={t('Henüz kaydettiğin mekan yok')}
+          body={t('Bir mekanın üstündeki kalbe dokun, burada birikir.')}
+          action={t('Keşfet')}
           onAction={() => router.replace('/(tabs)')}
         />
       }

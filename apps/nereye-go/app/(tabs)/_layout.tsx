@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { haptic } from '@/lib/haptics';
 import { colors, fonts, shadows } from '@/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,40 +45,40 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Keşfet',
-          tabBarAccessibilityLabel: 'Keşfet',
+          title: t('Keşfet'),
+          tabBarAccessibilityLabel: t('Keşfet'),
           tabBarIcon: ({ focused }) => <TabIcon on="compass" off="compass-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Harita',
-          tabBarAccessibilityLabel: 'Harita',
+          title: t('Harita'),
+          tabBarAccessibilityLabel: t('Harita'),
           tabBarIcon: ({ focused }) => <TabIcon on="map" off="map-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          title: 'Ara',
-          tabBarAccessibilityLabel: 'Ara',
+          title: t('Ara'),
+          tabBarAccessibilityLabel: t('Ara'),
           tabBarIcon: ({ focused }) => <TabIcon on="search" off="search-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="discover"
         options={{
-          title: 'Liste',
-          tabBarAccessibilityLabel: 'Liste',
+          title: t('Liste'),
+          tabBarAccessibilityLabel: t('Liste'),
           tabBarIcon: ({ focused }) => <TabIcon on="list" off="list-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
-          tabBarAccessibilityLabel: 'Profil',
+          title: t('Profil'),
+          tabBarAccessibilityLabel: t('Profil'),
           tabBarIcon: ({ focused }) => <TabIcon on="person" off="person-outline" focused={focused} />,
         }}
       />

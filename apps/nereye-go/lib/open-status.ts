@@ -1,5 +1,6 @@
 // Açık/kapalı satırı: "23:00'e kadar açık", "Yakında kapanıyor · 23:00", "Yarın 09:00'da açılıyor".
 // Saat dilimi hesabı sunucuda (İstanbul) yapılır; burada yalnızca metin kurulur. React Native içe aktarmaz: node ile test edilir.
+import { language, t } from './i18n.ts';
 
 export type OpenInfo = {
   openNow?: boolean | null;
@@ -76,28 +77,31 @@ export function openLine(info: OpenInfo, nowMinutes: number): OpenLine | null {
   if (info.openNow === true) {
     const left = info.closesInMinutes;
     if (info.closesAt && left != null && left <= CLOSING_SOON_MINUTES) {
-      return { text: `Yakında kapanıyor · ${info.closesAt}`, tone: 'soon', short: 'Kapanıyor' };
+      return { text: t('Yakında kapanıyor · {time}', { time: info.closesAt }), tone: 'soon', short: t('Kapanıyor') };
     }
     if (info.closesAt) {
-      return { text: `${dativeTime(info.closesAt)} kadar açık`, tone: 'open', short: 'Açık' };
+      const text = language() === 'en' ? t('{time} kadar açık', { time: info.closesAt }) : `${dativeTime(info.closesAt)} kadar açık`;
+      return { text, tone: 'open', short: t('Açık') };
     }
-    return { text: 'Şu an açık', tone: 'open', short: 'Açık' };
+    return { text: t('Şu an açık'), tone: 'open', short: t('Açık') };
   }
   if (info.openNow === false) {
     const wait = info.opensInMinutes;
     if (info.opensAt && wait != null && wait > 0) {
       if (wait <= 60) {
-        return { text: `${wait} dk sonra açılıyor`, tone: 'closed', short: 'Kapalı' };
+        return { text: t('{n} dk sonra açılıyor', { n: wait }), tone: 'closed', short: t('Kapalı') };
       }
       const at = nowMinutes + wait;
       if (at < 24 * 60) {
-        return { text: `${locativeTime(info.opensAt)} açılıyor`, tone: 'closed', short: 'Kapalı' };
+        const text = language() === 'en' ? t('{time} açılıyor', { time: info.opensAt }) : `${locativeTime(info.opensAt)} açılıyor`;
+        return { text, tone: 'closed', short: t('Kapalı') };
       }
       if (at < 48 * 60) {
-        return { text: `Yarın ${locativeTime(info.opensAt)} açılıyor`, tone: 'closed', short: 'Kapalı' };
+        const text = language() === 'en' ? t('Yarın {time} açılıyor', { time: info.opensAt }) : `Yarın ${locativeTime(info.opensAt)} açılıyor`;
+        return { text, tone: 'closed', short: t('Kapalı') };
       }
     }
-    return { text: 'Şu an kapalı', tone: 'closed', short: 'Kapalı' };
+    return { text: t('Şu an kapalı'), tone: 'closed', short: t('Kapalı') };
   }
   return null;
 }

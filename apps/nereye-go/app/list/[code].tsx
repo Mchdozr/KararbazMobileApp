@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { EmptyState } from '@/components/EmptyState';
 import { ListItemRow } from '@/components/ListItemRow';
 import { Skeleton } from '@/components/Skeleton';
@@ -30,11 +31,11 @@ export default function SharedList() {
   }, [load]);
 
   if (error) {
-    return <EmptyState icon="link-outline" title="Liste açılamadı" body={error} action="Tekrar dene" onAction={() => void load()} />;
+    return <EmptyState icon="link-outline" title={t('Liste açılamadı')} body={error} action={t('Tekrar dene')} onAction={() => void load()} />;
   }
   if (!list) {
     return (
-      <View style={[styles.bg, styles.wrap]} accessibilityLabel="Liste yükleniyor">
+      <View style={[styles.bg, styles.wrap]} accessibilityLabel={t('Liste yükleniyor')}>
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} height={84} radius={radii.md} style={{ marginTop: 10 }} />
         ))}

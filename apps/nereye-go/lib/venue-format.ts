@@ -1,15 +1,17 @@
 // Mekan kartı ve detayında kullanılan saf biçimlendiriciler. React Native içe aktarmaz: node ile test edilir.
+import { decimal, language, t } from './i18n.ts';
 
 /** 0 = ücretsiz, 1-4 = ₺ … ₺₺₺₺. Bilinmiyorsa boş. */
 export function priceLabel(level?: number | null): string {
   if (level == null || level < 0 || level > 4) {
     return '';
   }
-  return level === 0 ? 'Ücretsiz' : '₺'.repeat(level);
+  return level === 0 ? t('Ücretsiz') : '₺'.repeat(level);
 }
 
 export function priceWord(level?: number | null): string {
-  return ['Ücretsiz', 'Uygun', 'Orta', 'Pahalı', 'Çok pahalı'][level ?? -1] ?? '';
+  const word = ['Ücretsiz', 'Uygun', 'Orta', 'Pahalı', 'Çok pahalı'][level ?? -1];
+  return word ? t(word) : '';
 }
 
 /** 4898 → "4,9 B", 950 → "950", 1200000 → "1,2 Mn". */
@@ -20,8 +22,10 @@ export function compactCount(n?: number | null): string {
   if (n < 1000) {
     return String(Math.round(n));
   }
-  const [value, unit] = n < 1_000_000 ? [n / 1000, 'B'] : [n / 1_000_000, 'Mn'];
-  const text = value >= 100 ? String(Math.round(value)) : (Math.round(value * 10) / 10).toString().replace('.', ',');
+  const en = language() === 'en';
+  const [value, unit] = n < 1_000_000 ? [n / 1000, en ? 'K' : 'B'] : [n / 1_000_000, en ? 'M' : 'Mn'];
+  const rounded = (Math.round(value * 10) / 10).toString();
+  const text = value >= 100 ? String(Math.round(value)) : en ? rounded : rounded.replace('.', ',');
   return `${text} ${unit}`;
 }
 
@@ -38,17 +42,17 @@ export function ratingLine(v: {
   googleRatingCount?: number | null;
 }): RatingLine {
   if (v.nereyeRating != null && (v.nereyeRatingCount ?? 0) > 0) {
-    return { value: v.nereyeRating.toFixed(1).replace('.', ','), count: compactCount(v.nereyeRatingCount), source: 'nereye' };
+    return { value: decimal(v.nereyeRating), count: compactCount(v.nereyeRatingCount), source: 'nereye' };
   }
   if (v.googleRating != null && v.googleRating > 0) {
-    return { value: v.googleRating.toFixed(1).replace('.', ','), count: compactCount(v.googleRatingCount), source: 'google' };
+    return { value: decimal(v.googleRating), count: compactCount(v.googleRatingCount), source: 'google' };
   }
   return null;
 }
 
 /** "Kahve dükkanı · ₺₺" gibi tek satır. */
 export function metaLine(category?: string | null, priceLevel?: number | null): string {
-  return [category?.trim(), priceLabel(priceLevel)].filter(Boolean).join(' · ');
+  return [category?.trim() ? t(category.trim()) : '', priceLabel(priceLevel)].filter(Boolean).join(' · ');
 }
 
 const FEATURE_ICONS: Record<string, string> = {

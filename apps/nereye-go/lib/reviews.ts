@@ -1,3 +1,4 @@
+import { t } from './i18n.ts';
 import type { ReviewItem } from '@/lib/types';
 
 export const REVIEW_MAX = 1000;
@@ -39,25 +40,25 @@ export function relativeDate(iso?: string | null, now: Date = new Date()): strin
   }
   const min = Math.floor(ms / 60_000);
   if (min < 1) {
-    return 'az önce';
+    return t('az önce');
   }
   if (min < 60) {
-    return `${min} dk önce`;
+    return t('{n} dk önce', { n: min });
   }
   const hours = Math.floor(min / 60);
   if (hours < 24) {
-    return `${hours} saat önce`;
+    return t('{n} saat önce', { n: hours });
   }
   const days = Math.floor(hours / 24);
   if (days === 1) {
-    return 'dün';
+    return t('dün');
   }
   if (days < 30) {
-    return `${days} gün önce`;
+    return t('{n} gün önce', { n: days });
   }
   const months = Math.floor(days / 30);
   if (months < 12) {
-    return `${months} ay önce`;
+    return t('{n} ay önce', { n: months });
   }
-  return `${Math.floor(days / 365)} yıl önce`;
+  return t('{n} yıl önce', { n: Math.floor(days / 365) });
 }

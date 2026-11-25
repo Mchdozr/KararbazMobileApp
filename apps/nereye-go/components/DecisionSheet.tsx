@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Button } from '@/components/Button';
 import { VenueImage } from '@/components/VenueImage';
 import { api } from '@/lib/api';
@@ -74,7 +75,7 @@ export function DecisionSheet({
   async function startPoll() {
     setCreating(true);
     try {
-      const poll = await api.createPoll(`${intentLabel} için nereye?`, pollOptionsFrom(cards));
+      const poll = await api.createPoll(t('{p0} için nereye?', { p0: intentLabel }), pollOptionsFrom(cards));
       haptic.success();
       onClose();
       router.push({ pathname: '/poll/[code]', params: { code: poll.code } });
@@ -96,7 +97,7 @@ export function DecisionSheet({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Seçimi kapat" />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('Seçimi kapat')} />
       <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]} accessibilityViewIsModal>
         <View style={styles.grip} />
         <View style={styles.head}>
@@ -105,9 +106,9 @@ export function DecisionSheet({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.kicker}>{decision ? `${intentLabel} · ${decision.position}/${decision.total}` : intentLabel}</Text>
-            <Text style={styles.title}>Senin için seçtim</Text>
+            <Text style={styles.title}>{t('Senin için seçtim')}</Text>
           </View>
-          <Pressable onPress={onClose} style={styles.close} hitSlop={8} accessibilityRole="button" accessibilityLabel="Kapat">
+          <Pressable onPress={onClose} style={styles.close} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('Kapat')}>
             <Ionicons name="close" size={20} color={colors.ink} />
           </Pressable>
         </View>
@@ -144,7 +145,7 @@ export function DecisionSheet({
             ) : null}
             <View style={styles.actions}>
               <Button
-                label="Yol tarifi"
+                label={t('Yol tarifi')}
                 icon="navigate"
                 onPress={() => {
                   haptic.press();
@@ -152,39 +153,39 @@ export function DecisionSheet({
                   void openDirections(card.latitude, card.longitude, origin.lat, origin.lng);
                 }}
                 style={{ flex: 1 }}
-                accessibilityLabel={`${card.name} için yol tarifi`}
+                accessibilityLabel={t('{p0} için yol tarifi', { p0: card.name })}
               />
               <Button
-                label="Detaya bak"
+                label={t('Detaya bak')}
                 variant="secondary"
                 onPress={() => {
                   onClose();
                   router.push({ pathname: '/venue/[id]', params: { id: card.placeId, name: card.name, photo: card.photoUrl ?? '' } });
                 }}
                 style={{ flex: 1 }}
-                accessibilityLabel={`${card.name} detayını aç`}
+                accessibilityLabel={t('{p0} detayını aç', { p0: card.name })}
               />
             </View>
             {decision.total > 1 ? (
               <View style={styles.links}>
-                <Pressable onPress={another} style={styles.another} accessibilityRole="button" accessibilityLabel="Başka bir mekan öner">
+                <Pressable onPress={another} style={styles.another} accessibilityRole="button" accessibilityLabel={t('Başka bir mekan öner')}>
                   <Ionicons name="shuffle" size={18} color={colors.coral} />
-                  <Text style={styles.anotherText}>Başka öner</Text>
+                  <Text style={styles.anotherText}>{t('Başka öner')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => void startPoll()}
                   disabled={creating}
                   style={styles.another}
                   accessibilityRole="button"
-                  accessibilityLabel="Arkadaşlarla karar ver: kısa listeyi oylamaya aç">
+                  accessibilityLabel={t('Arkadaşlarla karar ver: kısa listeyi oylamaya aç')}>
                   <Ionicons name="people-outline" size={18} color={colors.coral} />
-                  <Text style={styles.anotherText}>{creating ? 'Hazırlanıyor…' : 'Arkadaşlarla karar ver'}</Text>
+                  <Text style={styles.anotherText}>{creating ? t('Hazırlanıyor…') : t('Arkadaşlarla karar ver')}</Text>
                 </Pressable>
               </View>
             ) : null}
           </Animated.View>
         ) : (
-          <Text style={styles.empty}>Seçebileceğim bir mekan yok. Yarıçapı büyütmeyi ya da filtreleri gevşetmeyi dene.</Text>
+          <Text style={styles.empty}>{t('Seçebileceğim bir mekan yok. Yarıçapı büyütmeyi ya da filtreleri gevşetmeyi dene.')}</Text>
         )}
       </View>
     </Modal>

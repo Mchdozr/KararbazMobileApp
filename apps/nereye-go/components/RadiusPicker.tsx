@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { RADIUS_OPTIONS } from '@/lib/constants';
 import { clampRadius, kmToMeters, metersToKm, radiusLabel } from '@/lib/radius';
 import { colors, fonts, radii } from '@/lib/theme';
@@ -37,7 +38,7 @@ export function RadiusPicker({
               style={[styles.chip, on && styles.chipOn]}
               onPress={() => onChange(opt.meters)}
               accessibilityRole="button"
-              accessibilityLabel={`${opt.label} ${opt.sub}`}
+              accessibilityLabel={`${opt.label} ${t(opt.sub)}`}
               accessibilityState={{ selected: on }} aria-selected={on}>
               <Text style={[styles.chipText, on && styles.chipTextOn]}>{opt.label}</Text>
             </Pressable>
@@ -45,7 +46,7 @@ export function RadiusPicker({
         })}
       </View>
       <View style={styles.custom}>
-        <Text style={styles.hint}>Kendi mesafen (km)</Text>
+        <Text style={styles.hint}>{t('Kendi mesafen (km)')}</Text>
         <View style={styles.inputRow}>
           <TextInput
             value={text}
@@ -54,9 +55,9 @@ export function RadiusPicker({
             onSubmitEditing={(e) => commit(e.nativeEvent.text)}
             keyboardType="decimal-pad"
             style={styles.input}
-            accessibilityLabel="Arama çapı kilometre"
+            accessibilityLabel={t('Arama çapı kilometre')}
           />
-          <Text style={styles.unit}>km</Text>
+          <Text style={styles.unit}>{t('km')}</Text>
           <Text style={styles.now}>{radiusLabel(clampRadius(meters))}</Text>
         </View>
       </View>

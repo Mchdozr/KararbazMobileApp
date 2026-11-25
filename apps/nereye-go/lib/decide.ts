@@ -1,6 +1,7 @@
 // "Benim için seç": öneri listesinden tek mekan ve kısa gerekçeleri. Sunucunun sıralaması temel alınır,
 // şu anki duruma göre (açık mı, kapanmak üzere mi, yürünür mü) yeniden tartılır. Reklamlı kart seçilmez.
 // React Native içe aktarmaz: node ile test edilir.
+import { decimal, t } from './i18n.ts';
 import { openLine } from './open-status.ts';
 import type { VenueCard } from './types.ts';
 import { ratingLine } from './venue-format.ts';
@@ -58,9 +59,9 @@ export function distanceReason(meters: number): Reason | null {
     return null;
   }
   if (meters <= WALKABLE_METERS) {
-    return { icon: 'walk-outline', text: `${Math.max(1, Math.round(meters / WALK_METERS_PER_MINUTE))} dk yürüme` };
+    return { icon: 'walk-outline', text: t('{n} dk yürüme', { n: Math.max(1, Math.round(meters / WALK_METERS_PER_MINUTE)) }) };
   }
-  return { icon: 'car-outline', text: `${(meters / 1000).toFixed(1).replace('.', ',')} km uzakta` };
+  return { icon: 'car-outline', text: t('{km} km uzakta', { km: decimal(meters / 1000) }) };
 }
 
 export function reasonsFor(card: VenueCard, nowMinutes: number): Reason[] {
@@ -75,10 +76,13 @@ export function reasonsFor(card: VenueCard, nowMinutes: number): Reason[] {
   }
   const rated = ratingLine(card);
   if (rated) {
-    out.push({ icon: 'star', text: rated.count ? `${rated.value} puan · ${rated.count} yorum` : `${rated.value} puan` });
+    out.push({
+      icon: 'star',
+      text: rated.count ? t('{value} puan · {count} yorum', { value: rated.value, count: rated.count }) : t('{value} puan', { value: rated.value }),
+    });
   }
   if (out.length < 3 && card.category) {
-    out.push({ icon: 'pricetag-outline', text: card.category });
+    out.push({ icon: 'pricetag-outline', text: t(card.category) });
   }
   return out.slice(0, 3);
 }

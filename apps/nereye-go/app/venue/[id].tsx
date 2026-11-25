@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Avatar } from '@/components/Avatar';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
@@ -87,7 +88,7 @@ async function open(url: string) {
   try {
     await Linking.openURL(url);
   } catch {
-    toast.error('Bağlantı açılamadı.');
+    toast.error(t('Bağlantı açılamadı.'));
   }
 }
 
@@ -229,7 +230,7 @@ export default function Venue() {
 
   function writeReview() {
     if (!session) {
-      toast.info('Yorum yazmak için giriş yap', { label: 'Giriş', onPress: () => router.push('/auth') });
+      toast.info(t('Yorum yazmak için giriş yap'), { label: t('Giriş'), onPress: () => router.push('/auth') });
       return;
     }
     router.push({ pathname: '/review/[id]', params: { id: id! } });
@@ -237,41 +238,41 @@ export default function Venue() {
 
   function report(reviewId?: string, authorId?: string, authorName?: string) {
     if (!session) {
-      toast.info('Bildirmek için giriş yap', { label: 'Giriş', onPress: () => router.push('/auth') });
+      toast.info(t('Bildirmek için giriş yap'), { label: t('Giriş'), onPress: () => router.push('/auth') });
       return;
     }
     const send = (reason: string) => {
       api
         .report(id!, reason, reviewId)
-        .then(() => toast.success('Bildirimin alındı. Teşekkürler.'))
+        .then(() => toast.success(t('Bildirimin alındı. Teşekkürler.')))
         .catch((e) => toast.error(friendlyError(e)));
     };
     const buttons: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
-      { text: 'Vazgeç', style: 'cancel' },
-      { text: 'Yanlış bilgi', onPress: () => send('yanlis-bilgi') },
-      { text: 'Uygunsuz içerik', onPress: () => send('uygunsuz') },
+      { text: t('Vazgeç'), style: 'cancel' },
+      { text: t('Yanlış bilgi'), onPress: () => send('yanlis-bilgi') },
+      { text: t('Uygunsuz içerik'), onPress: () => send('uygunsuz') },
     ];
     if (authorId && authorId !== userId) {
-      buttons.push({ text: 'Kullanıcıyı engelle', style: 'destructive', onPress: () => block(authorId, authorName) });
+      buttons.push({ text: t('Kullanıcıyı engelle'), style: 'destructive', onPress: () => block(authorId, authorName) });
     }
-    Alert.alert(reviewId ? 'Yorumu bildir' : 'Mekanı bildir', 'Neden bildiriyorsun?', buttons);
+    Alert.alert(reviewId ? t('Yorumu bildir') : t('Mekanı bildir'), t('Neden bildiriyorsun?'), buttons);
   }
 
   function block(authorId: string, authorName?: string) {
     Alert.alert(
-      'Kullanıcıyı engelle',
-      `${authorName || 'Bu kullanıcı'} yazdıklarını artık görmeyeceksin. Engeli Hesap ve güvenlik ekranından kaldırabilirsin.`,
+      t('Kullanıcıyı engelle'),
+      t('{p0} yazdıklarını artık görmeyeceksin. Engeli Hesap ve güvenlik ekranından kaldırabilirsin.', { p0: authorName || t('Bu kullanıcı') }),
       [
-        { text: 'Vazgeç', style: 'cancel' },
+        { text: t('Vazgeç'), style: 'cancel' },
         {
-          text: 'Engelle',
+          text: t('Engelle'),
           style: 'destructive',
           onPress: () => {
             const before = reviews;
             setReviews(reviews.filter((r) => r.userId !== authorId));
             api
               .block(authorId)
-              .then(() => toast.success('Kullanıcı engellendi'))
+              .then(() => toast.success(t('Kullanıcı engellendi')))
               .catch((e) => {
                 setReviews(before);
                 toast.error(friendlyError(e));
@@ -284,18 +285,18 @@ export default function Venue() {
 
   function reportPhoto(path: string) {
     if (!session) {
-      toast.info('Bildirmek için giriş yap', { label: 'Giriş', onPress: () => router.push('/auth') });
+      toast.info(t('Bildirmek için giriş yap'), { label: t('Giriş'), onPress: () => router.push('/auth') });
       return;
     }
-    Alert.alert('Fotoğrafı bildir', 'Bu fotoğraf uygunsuz mu?', [
-      { text: 'Vazgeç', style: 'cancel' },
+    Alert.alert('Fotoğrafı bildir', t('Bu fotoğraf uygunsuz mu?'), [
+      { text: t('Vazgeç'), style: 'cancel' },
       {
-        text: 'Bildir',
+        text: t('Bildir'),
         style: 'destructive',
         onPress: () => {
           api
             .report(id!, 'uygunsuz-fotograf', viewer?.reviewId, path)
-            .then(() => toast.success('Bildirimin alındı. Teşekkürler.'))
+            .then(() => toast.success(t('Bildirimin alındı. Teşekkürler.')))
             .catch((e) => toast.error(friendlyError(e)));
         },
       },
@@ -307,17 +308,17 @@ export default function Venue() {
     if (!mine) {
       return;
     }
-    Alert.alert('Yorumu sil', 'Yorumun ve puanın kaldırılacak.', [
-      { text: 'Vazgeç', style: 'cancel' },
+    Alert.alert('Yorumu sil', t('Yorumun ve puanın kaldırılacak.'), [
+      { text: t('Vazgeç'), style: 'cancel' },
       {
-        text: 'Sil',
+        text: t('Sil'),
         style: 'destructive',
         onPress: () => {
           const before = reviews;
           setReviews(reviews.filter((r) => r.id !== mine.id));
           api
             .deleteReview(mine.id)
-            .then(() => toast.success('Yorumun silindi'))
+            .then(() => toast.success(t('Yorumun silindi')))
             .catch((e) => {
               setReviews(before);
               toast.error(friendlyError(e));
@@ -332,7 +333,7 @@ export default function Venue() {
       <View style={styles.bg}>
         <Stack.Screen options={{ headerRight: undefined }} />
         {loading ? (
-          <View accessibilityLabel="Mekan yükleniyor" accessibilityRole="progressbar">
+          <View accessibilityLabel={t('Mekan yükleniyor')} accessibilityRole="progressbar">
             <Skeleton height={180} radius={0} />
             <View style={styles.skel}>
               <Text style={styles.h}>{hintedName || 'Mekan'}</Text>
@@ -344,8 +345,8 @@ export default function Venue() {
           <View style={[styles.center, { paddingTop: insets.top + 80 }]}>
             <EmptyState
               icon={error ? 'cloud-offline-outline' : 'help-circle-outline'}
-              title={error ?? 'Mekan bulunamadı.'}
-              action={error ? 'Tekrar dene' : 'Geri dön'}
+              title={error ?? t('Mekan bulunamadı.')}
+              action={error ? t('Tekrar dene') : t('Geri dön')}
               onAction={() => (error ? setAttempt((n) => n + 1) : router.back())}
             />
           </View>
@@ -390,7 +391,7 @@ export default function Venue() {
               }}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Paylaş">
+                accessibilityLabel={t('Paylaş')}>
                 <Ionicons name="share-outline" size={19} color={colors.white} />
               </Pressable>
               <FavoriteButton venue={detail} size={20} style={styles.glass} />
@@ -423,7 +424,7 @@ export default function Venue() {
                 disabled={!photoUris.length}
                 onPress={() => setViewer({ uris: photoUris, index: Math.min(i, photoUris.length - 1) })}
                 accessibilityRole="imagebutton"
-                accessibilityLabel={`${detail.name} fotoğrafı ${i + 1}, büyüt`}>
+                accessibilityLabel={t('{p0} fotoğrafı {p1}, büyüt', { p0: detail.name, p1: i + 1 })}>
                 {Math.abs(i - shownIx) <= 1 ? (
                   <VenueImage
                     placeId={detail.placeId}
@@ -486,17 +487,17 @@ export default function Venue() {
               <View
                 style={styles.ratingInline}
                 accessible
-                accessibilityLabel={`Google puanı ${detail.googleRating.toFixed(1)}, ${detail.googleRatingCount ?? 0} değerlendirme`}>
+                accessibilityLabel={t('Google puanı {p0}, {p1} değerlendirme', { p0: detail.googleRating.toFixed(1), p1: detail.googleRatingCount ?? 0 })}>
                 <Ionicons name="logo-google" size={13} color={colors.muted} />
                 <Text style={styles.ratingText}>{detail.googleRating.toFixed(1).replace('.', ',')}</Text>
                 {detail.googleRatingCount ? <Text style={styles.ratingCount}>({compactCount(detail.googleRatingCount)})</Text> : null}
               </View>
             ) : null}
-            {detail.nereyeRating == null && detail.googleRating == null ? <Text style={styles.fresh}>Henüz puanlanmadı</Text> : null}
+            {detail.nereyeRating == null && detail.googleRating == null ? <Text style={styles.fresh}>{t('Henüz puanlanmadı')}</Text> : null}
             {detail.claimed ? (
               <View style={styles.verified}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.sage} />
-                <Text style={styles.verifiedText}>İşletme onaylı</Text>
+                <Text style={styles.verifiedText}>{t('İşletme onaylı')}</Text>
               </View>
             ) : null}
           </View>
@@ -504,36 +505,36 @@ export default function Venue() {
           <View style={styles.actions}>
             <Action
               icon="navigate"
-              label="Yol tarifi"
+              label={t('Yol tarifi')}
               onPress={() => {
                 track('directions', { placeId: detail.placeId });
-                void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'));
+                void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error(t('Harita açılamadı.')));
               }}
             />
-            {detail.phone ? <Action icon="call" label="Ara" onPress={() => void open(`tel:${detail.phone!.replace(/\s/g, '')}`)} /> : null}
+            {detail.phone ? <Action icon="call" label={t('Ara|telefon')} onPress={() => void open(`tel:${detail.phone!.replace(/\s/g, '')}`)} /> : null}
             {detail.website ? (
               <Action
                 icon="globe-outline"
-                label="Web"
+                label={t('Web')}
                 onPress={() => void open(/^https?:\/\//i.test(detail.website!) ? detail.website! : `https://${detail.website}`)}
               />
             ) : null}
             <Action
               icon="bookmarks-outline"
-              label="Listeye ekle"
+              label={t('Listeye ekle')}
               onPress={() => {
                 if (!session) {
-                  toast.info('Liste oluşturmak için giriş yap.');
+                  toast.info(t('Liste oluşturmak için giriş yap.'));
                   router.push('/auth');
                   return;
                 }
                 setListing(true);
               }}
             />
-            <Action icon="map-outline" label="Harita" onPress={() => void open(mapLink)} />
+            <Action icon="map-outline" label={t('Harita')} onPress={() => void open(mapLink)} />
             <Action
               icon="share-social-outline"
-              label="Paylaş"
+              label={t('Paylaş')}
               onPress={() => {
                 track('share', { placeId: detail.placeId });
                 void shareVenue(detail.placeId, detail.name, detail.address);
@@ -553,7 +554,7 @@ export default function Venue() {
                   key={uri}
                   onPress={() => setViewer({ uris: photoUris, index: i })}
                   accessibilityRole="imagebutton"
-                  accessibilityLabel={`Fotoğraf ${i + 1} / ${photoUris.length}, büyüt`}>
+                  accessibilityLabel={t('Fotoğraf {p0} / {p1}, büyüt', { p0: i + 1, p1: photoUris.length })}>
                   <Image
                     source={{ uri }}
                     style={styles.galleryPhoto}
@@ -579,13 +580,13 @@ export default function Venue() {
 
           {features.length ? (
             <View style={styles.box}>
-              <Text style={styles.boxTitle}>Öne çıkanlar</Text>
+              <Text style={styles.boxTitle}>{t('Öne çıkanlar')}</Text>
               <View style={styles.features}>
                 {(allFeatures ? features : features.slice(0, 6)).map((f) => (
                   <View key={f} style={styles.feature}>
                     <Ionicons name={featureIcon(f) as ComponentProps<typeof Ionicons>['name']} size={18} color={colors.coral} />
                     <Text style={styles.featureText} numberOfLines={2}>
-                      {f}
+                      {t(f)}
                     </Text>
                   </View>
                 ))}
@@ -596,7 +597,7 @@ export default function Venue() {
                   style={styles.more}
                   accessibilityRole="button"
                   accessibilityState={{ expanded: allFeatures }}>
-                  <Text style={styles.link}>{allFeatures ? 'Daha az göster' : `Tümünü göster (${features.length})`}</Text>
+                  <Text style={styles.link}>{allFeatures ? t('Daha az göster') : t('Tümünü göster ({p0})', { p0: features.length })}</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -604,7 +605,7 @@ export default function Venue() {
 
           {detail.events.length ? (
             <View style={styles.box}>
-              <Text style={styles.boxTitle}>Yaklaşan etkinlikler</Text>
+              <Text style={styles.boxTitle}>{t('Yaklaşan etkinlikler')}</Text>
               {detail.events.map((e) => (
                 <View key={e.id} style={styles.eventRow}>
                   <Ionicons name="calendar-outline" size={16} color={colors.coral} />
@@ -626,11 +627,11 @@ export default function Venue() {
                 onPress={() => setHoursOpen((o) => !o)}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: hoursOpen }}
-                accessibilityLabel={`Çalışma saatleri, bugün ${today?.hours ?? 'bilinmiyor'}`}>
+                accessibilityLabel={t('Çalışma saatleri, bugün {p0}', { p0: today?.hours ?? 'bilinmiyor' })}>
                 <Ionicons name="time-outline" size={18} color={colors.coral} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.boxTitle}>Çalışma saatleri</Text>
-                  <Text style={styles.hoursToday}>Bugün · {today?.hours ?? '—'}</Text>
+                  <Text style={styles.boxTitle}>{t('Çalışma saatleri')}</Text>
+                  <Text style={styles.hoursToday}>{t('Bugün · {hours}', { hours: today?.hours ?? '—' })}</Text>
                 </View>
                 <Ionicons name={hoursOpen ? 'chevron-up' : 'chevron-down'} size={18} color={colors.muted} />
               </Pressable>
@@ -645,19 +646,19 @@ export default function Venue() {
             </View>
           ) : detail.openingHours ? (
             <View style={styles.box}>
-              <Text style={styles.boxTitle}>Çalışma saatleri</Text>
+              <Text style={styles.boxTitle}>{t('Çalışma saatleri')}</Text>
               <Text style={styles.desc}>{detail.openingHours}</Text>
             </View>
           ) : null}
 
           {walk || drive ? (
             <>
-              <Text style={styles.section}>Nasıl giderim?</Text>
+              <Text style={styles.section}>{t('Nasıl giderim?')}</Text>
               <View style={styles.routeRow} accessibilityRole="radiogroup">
                 {(
                   [
-                    ['foot', 'walk', 'Yürüyerek', walk],
-                    ['driving', 'car', 'Araçla', drive],
+                    ['foot', 'walk', t('Yürüyerek'), walk],
+                    ['driving', 'car', t('Araçla'), drive],
                   ] as const
                 ).map(([key, icon, label, r]) => (
                   <Pressable
@@ -698,10 +699,10 @@ export default function Venue() {
           ) : null}
 
           <View style={styles.sectionRow}>
-            <Text style={styles.section}>Yorumlar</Text>
+            <Text style={styles.section}>{t('Yorumlar')}</Text>
             {!mine ? (
-              <Pressable onPress={writeReview} hitSlop={10} accessibilityRole="button" accessibilityLabel="Yorum yaz">
-                <Text style={styles.link}>Yorum yaz</Text>
+              <Pressable onPress={writeReview} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('Yorum yaz')}>
+                <Text style={styles.link}>{t('Yorum yaz')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -712,16 +713,16 @@ export default function Venue() {
               <View style={styles.reviewHead}>
                 <Avatar name={session?.displayName} url={session?.avatarUrl} size={36} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.author}>Senin yorumun</Text>
+                  <Text style={styles.author}>{t('Senin yorumun')}</Text>
                   <View style={styles.reviewMeta}>
                     <Stars value={mine.stars} size={12} />
                     <Text style={styles.when}>{relativeDate(mine.createdAt)}</Text>
                   </View>
                 </View>
-                <Pressable onPress={writeReview} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Yorumu düzenle">
+                <Pressable onPress={writeReview} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={t('Yorumu düzenle')}>
                   <Ionicons name="create-outline" size={20} color={colors.coral} />
                 </Pressable>
-                <Pressable onPress={removeMine} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Yorumu sil">
+                <Pressable onPress={removeMine} hitSlop={8} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel={t('Yorumu sil')}>
                   <Ionicons name="trash-outline" size={20} color={colors.danger} />
                 </Pressable>
               </View>
@@ -731,9 +732,9 @@ export default function Venue() {
 
           {reviews.length === 0 ? (
             <View style={styles.firstReview}>
-              <Text style={styles.firstTitle}>İlk yorumu sen yaz</Text>
-              <Text style={styles.firstBody}>Deneyimin, buraya gelmeyi düşünenlere yol gösterir.</Text>
-              <Button label="Yorum yaz" icon="create-outline" variant="secondary" compact onPress={writeReview} />
+              <Text style={styles.firstTitle}>{t('İlk yorumu sen yaz')}</Text>
+              <Text style={styles.firstBody}>{t('Deneyimin, buraya gelmeyi düşünenlere yol gösterir.')}</Text>
+              <Button label={t('Yorum yaz')} icon="create-outline" variant="secondary" compact onPress={writeReview} />
             </View>
           ) : null}
 
@@ -753,7 +754,7 @@ export default function Venue() {
                   hitSlop={8}
                   style={styles.iconBtn}
                   accessibilityRole="button"
-                  accessibilityLabel="Yorumu bildir ya da yazarı engelle">
+                  accessibilityLabel={t('Yorumu bildir ya da yazarı engelle')}>
                   <Ionicons name="flag-outline" size={17} color={colors.muted} />
                 </Pressable>
               </View>
@@ -764,17 +765,17 @@ export default function Venue() {
           {external.length ? (
             <>
               <View style={styles.sectionRow}>
-                <Text style={styles.section}>Google’da ne diyorlar?</Text>
+                <Text style={styles.section}>{t('Google’da ne diyorlar?')}</Text>
                 {detail.mapsUri ? (
-                  <Pressable onPress={() => void open(detail.mapsUri!)} hitSlop={10} accessibilityRole="link" accessibilityLabel="Tüm Google yorumlarını aç">
-                    <Text style={styles.link}>Tümü</Text>
+                  <Pressable onPress={() => void open(detail.mapsUri!)} hitSlop={10} accessibilityRole="link" accessibilityLabel={t('Tüm Google yorumlarını aç')}>
+                    <Text style={styles.link}>{t('Tümü')}</Text>
                   </Pressable>
                 ) : null}
               </View>
               {external.map((r, i) => (
                 <ExternalReviewCard key={`${r.author}-${i}`} review={r} />
               ))}
-              <Text style={styles.source}>Yorumlar Google Haritalar’dan alınmıştır.</Text>
+              <Text style={styles.source}>{t('Yorumlar Google Haritalar’dan alınmıştır.')}</Text>
             </>
           ) : null}
 
@@ -785,13 +786,13 @@ export default function Venue() {
                 onPress={() => router.push({ pathname: '/owner/[id]', params: { id: id! } })}
                 accessibilityRole="button">
                 <Ionicons name="storefront-outline" size={18} color={colors.ink} />
-                <Text style={styles.footText}>{owner ? 'İşletme paneli' : 'Bu mekân senin mi? Sahiplen'}</Text>
+                <Text style={styles.footText}>{owner ? t('İşletme paneli') : t('Bu mekân senin mi? Sahiplen')}</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </Pressable>
             ) : null}
             <Pressable style={styles.footLink} onPress={() => report()} accessibilityRole="button">
               <Ionicons name="flag-outline" size={18} color={colors.ink} />
-              <Text style={styles.footText}>Hatalı bilgi bildir</Text>
+              <Text style={styles.footText}>{t('Hatalı bilgi bildir')}</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.muted} />
             </Pressable>
           </View>
@@ -801,15 +802,15 @@ export default function Venue() {
 
       <View style={[styles.sticky, { paddingBottom: insets.bottom + 12 }]}>
         <Button
-          label="Yol tarifi al"
+          label={t('Yol tarifi al')}
           icon="navigate"
           style={{ flex: 1 }}
           onPress={() => {
             track('directions', { placeId: detail.placeId });
-            void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'));
+            void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error(t('Harita açılamadı.')));
           }}
         />
-        <Button label={mine ? 'Düzenle' : 'Yorum yaz'} icon="create-outline" variant="outline" onPress={writeReview} />
+        <Button label={mine ? t('Düzenle') : t('Yorum yaz')} icon="create-outline" variant="outline" onPress={writeReview} />
       </View>
 
       <PhotoViewer
@@ -843,7 +844,7 @@ function ExternalReviewCard({ review }: { review: ExternalReview }) {
               numberOfLines={1}
               onPress={() => void open(review.authorUri!)}
               accessibilityRole="link"
-              accessibilityHint="Yazarın Google profilini açar">
+              accessibilityHint={t('Yazarın Google profilini açar')}>
               {review.author}
             </Text>
           ) : (
@@ -862,9 +863,9 @@ function ExternalReviewCard({ review }: { review: ExternalReview }) {
           onPress={() => setExpanded((v) => !v)}
           disabled={!body.clipped}
           accessibilityRole={body.clipped ? 'button' : 'text'}
-          accessibilityHint={body.clipped ? 'Yorumun tamamını gösterir' : undefined}>
+          accessibilityHint={body.clipped ? t('Yorumun tamamını gösterir') : undefined}>
           <Text style={styles.reviewText}>{expanded ? review.text : body.text}</Text>
-          {body.clipped ? <Text style={[styles.link, styles.readMore]}>{expanded ? 'Kısalt' : 'Devamını oku'}</Text> : null}
+          {body.clipped ? <Text style={[styles.link, styles.readMore]}>{expanded ? t('Kısalt') : t('Devamını oku')}</Text> : null}
         </Pressable>
       ) : null}
     </View>
@@ -900,7 +901,7 @@ function ReviewBody({
               key={uri}
               onPress={() => onPhoto({ uris, index: i, reviewId: review.id, paths })}
               accessibilityRole="imagebutton"
-              accessibilityLabel="Yorum fotoğrafı, büyüt">
+              accessibilityLabel={t('Yorum fotoğrafı, büyüt')}>
               <Image source={{ uri }} style={styles.reviewPhoto} contentFit="cover" transition={150} />
             </Pressable>
           ))}
@@ -908,7 +909,7 @@ function ReviewBody({
       ) : null}
       {review.ownerReply ? (
         <View style={styles.reply}>
-          <Text style={styles.replyWho}>İşletmenin yanıtı</Text>
+          <Text style={styles.replyWho}>{t('İşletmenin yanıtı')}</Text>
           <Text style={styles.replyText}>{review.ownerReply}</Text>
         </View>
       ) : null}

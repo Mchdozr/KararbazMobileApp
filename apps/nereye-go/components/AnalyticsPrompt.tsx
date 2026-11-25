@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { Button } from '@/components/Button';
 import { setAnalyticsConsent, useAnalyticsConsent } from '@/lib/analytics';
 import { shouldAskConsent } from '@/lib/analytics-queue';
@@ -20,27 +21,26 @@ export function AnalyticsPrompt({ sawList }: { sawList: boolean }) {
     <View style={styles.card} accessibilityRole="summary">
       <View style={styles.head}>
         <Ionicons name="stats-chart-outline" size={18} color={colors.coral} />
-        <Text style={styles.title}>Nereye'yi geliştirmemize yardım eder misin?</Text>
+        <Text style={styles.title}>{t('Nereye\'yi geliştirmemize yardım eder misin?')}</Text>
       </View>
       <Text style={styles.body}>
-        Hangi ekranların açıldığını anonim olarak sayarız. Kimliğin, cihazın ve konumun gönderilmez. Kararını Profil'den
-        istediğin an değiştirebilirsin.
+        {t("Hangi ekranların açıldığını anonim olarak sayarız. Kimliğin, cihazın ve konumun gönderilmez. Kararını Profil'den istediğin an değiştirebilirsin.")}
       </Text>
       <View style={styles.actions}>
         <Button
-          label="İzin ver"
+          label={t('İzin ver')}
           compact
           onPress={() => void setAnalyticsConsent(true, Boolean(session))}
           style={{ flex: 1 }}
-          accessibilityLabel="Anonim kullanım istatistiğine izin ver"
+          accessibilityLabel={t('Anonim kullanım istatistiğine izin ver')}
         />
         <Button
-          label="Hayır, teşekkürler"
+          label={t('Hayır, teşekkürler')}
           variant="secondary"
           compact
           onPress={() => void setAnalyticsConsent(false, Boolean(session))}
           style={{ flex: 1 }}
-          accessibilityLabel="Kullanım istatistiğine izin verme"
+          accessibilityLabel={t('Kullanım istatistiğine izin verme')}
         />
       </View>
     </View>

@@ -1,5 +1,6 @@
 // Adlandırılmış listeler. Sunucudaki Nereye.Domain.Collections.CollectionRules aynası.
 // React Native içe aktarmaz: node ile test edilir.
+import { t } from './i18n.ts';
 
 export const LIST_NAME_MAX = 40;
 
@@ -46,11 +47,11 @@ export function itemFrom(v: {
 
 export function listShareText(name: string, placeNames: readonly string[], share: ListShare): string {
   const head = placeNames.slice(0, 3).join(' · ');
-  const more = placeNames.length > 3 ? ` ve ${placeNames.length - 3} mekan daha` : '';
-  const lines = [`${name} — ${placeNames.length} mekan`, `${head}${more}`];
+  const more = placeNames.length > 3 ? t(' ve {n} mekan daha', { n: placeNames.length - 3 }) : '';
+  const lines = [t('{name} — {n} mekan', { name, n: placeNames.length }), `${head}${more}`];
   if (share.webUrl) {
     lines.push(share.webUrl);
   }
-  lines.push(`Uygulamada: ${share.appUrl}`);
+  lines.push(t('Uygulamada: {url}', { url: share.appUrl }));
   return lines.join('\n');
 }

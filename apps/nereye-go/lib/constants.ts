@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import { resolveApiUrl } from '@/lib/release-config';
 
 export const ACCENT = '#0b5d45'; // lib/theme.ts colors.coral ile aynı
@@ -9,17 +10,17 @@ export const VIBES = ['Sessiz', 'Laptop', 'Manzarali', 'Romantik', 'Ucuz', 'Prem
 export function intentLabel(intent: string) {
   switch (intent) {
     case 'Kahve':
-      return 'Kahve';
+      return t('Kahve');
     case 'Yemek':
-      return 'Yemek';
+      return t('Yemek');
     case 'Eglence':
-      return 'Eğlence';
+      return t('Eğlence');
     case 'Kultur':
-      return 'Kültür';
+      return t('Kültür');
     case 'AcikHava':
-      return 'Açık hava';
+      return t('Açık hava');
     case 'Gece':
-      return 'Gece';
+      return t('Gece');
     default:
       return intent;
   }
@@ -32,15 +33,15 @@ export function vibeText(vibe: string) {
     case 'Romantik':
     case 'Premium':
     case 'Tarihi':
-      return vibe;
+      return t(vibe);
     case 'Manzarali':
-      return 'Manzaralı';
+      return t('Manzaralı');
     case 'Ucuz':
-      return 'Uygun';
+      return t('Uygun');
     case 'CocukDostu':
-      return 'Çocuklu';
+      return t('Çocuklu');
     case 'GecSaat':
-      return 'Geç saat';
+      return t('Geç saat');
     default:
       return vibe;
   }

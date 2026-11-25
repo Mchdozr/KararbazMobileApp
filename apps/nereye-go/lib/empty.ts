@@ -1,3 +1,5 @@
+import { t } from './i18n.ts';
+
 const INTENT_TR: Record<string, string> = {
   Kahve: 'kahve',
   Yemek: 'yemek',
@@ -7,23 +9,24 @@ const INTENT_TR: Record<string, string> = {
   Gece: 'gece',
 };
 
+function intentName(intent: string) {
+  return t(INTENT_TR[intent] ?? intent.toLowerCase());
+}
+
 export function emptyNearby(intent: string, label: string) {
-  const name = INTENT_TR[intent] ?? intent.toLowerCase();
-  return `Bu civarda ${name} yok. ${label} için yarıçapı büyüt veya niyeti değiştir.`;
+  return t('Bu civarda {name} yok. {label} için yarıçapı büyüt veya niyeti değiştir.', { name: intentName(intent), label });
 }
 
 export function emptySearch(q: string) {
-  return `“${q}” için sonuç yok. Mahalle veya mekan adını dene.`;
+  return t('“{q}” için sonuç yok. Mahalle veya mekan adını dene.', { q });
 }
 
 export function emptyMap(intent: string) {
-  const name = INTENT_TR[intent] ?? intent.toLowerCase();
-  return `Haritada ${name} görünmüyor. Kaydır veya niyeti değiştir.`;
+  return t('Haritada {name} görünmüyor. Kaydır veya niyeti değiştir.', { name: intentName(intent) });
 }
 
 export function emptyDiscover(intent: string) {
-  const name = INTENT_TR[intent] ?? intent.toLowerCase();
-  return `Bu mesafede ${name} yok. Filtreyi gevşet.`;
+  return t('Bu mesafede {name} yok. Filtreyi gevşet.', { name: intentName(intent) });
 }
 
 const NETWORK = 'Ağa ulaşılamadı. Bağlantını kontrol edip tekrar dene.';
@@ -33,43 +36,43 @@ export function friendlyError(reason: unknown) {
   const api = reason as { name?: string; status?: number; kind?: string; message?: string } | null;
   if (api && api.name === 'ApiError') {
     if (api.kind === 'timeout') {
-      return 'Sunucu geç yanıt veriyor. Tekrar dene.';
+      return t('Sunucu geç yanıt veriyor. Tekrar dene.');
     }
     if (api.kind === 'network') {
-      return NETWORK;
+      return t(NETWORK);
     }
     if (api.kind === 'aborted') {
       // Ekran isteği kendisi bıraktı; normalde gösterilmez, gösterilirse de ham metin çıkmasın.
-      return 'İstek yarıda bırakıldı.';
+      return t('İstek yarıda bırakıldı.');
     }
     if (api.status === 429) {
-      return api.message || 'Çok sık istek. Bir dakika sonra tekrar dene.';
+      return api.message || t('Çok sık istek. Bir dakika sonra tekrar dene.');
     }
     if (api.status === 401) {
-      return api.message || 'Oturum doldu. Giriş yapman yeterli.';
+      return api.message || t('Oturum doldu. Giriş yapman yeterli.');
     }
     if (api.status === 404 && !api.message) {
-      return 'Aradığın yer bulunamadı. Kaldırılmış ya da taşınmış olabilir.';
+      return t('Aradığın yer bulunamadı. Kaldırılmış ya da taşınmış olabilir.');
     }
     if (api.status === 403 && !api.message) {
-      return 'Bu işlem için yetkin yok.';
+      return t('Bu işlem için yetkin yok.');
     }
     // 503: sunucu bir özelliği bilerek kapattı ("Şifre sıfırlama şu an kapalı."); Türkçe nedeni göster.
     if (api.status === 503 && api.message && api.message.length <= 160) {
       return api.message;
     }
     if ((api.status ?? 0) >= 500) {
-      return 'Sunucuda bir sorun var. Biraz sonra tekrar dene.';
+      return t('Sunucuda bir sorun var. Biraz sonra tekrar dene.');
     }
     if (api.message && api.message.length <= 160) {
       return api.message;
     }
-    return 'İstek tamamlanamadı. Tekrar dene.';
+    return t('İstek tamamlanamadı. Tekrar dene.');
   }
 
   const raw = reason instanceof Error ? reason.message : typeof reason === 'string' ? reason : '';
   if (!raw.trim()) {
-    return 'Bir şey ters gitti. Tekrar dene.';
+    return t('Bir şey ters gitti. Tekrar dene.');
   }
   const lower = raw.toLowerCase();
   if (
@@ -82,16 +85,16 @@ export function friendlyError(reason: unknown) {
     || lower.includes('timeout')
     || lower.includes('aborted')
   ) {
-    return NETWORK;
+    return t(NETWORK);
   }
   if (lower.includes('429') || lower.includes('too many')) {
-    return 'Çok sık arama. Bir dakika sonra tekrar dene.';
+    return t('Çok sık arama. Bir dakika sonra tekrar dene.');
   }
   if (lower.includes('401') || lower.includes('unauthorized')) {
-    return 'Oturum doldu. Giriş yapman yeterli.';
+    return t('Oturum doldu. Giriş yapman yeterli.');
   }
   if (raw.length > 140 || raw.startsWith('{') || raw.startsWith('<')) {
-    return 'Sunucu cevap vermedi. Tekrar dene.';
+    return t('Sunucu cevap vermedi. Tekrar dene.');
   }
   return raw;
 }
