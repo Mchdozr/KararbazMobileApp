@@ -317,7 +317,7 @@ export default function Profile() {
                     onPress={() => toggleIntent(intent)}
                     style={[styles.tile, on && styles.tileOn]}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on }}
+                    accessibilityState={{ checked: on }} aria-checked={on}
                     accessibilityLabel={intentLabel(intent)}>
                     <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />
                     <LinearGradient colors={gradients.photo} style={StyleSheet.absoluteFill} />
@@ -345,7 +345,7 @@ export default function Profile() {
                     onPress={() => toggleVibe(vibe)}
                     style={[styles.chip, on && styles.chipOn]}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on }}
+                    accessibilityState={{ checked: on }} aria-checked={on}
                     accessibilityLabel={vibeLabel(vibe)}>
                     <Text style={on ? styles.chipOnText : styles.chipOffText}>{vibeLabel(vibe)}</Text>
                   </Pressable>
@@ -380,6 +380,8 @@ export default function Profile() {
       <View style={styles.account}>
         {session ? (
           <>
+            <Row icon="bookmarks-outline" label="Listelerim" onPress={() => router.push('/collections')} />
+            <View style={styles.divider} />
             <Row icon="heart-outline" label="Kaydedilenler" value={String(info?.favoriteCount ?? favorites.cards.length)} onPress={() => router.push('/favorites')} />
             <View style={styles.divider} />
             <Row icon="chatbubble-ellipses-outline" label="Yorumlarım" value={String(info?.reviewCount ?? 0)} onPress={() => router.push('/my-reviews')} />

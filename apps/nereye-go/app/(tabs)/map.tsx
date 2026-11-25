@@ -299,7 +299,8 @@ export default function MapScreen() {
                 onPress={() => filters.setIntent(i)}
                 accessibilityRole="button"
                 accessibilityLabel={intentLabel(i)}
-                accessibilityState={{ selected: on }}>
+                accessibilityState={{ selected: on }}
+                aria-selected={on}>
                 <Ionicons name={INTENT_ICONS[i]} size={14} color={on ? colors.white : colors.coral} />
                 <Text style={[styles.intentText, on && styles.intentTextOn]}>{intentLabel(i)}</Text>
               </Pressable>

@@ -38,7 +38,7 @@ export function RadiusPicker({
               onPress={() => onChange(opt.meters)}
               accessibilityRole="button"
               accessibilityLabel={`${opt.label} ${opt.sub}`}
-              accessibilityState={{ selected: on }}>
+              accessibilityState={{ selected: on }} aria-selected={on}>
               <Text style={[styles.chipText, on && styles.chipTextOn]}>{opt.label}</Text>
             </Pressable>
           );

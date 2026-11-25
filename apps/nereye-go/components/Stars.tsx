@@ -35,7 +35,7 @@ export function StarInput({ value, onChange }: { value: number; onChange: (stars
             style={styles.starBtn}
             accessibilityRole="button"
             accessibilityLabel={`${n} yıldız, ${STAR_LABELS[n]}`}
-            accessibilityState={{ selected: n === value }}>
+            accessibilityState={{ selected: n === value }} aria-selected={n === value}>
             <Ionicons name={n <= value ? 'star' : 'star-outline'} size={38} color={n <= value ? colors.gold : colors.line} />
           </Pressable>
         ))}

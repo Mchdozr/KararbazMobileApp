@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 import type { AnalyticsEvent } from '@/lib/analytics-queue';
 import type { Poll, PollOptionInput } from '@/lib/poll';
 import type { WeatherInfo } from '@/lib/weather';
+import type { ListDetail, ListItem, ListShare, ListSummary, PublicList } from '@/lib/collections';
 import type { CrashReport } from '@/lib/crash-queue';
 import type { GeoHit } from '@/lib/geo-hit';
 import type {
@@ -305,6 +306,22 @@ async function request<T>(path: string, init: RequestInit = {}, opts: RequestOpt
 }
 
 export const api = {
+  /** Adlandırılmış listeler. placeId verilirse her listede o mekanın olup olmadığı da gelir. */
+  collections: (placeId?: string) =>
+    request<ListSummary[]>(`/api/me/collections${placeId ? `?placeId=${encodeURIComponent(placeId)}` : ''}`),
+  createCollection: (name: string) =>
+    request<ListDetail>('/api/me/collections', { method: 'POST', body: JSON.stringify({ name }) }),
+  collection: (id: string) => request<ListDetail>(`/api/me/collections/${id}`),
+  renameCollection: (id: string, name: string) =>
+    request<ListDetail>(`/api/me/collections/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  deleteCollection: (id: string) => request(`/api/me/collections/${id}`, { method: 'DELETE' }),
+  addToCollection: (id: string, item: ListItem) =>
+    request<ListDetail>(`/api/me/collections/${id}/items`, { method: 'POST', body: JSON.stringify(item) }),
+  removeFromCollection: (id: string, placeId: string) =>
+    request(`/api/me/collections/${id}/items/${encodeURIComponent(placeId)}`, { method: 'DELETE' }),
+  shareCollection: (id: string) => request<ListShare>(`/api/me/collections/${id}/share`, { method: 'POST' }),
+  unshareCollection: (id: string) => request(`/api/me/collections/${id}/share`, { method: 'DELETE' }),
+  publicList: (code: string) => request<PublicList>(`/api/lists/${encodeURIComponent(code)}`, {}, { skipAuth: true }),
   /** Yakındaki bu akşamın etkinlikleri. Hata sessiz: bant yalnızca gizlenir. */
   tonight: async (lat: number, lng: number, radiusMeters = 5000) => {
     const data = await request<{ items?: TonightEvent[] } | undefined>(

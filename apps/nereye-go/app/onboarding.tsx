@@ -102,6 +102,7 @@ export default function Onboarding() {
                 style={[styles.tile, on && styles.tileOn]}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: on }}
+                aria-checked={on}
                 accessibilityLabel={intentLabel(i)}>
                 <Image source={INTENT_PHOTOS[i]} style={StyleSheet.absoluteFill} contentFit="cover" />
                 <LinearGradient colors={gradients.photo} style={StyleSheet.absoluteFill} />

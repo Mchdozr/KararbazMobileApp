@@ -105,6 +105,7 @@ export default function PollScreen() {
           style={[styles.option, r.mine && styles.optionMine]}
           accessibilityRole="button"
           accessibilityState={{ selected: r.mine, disabled: poll.expired }}
+          aria-selected={r.mine}
           accessibilityLabel={`${r.name}, ${r.votes} oy${r.mine ? ', senin oyun' : ''}${r.leading ? ', önde' : ''}`}>
           <View style={styles.thumb}>
             <VenueImage placeId={r.placeId} photoUrl={r.photoUrl} name={r.name} style={StyleSheet.absoluteFill} radius={radii.sm} widthPt={64} />

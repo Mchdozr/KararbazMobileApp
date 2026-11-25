@@ -21,6 +21,8 @@ import { relativeDate, summarizeRatings } from '@/lib/reviews';
 import { formatRouteLine } from '@/lib/route';
 import { useSession } from '@/lib/session';
 import { shareVenue } from '@/lib/share';
+import { itemFrom } from '@/lib/collections';
+import { AddToListSheet } from '@/components/AddToListSheet';
 import { rememberCover } from '@/lib/covers';
 import { colors, fonts, radii } from '@/lib/theme';
 import { toast } from '@/lib/toast';
@@ -97,6 +99,7 @@ export default function Venue() {
   const hintedPhoto = (Array.isArray(params.photo) ? params.photo[0] : params.photo) || null;
   const filters = useFilters();
   const { session } = useSession();
+  const [listing, setListing] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -515,6 +518,18 @@ export default function Venue() {
                 onPress={() => void open(/^https?:\/\//i.test(detail.website!) ? detail.website! : `https://${detail.website}`)}
               />
             ) : null}
+            <Action
+              icon="bookmarks-outline"
+              label="Listeye ekle"
+              onPress={() => {
+                if (!session) {
+                  toast.info('Liste oluşturmak için giriş yap.');
+                  router.push('/auth');
+                  return;
+                }
+                setListing(true);
+              }}
+            />
             <Action icon="map-outline" label="Harita" onPress={() => void open(mapLink)} />
             <Action
               icon="share-social-outline"
@@ -651,6 +666,7 @@ export default function Venue() {
                     onPress={() => setMode(key)}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: mode === key }}
+                    aria-selected={mode === key}
                     accessibilityLabel={`${label}${r ? `, ${formatRouteLine(r.distanceMeters, r.durationSeconds)}` : ''}`}>
                     <Ionicons name={icon} size={18} color={mode === key ? colors.white : colors.ink} />
                     <View style={{ flex: 1 }}>
@@ -789,9 +805,9 @@ export default function Venue() {
           icon="navigate"
           style={{ flex: 1 }}
           onPress={() => {
-                track('directions', { placeId: detail.placeId });
-                void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'));
-              }}
+            track('directions', { placeId: detail.placeId });
+            void openDirections(detail.latitude, detail.longitude, lat, lng).catch(() => toast.error('Harita açılamadı.'));
+          }}
         />
         <Button label={mine ? 'Düzenle' : 'Yorum yaz'} icon="create-outline" variant="outline" onPress={writeReview} />
       </View>
@@ -802,6 +818,13 @@ export default function Venue() {
         onClose={() => setViewer(null)}
         onReport={viewer?.paths && viewer.reviewId !== mine?.id ? (i) => reportPhoto(viewer.paths![i]) : undefined}
       />
+      {session ? (
+        <AddToListSheet
+          visible={listing}
+          item={itemFrom({ ...detail, photoUrl: detail.photoUrl ?? photos[0]?.raw ?? null })}
+          onClose={() => setListing(false)}
+        />
+      ) : null}
     </View>
   );
 }

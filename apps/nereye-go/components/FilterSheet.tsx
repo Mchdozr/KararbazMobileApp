@@ -72,7 +72,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
                   onPress={() => filters.setMinRating(n)}
                   accessibilityRole="button"
                   accessibilityLabel={n === 0 ? 'Puan yok' : `En az ${n}`}
-                  accessibilityState={{ selected: on }}>
+                  accessibilityState={{ selected: on }} aria-selected={on}>
                   <Text style={[styles.chipText, on && styles.chipTextOn]}>{n === 0 ? 'Hepsi' : `★ ${n}+`}</Text>
                 </Pressable>
               );
@@ -88,7 +88,7 @@ export function FilterSheet({ visible, onClose }: { visible: boolean; onClose: (
                   style={[styles.chip, on && styles.chipOn]}
                   onPress={() => filters.toggleVibe(v)}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
+                  accessibilityState={{ selected: on }} aria-selected={on}
                   accessibilityLabel={vibeLabel(v)}>
                   <Text style={[styles.chipText, on && styles.chipTextOn]}>{vibeLabel(v)}</Text>
                 </Pressable>

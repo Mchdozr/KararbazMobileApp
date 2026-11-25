@@ -166,7 +166,8 @@ export default function Discover() {
                 style={[styles.chip, on && styles.chipOn]}
                 accessibilityRole="button"
                 accessibilityLabel={intentLabel(i)}
-                accessibilityState={{ selected: on }}>
+                accessibilityState={{ selected: on }}
+                aria-selected={on}>
                 <Image source={INTENT_PHOTOS[i]} style={styles.chipImg} />
                 <Text style={[styles.chipText, on && styles.chipTextOn]}>{intentLabel(i)}</Text>
               </Pressable>
@@ -186,7 +187,8 @@ export default function Discover() {
               }}
               style={[styles.sort, on && styles.sortOn]}
               accessibilityRole="radio"
-              accessibilityState={{ selected: on }}>
+              accessibilityState={{ selected: on }}
+              aria-selected={on}>
               <Text style={[styles.sortText, on && styles.sortTextOn]}>{s.label}</Text>
             </Pressable>
           );

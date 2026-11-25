@@ -248,6 +248,7 @@ export default function Owner() {
                     style={[styles.chip, evDay === d.offset && styles.chipOn]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: evDay === d.offset }}
+                    aria-selected={evDay === d.offset}
                     accessibilityLabel={`Gün: ${d.label}`}>
                     <Text style={[styles.chipText, evDay === d.offset && styles.chipTextOn]}>{d.label}</Text>
                   </Pressable>
@@ -263,6 +264,7 @@ export default function Owner() {
                     style={[styles.chip, evHours === h && styles.chipOn]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: evHours === h }}
+                    aria-selected={evHours === h}
                     accessibilityLabel={`Süre: ${h} saat`}>
                     <Text style={[styles.chipText, evHours === h && styles.chipTextOn]}>{h} sa</Text>
                   </Pressable>

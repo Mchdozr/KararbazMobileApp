@@ -128,7 +128,7 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
                   onPress={() => filters.setLoc(p.latitude, p.longitude, p.label, true)}
                   accessibilityRole="button"
                   accessibilityLabel={p.label}
-                  accessibilityState={{ selected: on }}>
+                  accessibilityState={{ selected: on }} aria-selected={on}>
                   <Ionicons name={p.kind === 'home' ? 'home' : p.kind === 'work' ? 'briefcase' : 'bookmark'} size={12} color={on ? colors.coral : colors.white} />
                   <Text style={[styles.savedText, on && styles.savedTextOn]}>{p.label}</Text>
                 </Pressable>

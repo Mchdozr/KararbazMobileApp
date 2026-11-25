@@ -43,7 +43,7 @@ export function FavoriteButton({
       style={[plain ? styles.plain : styles.glass, style]}
       accessibilityRole="button"
       accessibilityLabel={saved ? `${venue.name} kayıttan çıkar` : `${venue.name} kaydet`}
-      accessibilityState={{ selected: saved }}>
+      accessibilityState={{ selected: saved }} aria-selected={saved}>
       <Animated.View style={pop}>
         <Ionicons
           name={saved ? 'heart' : 'heart-outline'}

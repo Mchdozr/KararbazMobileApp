@@ -176,7 +176,8 @@ export default function AuthScreen() {
                 style={[styles.tab, mode === m && styles.tabOn]}
                 onPress={() => switchMode(m)}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: mode === m }}>
+                accessibilityState={{ selected: mode === m }}
+                aria-selected={mode === m}>
                 <Text style={[styles.tabText, mode === m && styles.tabTextOn]}>{m === 'login' ? 'Giriş yap' : 'Kayıt ol'}</Text>
               </Pressable>
             ))}
@@ -266,6 +267,7 @@ export default function AuthScreen() {
                 }}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: terms }}
+                aria-checked={terms}
                 accessibilityLabel="Kullanım koşullarını okudum ve kabul ediyorum">
                 <View style={[styles.box, terms && styles.boxOn]}>
                   {terms ? <Ionicons name="checkmark" size={16} color={colors.white} /> : null}

@@ -303,6 +303,8 @@ public sealed class AuthService : IAuthService
         // KVKK veri minimizasyonu: kişisel tercih ve konum kayıtları hesapla birlikte gider.
         _db.Favorites.RemoveRange(await _db.Favorites.Where(f => f.UserId == userId).ToListAsync(cancellationToken));
         _db.SavedPlaces.RemoveRange(await _db.SavedPlaces.Where(p => p.UserId == userId).ToListAsync(cancellationToken));
+        // Listeler (paylaşılmış olanlar dahil) ve içerikleri: paylaşım bağlantısı da çalışmaz olur.
+        _db.VenueLists.RemoveRange(await _db.VenueLists.Include(l => l.Items).Where(l => l.UserId == userId).ToListAsync(cancellationToken));
         var pref = await _db.UserPreferences
             .Include(p => p.Intents)
             .Include(p => p.Vibes)

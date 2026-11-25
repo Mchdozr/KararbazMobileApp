@@ -22,7 +22,7 @@ export function CategoryGrid({
             style={styles.item}
             accessibilityRole="button"
             accessibilityLabel={intentLabel(intent)}
-            accessibilityState={{ selected: on }}>
+            accessibilityState={{ selected: on }} aria-selected={on}>
             <View style={[styles.ring, on && styles.ringOn]}>
               <View style={styles.avatar}>
                 <Image source={INTENT_PHOTOS[intent]} style={StyleSheet.absoluteFill} contentFit="cover" />

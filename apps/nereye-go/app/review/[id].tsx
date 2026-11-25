@@ -209,6 +209,7 @@ export default function Review() {
                 }}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: on }}
+                aria-checked={on}
                 accessibilityLabel={vibeLabel(v)}>
                 <Text style={[styles.chipText, on && styles.chipTextOn]}>{vibeLabel(v)}</Text>
               </Pressable>

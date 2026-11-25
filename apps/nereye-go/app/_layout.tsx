@@ -120,6 +120,9 @@ export default function RootLayout() {
                 header: gradientHeader('Deneyimini paylaş'),
               }}
             />
+            <Stack.Screen name="collections/index" options={{ title: 'Listelerim', header: gradientHeader('Adlandırılmış listelerin') }} />
+            <Stack.Screen name="collections/[id]" options={{ title: 'Liste', header: gradientHeader('Mekanlar ve paylaşım') }} />
+            <Stack.Screen name="list/[code]" options={{ title: 'Paylaşılan liste', header: gradientHeader('Nereye ile hazırlandı') }} />
             <Stack.Screen
               name="poll/[code]"
               options={{
