@@ -160,7 +160,9 @@ export default function Owner() {
                   {statTiles(stats).map((t) => (
                     <View key={t.label} style={styles.tile} accessible accessibilityLabel={`${t.label}: ${t.value}${t.note ? `, ${t.note}` : ''}`}>
                       <Text style={styles.tileValue}>{t.value}</Text>
-                      <Text style={styles.tileLabel}>{t.label}</Text>
+                      <Text style={styles.tileLabel} numberOfLines={1}>
+                        {t.label}
+                      </Text>
                       {t.note ? <Text style={styles.tileNote}>{t.note}</Text> : null}
                     </View>
                   ))}
@@ -307,9 +309,9 @@ const styles = StyleSheet.create({
   label: { color: colors.ink, fontFamily: fonts.sansBold, fontSize: 13 },
   fine: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, textAlign: 'center' },
   tiles: { flexDirection: 'row', gap: 10 },
-  tile: { flex: 1, backgroundColor: colors.bg, borderRadius: 16, padding: 12 },
+  tile: { flex: 1, backgroundColor: colors.bg, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 10 },
   tileValue: { color: colors.ink, fontFamily: fonts.display, fontSize: 26 },
-  tileLabel: { color: colors.muted, fontFamily: fonts.sansBold, fontSize: 12 },
+  tileLabel: { color: colors.muted, fontFamily: fonts.sansBold, fontSize: 11 },
   tileNote: { color: colors.coral, fontFamily: fonts.sansMed, fontSize: 11, marginTop: 2 },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 64 },
   barCol: { flex: 1, justifyContent: 'flex-end' },
