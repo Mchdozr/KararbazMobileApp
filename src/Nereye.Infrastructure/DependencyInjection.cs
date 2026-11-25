@@ -132,6 +132,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Telemetry.ITelemetryService, Telemetry.TelemetryService>();
         services.AddScoped<Application.Analytics.IAnalyticsService, Analytics.AnalyticsService>();
         services.AddScoped<Application.Polls.IPollService, Polls.PollService>();
+        services.AddScoped<Application.Events.IEventService, Events.EventService>();
         services.AddSingleton<Application.Telemetry.IMetricsReader, Telemetry.DistributedMetricsReader>();
         services.AddSingleton<AvatarStorage>();
         // Küçültülmüş görseller: yapılandırılmazsa geçici klasör (kaybolursa yeniden üretilir).

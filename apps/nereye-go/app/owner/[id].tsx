@@ -10,13 +10,14 @@ import { useSession } from '@/lib/session';
 import { colors, fonts, shadows } from '@/lib/theme';
 import { promoContactUrl } from '@/lib/promo-contact';
 import { toast } from '@/lib/toast';
-import type { PromotionItem, ReviewItem, VenueStats } from '@/lib/types';
+import type { PromotionItem, ReviewItem, VenueDetail, VenueStats } from '@/lib/types';
 import { statBars, statTiles } from '@/lib/venue-stats';
+import { eventDayLabel, eventStartIso, upcomingEvents } from '@/lib/tonight';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // v1'de uygulama içi tahsilat yok; başvuru adresi derlemeye insan tarafından verilir.
@@ -55,12 +56,18 @@ export default function Owner() {
   const [mine, setMine] = useState<PromotionItem[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [stats, setStats] = useState<VenueStats | null>(null);
+  const [events, setEvents] = useState<VenueDetail['events']>([]);
+  const [evTitle, setEvTitle] = useState('');
+  const [evDay, setEvDay] = useState(0);
+  const [evTime, setEvTime] = useState('20:30');
+  const [evHours, setEvHours] = useState(2);
 
   const load = useCallback(async () => {
     try {
       const v = await api.venue(id!);
       setName(v.name);
       setDesc(v.ownerDescription ?? '');
+      setEvents(upcomingEvents(v.events));
     } catch {
       /* mekan bilgisi gelmezse form boş kalır */
     }
@@ -105,6 +112,43 @@ export default function Owner() {
   }
 
   const forThisVenue = mine.filter((p) => p.placeId === id);
+
+  async function addEvent() {
+    const start = eventStartIso(evDay, evTime);
+    if (!start) {
+      toast.error('Saati 20:30 biçiminde yaz.');
+      return;
+    }
+    const end = new Date(Date.parse(start) + evHours * 3_600_000).toISOString();
+    await run(
+      'event',
+      async () => {
+        await api.addEvent(id!, evTitle.trim(), start, end);
+        setEvTitle('');
+        await load();
+      },
+      'Etkinlik eklendi',
+    );
+  }
+
+  function confirmDeleteEvent(eventId: string, title: string) {
+    Alert.alert('Etkinliği sil', `"${title}" silinsin mi?`, [
+      { text: 'Vazgeç', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: () =>
+          void run(
+            'event-del',
+            async () => {
+              await api.deleteEvent(id!, eventId);
+              await load();
+            },
+            'Etkinlik silindi',
+          ),
+      },
+    ]);
+  }
 
   return (
     <KeyboardAvoidingView style={styles.bg} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={64}>
@@ -177,6 +221,61 @@ export default function Owner() {
                 <Text style={styles.fine}>Son 14 gün, günlük görüntülenme</Text>
               </Section>
             ) : null}
+            <Section title="Etkinlikler" sub="Bu akşamki etkinliğin yakındaki kullanıcıların ana sayfasında görünür.">
+              {events.map((e) => (
+                <View key={e.id} style={styles.campaign}>
+                  <Ionicons name="musical-notes-outline" size={18} color={colors.coral} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>{e.title}</Text>
+                    <Text style={styles.eventWhen}>{eventDayLabel(e.startsAt)}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => confirmDeleteEvent(e.id, e.title)}
+                    style={styles.iconBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${e.title} etkinliğini sil`}>
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                  </Pressable>
+                </View>
+              ))}
+              <TextField label="Etkinlik adı" value={evTitle} onChangeText={setEvTitle} maxLength={80} placeholder="Akustik gece" />
+              <Text style={styles.label}>Gün</Text>
+              <View style={styles.chips}>
+                {DAY_CHOICES.map((d) => (
+                  <Pressable
+                    key={d.offset}
+                    onPress={() => setEvDay(d.offset)}
+                    style={[styles.chip, evDay === d.offset && styles.chipOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: evDay === d.offset }}
+                    accessibilityLabel={`Gün: ${d.label}`}>
+                    <Text style={[styles.chipText, evDay === d.offset && styles.chipTextOn]}>{d.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextField label="Başlangıç saati" value={evTime} onChangeText={setEvTime} maxLength={5} keyboardType="numbers-and-punctuation" />
+              <Text style={styles.label}>Süre</Text>
+              <View style={styles.chips}>
+                {[1, 2, 3, 4].map((h) => (
+                  <Pressable
+                    key={h}
+                    onPress={() => setEvHours(h)}
+                    style={[styles.chip, evHours === h && styles.chipOn]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: evHours === h }}
+                    accessibilityLabel={`Süre: ${h} saat`}>
+                    <Text style={[styles.chipText, evHours === h && styles.chipTextOn]}>{h} sa</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Button
+                label="Etkinlik ekle"
+                icon="add"
+                loading={busy === 'event'}
+                disabled={evTitle.trim().length < 3}
+                onPress={() => void addEvent()}
+              />
+            </Section>
             <Section title="İşletme profili" sub="Mekan sayfasında görünen ad ve açıklama.">
               <TextField label="Görünen ad" value={name} onChangeText={setName} maxLength={80} />
               <TextField
@@ -316,4 +415,30 @@ const styles = StyleSheet.create({
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 64 },
   barCol: { flex: 1, justifyContent: 'flex-end' },
   bar: { borderRadius: 4, backgroundColor: colors.coral },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    minHeight: 44,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.bg,
+  },
+  chipOn: { backgroundColor: colors.coral, borderColor: colors.coral },
+  chipText: { color: colors.ink, fontFamily: fonts.sansMed, fontSize: 14 },
+  chipTextOn: { color: colors.white },
+  iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  eventWhen: { color: colors.muted, fontFamily: fonts.sans, fontSize: 12, marginTop: 2 },
 });
+
+const DAY_CHOICES = [
+  { offset: 0, label: 'Bugün' },
+  { offset: 1, label: 'Yarın' },
+  ...[2, 3, 4, 5, 6].map((offset) => ({ offset, label: dayName(offset) })),
+];
+
+function dayName(offset: number) {
+  const d = new Date(Date.now() + offset * 86_400_000);
+  return ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'][d.getDay()];
+}

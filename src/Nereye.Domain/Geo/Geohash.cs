@@ -6,6 +6,39 @@ public static class Geohash
 
     public const int RecommendPrecision = 7;
 
+    /// <summary>Hücre merkezi. 7 karakterde hata ~75 m: mesafe gösterimi için yeterli.</summary>
+    public static (double Latitude, double Longitude) Decode(string geohash)
+    {
+        double minLat = -90, maxLat = 90, minLon = -180, maxLon = 180;
+        var even = true;
+        foreach (var c in geohash.ToLowerInvariant())
+        {
+            var cd = Base32.IndexOf(c);
+            if (cd < 0)
+            {
+                throw new ArgumentException("Geçersiz geohash.", nameof(geohash));
+            }
+
+            for (var mask = 16; mask > 0; mask >>= 1)
+            {
+                if (even)
+                {
+                    var mid = (minLon + maxLon) / 2;
+                    if ((cd & mask) != 0) { minLon = mid; } else { maxLon = mid; }
+                }
+                else
+                {
+                    var mid = (minLat + maxLat) / 2;
+                    if ((cd & mask) != 0) { minLat = mid; } else { maxLat = mid; }
+                }
+
+                even = !even;
+            }
+        }
+
+        return ((minLat + maxLat) / 2, (minLon + maxLon) / 2);
+    }
+
     public static string Encode(double latitude, double longitude, int precision = RecommendPrecision)
     {
         var minLat = -90.0;

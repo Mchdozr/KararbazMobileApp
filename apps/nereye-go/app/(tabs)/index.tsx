@@ -4,6 +4,7 @@ import { SearchingOverlay } from '@/components/SearchingOverlay';
 import { VenueCardSkeleton, VenueRowSkeleton } from '@/components/Skeleton';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { AnalyticsPrompt } from '@/components/AnalyticsPrompt';
+import { TonightBand } from '@/components/TonightBand';
 import { DecisionSheet } from '@/components/DecisionSheet';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { HorizontalVenueRow } from '@/components/home/HorizontalVenueRow';
@@ -24,7 +25,7 @@ import { advancePage } from '@/lib/paging';
 import { peekRecommend, recommendCacheKey } from '@/lib/recommend-cache';
 import { getLargeJson, setLargeJson } from '@/lib/storage';
 import { colors, fonts, gradients } from '@/lib/theme';
-import type { VenueCard } from '@/lib/types';
+import type { VenueCard, TonightEvent } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -43,6 +44,7 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [deciding, setDeciding] = useState(false);
+  const [tonight, setTonight] = useState<TonightEvent[]>([]);
   // Ağ yokken son başarılı liste gösteriliyorsa bandın metni.
   const [offline, setOffline] = useState<string | null>(null);
   const recents = useRecentVenues();
@@ -162,6 +164,19 @@ export default function Home() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Bu akşamın etkinlikleri listeden bağımsız yüklenir; gelmezse bant görünmez.
+  useEffect(() => {
+    let alive = true;
+    void api.tonight(filters.lat, filters.lng, filters.radiusMeters).then((events) => {
+      if (alive) {
+        setTonight(events);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [filters.lat, filters.lng, filters.radiusMeters]);
 
   function goDiscover(intent: string) {
     filters.setIntent(intent);
@@ -284,6 +299,7 @@ export default function Home() {
                 <Ionicons name="chevron-forward" size={18} color={colors.white} />
               </Pressable>
             ) : null}
+            <TonightBand events={tonight} />
             <AnalyticsPrompt sawList={organic.length > 0} />
             {sponsored.length > 0 ? (
               <PromoBanner

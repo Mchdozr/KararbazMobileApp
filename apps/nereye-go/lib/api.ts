@@ -27,6 +27,7 @@ import type {
   VenueCard,
   VenueDetail,
   VenueStats,
+  TonightEvent,
 } from '@/lib/types';
 
 export { ApiError };
@@ -303,6 +304,22 @@ async function request<T>(path: string, init: RequestInit = {}, opts: RequestOpt
 }
 
 export const api = {
+  /** Yakındaki bu akşamın etkinlikleri. Hata sessiz: bant yalnızca gizlenir. */
+  tonight: async (lat: number, lng: number, radiusMeters = 5000) => {
+    const data = await request<{ items?: TonightEvent[] } | undefined>(
+      `/api/events/tonight?lat=${Number(lat.toFixed(4))}&lng=${Number(lng.toFixed(4))}&radiusMeters=${radiusMeters}`,
+      {},
+      { skipAuth: true, optional: true },
+    );
+    return data?.items ?? [];
+  },
+  addEvent: (placeId: string, title: string, startsAt: string, endsAt: string) =>
+    request<{ id: string }>(`/api/venues/${encodeURIComponent(placeId)}/events`, {
+      method: 'POST',
+      body: JSON.stringify({ title, startsAt, endsAt }),
+    }),
+  deleteEvent: (placeId: string, eventId: string) =>
+    request(`/api/venues/${encodeURIComponent(placeId)}/events/${eventId}`, { method: 'DELETE' }),
   /** Arkadaşlarla karar ver: kısa liste oylaması (hesap gerekmez). */
   createPoll: (title: string, options: PollOptionInput[]) =>
     request<Poll>('/api/polls', { method: 'POST', body: JSON.stringify({ title, options }) }, { skipAuth: true }),

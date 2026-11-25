@@ -100,6 +100,29 @@ public sealed class VenuesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Mekan sahibi etkinlik ekler (ör. "Akustik gece", bugün 20:30–22:30).</summary>
+    [Authorize(Roles = RoleNames.VenueOwner)]
+    [EnableRateLimiting("write")]
+    [HttpPost("{placeId}/events")]
+    public async Task<ActionResult<Nereye.Application.Events.VenueEventDto>> AddEvent(
+        string placeId,
+        Nereye.Application.Events.AddEventRequest body,
+        [FromServices] Nereye.Application.Events.IEventService events,
+        CancellationToken ct) =>
+        Ok(await events.AddAsync(placeId, User.Id(), body, ct));
+
+    [Authorize(Roles = RoleNames.VenueOwner)]
+    [HttpDelete("{placeId}/events/{eventId:guid}")]
+    public async Task<IActionResult> DeleteEvent(
+        string placeId,
+        Guid eventId,
+        [FromServices] Nereye.Application.Events.IEventService events,
+        CancellationToken ct)
+    {
+        await events.DeleteAsync(placeId, User.Id(), eventId, ct);
+        return NoContent();
+    }
+
     /// <summary>Sahiplenilmiş mekanın son 30 günü: görüntülenme, yol tarifi (analitiğe izin verenler) ve kaydetme.</summary>
     [Authorize(Roles = RoleNames.VenueOwner)]
     [HttpGet("{placeId}/stats")]

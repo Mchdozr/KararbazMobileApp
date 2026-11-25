@@ -68,7 +68,7 @@ export type VenueDetail = {
   ownerDescription?: string | null;
   attribution: string;
   vibes: string[];
-  events: { id: string; title: string; startsAt: string }[];
+  events: { id: string; title: string; startsAt: string; endsAt?: string | null }[];
   latitude: number;
   longitude: number;
   photoUrl?: string | null;
@@ -169,4 +169,17 @@ export type VenueStats = {
   saves: number;
   shares: number;
   days: { day: string; views: number; directions: number; saves: number }[];
+};
+
+/** Yakındaki bu akşamın etkinliği (İstanbul saatiyle sabah 04:00'e kadar). */
+export type TonightEvent = {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt?: string | null;
+  live: boolean;
+  placeId: string;
+  venueName: string;
+  photoUrl?: string | null;
+  distanceMeters: number;
 };

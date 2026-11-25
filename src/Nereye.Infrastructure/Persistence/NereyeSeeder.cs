@@ -144,6 +144,16 @@ public static class NereyeSeeder
                 StartsAt = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(2).Date.AddHours(19), DateTimeKind.Utc),
                 EndsAt = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(2).Date.AddHours(21), DateTimeKind.Utc)
             });
+            // Demo: ana sayfadaki "Bu akşam" bandı boş kalmasın (bir sonraki yarım saatten bir saat sonra).
+            var soon = DateTime.UtcNow.AddMinutes(90);
+            soon = new DateTime(soon.Year, soon.Month, soon.Day, soon.Hour, soon.Minute < 30 ? 0 : 30, 0, DateTimeKind.Utc);
+            venue.Events.Add(new CultureEvent
+            {
+                Id = Guid.NewGuid(),
+                Title = "Akustik akşam",
+                StartsAt = soon,
+                EndsAt = soon.AddHours(2)
+            });
             db.Venues.Add(venue);
 
             var petra = FakePlacesClient.Istanbul.First(p => p.PlaceId == "nereye:petra");
