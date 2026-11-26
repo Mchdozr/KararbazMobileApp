@@ -131,7 +131,7 @@ export default function RootLayout() {
             />
             <Stack.Screen name="collections/index" options={{ title: 'Listelerim', header: gradientHeader(t('Adlandırılmış listelerin')) }} />
             <Stack.Screen name="collections/[id]" options={{ title: 'Liste', header: gradientHeader(t('Mekanlar ve paylaşım')) }} />
-            <Stack.Screen name="list/[code]" options={{ title: t('Paylaşılan liste'), header: gradientHeader(t('Nereye ile hazırlandı')) }} />
+            <Stack.Screen name="list/[code]" options={{ title: t('Paylaşılan liste'), header: gradientHeader(t('Kararbaz ile hazırlandı')) }} />
             <Stack.Screen
               name="poll/[code]"
               options={{

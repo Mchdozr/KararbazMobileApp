@@ -73,7 +73,7 @@ export function HomeHeader({ topInset }: { topInset?: number } = {}) {
             <View style={styles.logoTile}>
               <BrandLogo size={34} />
             </View>
-            <Text style={styles.brandName}>{t('Nereye')}</Text>
+            <Text style={styles.brandName}>{t('Kararbaz')}</Text>
           </View>
           <View style={styles.locRow}>
             <Pressable

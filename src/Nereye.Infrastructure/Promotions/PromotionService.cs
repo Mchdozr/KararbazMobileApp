@@ -55,7 +55,7 @@ public sealed class PromotionService : IPromotionService
         var days = Math.Max(1, (int)Math.Ceiling((campaign.EndAt - campaign.StartAt).TotalDays));
         var amount = campaign.DailyBudget * days;
         var result = await _payments.ChargeAsync(
-            new PaymentChargeRequest(campaign.Id, amount, "Nereye öne çıkarma"),
+            new PaymentChargeRequest(campaign.Id, amount, "Kararbaz öne çıkarma"),
             cancellationToken);
         _db.Payments.Add(new PaymentRecord
         {

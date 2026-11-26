@@ -87,7 +87,7 @@ public sealed class PollPageController : ControllerBase
         body.Append(CultureInfo.InvariantCulture, $"""
             </div>
             <p class="muted" id="total">{poll.TotalVotes} oy</p>
-            <p><a class="app" href="{e(poll.AppUrl)}">Nereye uygulamasında aç</a></p>
+            <p><a class="app" href="{e(poll.AppUrl)}">Kararbaz uygulamasında aç</a></p>
             """);
         body.Append(Script);
 

@@ -21,7 +21,7 @@ export function AnalyticsPrompt({ sawList }: { sawList: boolean }) {
     <View style={styles.card} accessibilityRole="summary">
       <View style={styles.head}>
         <Ionicons name="stats-chart-outline" size={18} color={colors.coral} />
-        <Text style={styles.title}>{t('Nereye\'yi geliştirmemize yardım eder misin?')}</Text>
+        <Text style={styles.title}>{t('Kararbaz\'ı geliştirmemize yardım eder misin?')}</Text>
       </View>
       <Text style={styles.body}>
         {t("Hangi ekranların açıldığını anonim olarak sayarız. Kimliğin, cihazın ve konumun gönderilmez. Kararını Profil'den istediğin an değiştirebilirsin.")}

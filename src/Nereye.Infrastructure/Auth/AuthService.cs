@@ -344,11 +344,11 @@ public sealed class AuthService : IAuthService
         await _email.SendAsync(
             new EmailMessage(
                 user.Email!,
-                "Nereye hesabını silme onayı",
-                $"<p>Merhaba,</p><p>Nereye hesabının silinmesi istendi. Onaylamak için aşağıdaki bağlantıyı aç ve sayfadaki düğmeye bas:</p>" +
+                "Kararbaz hesabını silme onayı",
+                $"<p>Merhaba,</p><p>Kararbaz hesabının silinmesi istendi. Onaylamak için aşağıdaki bağlantıyı aç ve sayfadaki düğmeye bas:</p>" +
                 $"<p><a href=\"{safe}\">Hesabımı silmeyi onayla</a></p>" +
                 "<p>Bağlantı 2 saat geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin; hesabın silinmez.</p>",
-                $"Nereye hesabının silinmesi istendi. Onaylamak için bağlantıyı aç ve sayfadaki düğmeye bas:\n{url}\n\n" +
+                $"Kararbaz hesabının silinmesi istendi. Onaylamak için bağlantıyı aç ve sayfadaki düğmeye bas:\n{url}\n\n" +
                 "Bağlantı 2 saat geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin."),
             cancellationToken);
     }
@@ -389,11 +389,11 @@ public sealed class AuthService : IAuthService
         await _email.SendAsync(
             new EmailMessage(
                 user.Email!,
-                "Nereye e-posta adresini doğrula",
-                "<p>Merhaba,</p><p>Nereye'de yorum yazabilmek ve fotoğraf yükleyebilmek için e-posta adresini doğrula:</p>" +
+                "Kararbaz e-posta adresini doğrula",
+                "<p>Merhaba,</p><p>Kararbaz'da yorum yazabilmek ve fotoğraf yükleyebilmek için e-posta adresini doğrula:</p>" +
                 $"<p><a href=\"{safe}\">E-postamı doğrula</a></p>" +
                 "<p>Bağlantı 2 saat geçerlidir. Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin.</p>",
-                $"Nereye'de yorum yazabilmek ve fotoğraf yükleyebilmek için e-posta adresini doğrula:\n{url}\n\n" +
+                $"Kararbaz'da yorum yazabilmek ve fotoğraf yükleyebilmek için e-posta adresini doğrula:\n{url}\n\n" +
                 "Bağlantı 2 saat geçerlidir. Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin."),
             cancellationToken);
         return true;
@@ -438,12 +438,12 @@ public sealed class AuthService : IAuthService
         await _email.SendAsync(
             new EmailMessage(
                 user.Email!,
-                "Nereye şifreni sıfırla",
-                "<p>Merhaba,</p><p>Nereye şifreni sıfırlamak için aşağıdaki bağlantıyı aç ve yeni şifreni yaz:</p>" +
+                "Kararbaz şifreni sıfırla",
+                "<p>Merhaba,</p><p>Kararbaz şifreni sıfırlamak için aşağıdaki bağlantıyı aç ve yeni şifreni yaz:</p>" +
                 $"<p><a href=\"{safe}\">Yeni şifre belirle</a></p>" +
                 "<p>Bağlantı 2 saat geçerlidir ve yalnızca bir kez kullanılabilir. Bu isteği sen yapmadıysan " +
                 "bu e-postayı yok sayabilirsin; şifren değişmez.</p>",
-                $"Nereye şifreni sıfırlamak için bağlantıyı aç ve yeni şifreni yaz:\n{url}\n\n" +
+                $"Kararbaz şifreni sıfırlamak için bağlantıyı aç ve yeni şifreni yaz:\n{url}\n\n" +
                 "Bağlantı 2 saat geçerlidir ve yalnızca bir kez kullanılabilir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin."),
             cancellationToken);
     }

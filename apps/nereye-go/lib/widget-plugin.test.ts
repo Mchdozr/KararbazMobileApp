@@ -20,7 +20,7 @@ test('bileşen dosyaları paket adına göre üretilir; sağlayıcı veri dosyas
   assert.match(files['app/src/main/res/values/nereye_widget_strings.xml'], /Yakındaki açık mekanlar/);
   assert.match(files['app/src/main/res/values-en/nereye_widget_strings.xml'], /Open places nearby/);
   // Kesme işareti Android kaynak dosyasında kaçışlı olmalı.
-  assert.match(files['app/src/main/res/values/nereye_widget_strings.xml'], /Nereye\\'yi/);
+  assert.match(files['app/src/main/res/values/nereye_widget_strings.xml'], /Kararbaz\\'ı/);
 });
 
 test('manifest: dışa kapalı alıcı bir kez eklenir', () => {

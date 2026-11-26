@@ -1,6 +1,6 @@
 // Saf metin üretimi: react-native'e bağlı değil, node testlerinde çalışır.
 /**
- * Paylaşım bağlantısı. Alan adı yokken uygulama şeması (nereyego://venue/{id}) kullanılır; Nereye kurulu
+ * Paylaşım bağlantısı. Alan adı yokken uygulama şeması (nereyego://venue/{id}) kullanılır; Kararbaz kurulu
  * telefonda mekan sayfasını açar. https adresi ancak insan EXPO_PUBLIC_SHARE_BASE_URL'i (https) verdiyse eklenir.
  * Harita sitesine (openstreetmap.org vb.) bağlantı verilmez.
  */
@@ -17,7 +17,7 @@ export function venueShareText(
   if (base) {
     lines.push(`${base}/venue/${id}`);
   }
-  lines.push('Nereye ile buldum.');
+  lines.push('Kararbaz ile buldum.');
   return lines.join('\n');
 }
 

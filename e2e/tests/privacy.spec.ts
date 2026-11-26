@@ -8,7 +8,7 @@ test('izin verilmeden kullanım olayı gönderilmez; izinden sonra kimliksiz ola
   });
   await openApp(page);
   await waitForCards(page);
-  await expect(page.getByText("Nereye'yi geliştirmemize yardım eder misin?")).toBeVisible();
+  await expect(page.getByText("Kararbaz'ı geliştirmemize yardım eder misin?")).toBeVisible();
   await page.getByText('Petra Roasting Co.').first().click();
   await expect(page).toHaveURL(/\/venue\//);
   await page.waitForTimeout(1500);
@@ -16,7 +16,7 @@ test('izin verilmeden kullanım olayı gönderilmez; izinden sonra kimliksiz ola
 
   await page.goBack();
   await page.getByRole('button', { name: 'Anonim kullanım istatistiğine izin ver' }).click();
-  await expect(page.getByText("Nereye'yi geliştirmemize yardım eder misin?")).toBeHidden();
+  await expect(page.getByText("Kararbaz'ı geliştirmemize yardım eder misin?")).toBeHidden();
   await page.getByText('Petra Roasting Co.').first().click();
   // Olaylar 15 sn'de bir paketlenir.
   await expect.poll(() => sent.length, { timeout: 25_000 }).toBeGreaterThan(0);
@@ -32,7 +32,7 @@ test('reddedilen izin kartı bir daha görünmez', async ({ page }) => {
   await page.getByRole('button', { name: 'Kullanım istatistiğine izin verme' }).click();
   await page.reload();
   await waitForCards(page);
-  await expect(page.getByText("Nereye'yi geliştirmemize yardım eder misin?")).toHaveCount(0);
+  await expect(page.getByText("Kararbaz'ı geliştirmemize yardım eder misin?")).toHaveCount(0);
 });
 
 test('uygulama hatası kişisel veri ayıklanarak raporlanır', async ({ page }) => {

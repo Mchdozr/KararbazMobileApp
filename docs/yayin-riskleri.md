@@ -41,7 +41,7 @@ Production prebuild çıktısında (`npx expo prebuild -p android`, depoya eklen
 - **Nominatim:** Sunucu tüm Nominatim isteklerini süreç genelinde saniyede en fazla 1 istekle sınırlar
   (`NominatimGate`), öneri sonuçlarını 7 gün önbelleğe alır, istemci başına `geo` hız sınırı 30/dk. Kimlik:
   `User-Agent: Nereye/1.0 (iletişim)`; iletişim `Places:Contact` ya da `NEREYE_CONTACT` ile insan tarafından
-  verilir, boşsa yalnızca `Nereye/1.0`. Nominatim kullanım şartlarının güncel hâli (iletişim zorunluluğu,
+  verilir, boşsa yalnızca `Kararbaz/1.0`. Nominatim kullanım şartlarının güncel hâli (iletişim zorunluluğu,
   otomatik tamamlama yasağı) **doğrulanmadı**. Yayında kendi geocoder'ını barındırmak ya da ticari sağlayıcıya
   geçmek insan kararıdır.
 - **Google Places içerik saklama:** Liste isteği yalın alan maskesi kullanır; özet/yorum/olanak (Atmosphere)

@@ -10,16 +10,16 @@ tags:
     visible: "Sana özel"
     timeout: 45000
 - scrollUntilVisible:
-    element: "Nereye'yi geliştirmemize yardım eder misin?"
+    element: "Kararbaz'ı geliştirmemize yardım eder misin?"
     direction: DOWN
 - tapOn: "Kullanım istatistiğine izin verme"
-- assertNotVisible: "Nereye'yi geliştirmemize yardım eder misin?"
+- assertNotVisible: "Kararbaz'ı geliştirmemize yardım eder misin?"
 - stopApp
 - launchApp
 - extendedWaitUntil:
     visible: "Sana özel"
     timeout: 45000
-- assertNotVisible: "Nereye'yi geliştirmemize yardım eder misin?"
+- assertNotVisible: "Kararbaz'ı geliştirmemize yardım eder misin?"
 - tapOn: "Profil"
 - scrollUntilVisible:
     element: "Anonim kullanım istatistikleri"

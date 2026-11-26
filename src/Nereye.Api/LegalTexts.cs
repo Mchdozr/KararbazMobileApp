@@ -23,7 +23,7 @@ public static class LegalTexts
 
     public static Document Privacy(string? contact) => new(
         "Gizlilik ve KVKK",
-        "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Nereye uygulamasının verilerini nasıl işlediğini özetler.",
+        "Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Kararbaz uygulamasının verilerini nasıl işlediğini özetler.",
         [
             new("Hangi verileri işliyoruz?",
                 "Hesap bilgilerin (ad, e-posta, şifrenin özeti, isteğe bağlı profil fotoğrafı), seçtiğin niyet ve atmosfer tercihleri, " +
@@ -69,7 +69,7 @@ public static class LegalTexts
 
     public static Document Terms(string? contact) => new(
         "Kullanım koşulları",
-        "Nereye'yi kullanarak aşağıdaki kuralları kabul etmiş olursun.",
+        "Kararbaz'ı kullanarak aşağıdaki kuralları kabul etmiş olursun.",
         [
             new("Kimler kullanabilir?",
                 "Hesap açmak için 18 yaşını doldurmuş olmalısın. Hesabının güvenliğinden ve hesabınla yapılanlardan sen sorumlusun."),

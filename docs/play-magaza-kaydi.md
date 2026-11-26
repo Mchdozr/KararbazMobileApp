@@ -7,7 +7,7 @@ biçimindedir; alan adı uydurulmamıştır.
 
 | Alan | Değer | Kaynak |
 | --- | --- | --- |
-| Uygulama adı | Nereye | `apps/nereye-go/app.json` (`expo.name`) |
+| Uygulama adı | Kararbaz | `apps/nereye-go/app.json` (`expo.name`) |
 | Paket adı | `com.mchdozr.nereye` | `apps/nereye-go/app.json` (`android.package`) |
 | Sürüm | 1.0.1 (versionCode 3) | `apps/nereye-go/app.json`; artırma insan işi (`docs/yayin-insan-gorevleri.md`) |
 | Uygulama şeması | `nereyego://` (paylaşılan mekan bağlantısı `nereyego://venue/{id}`) | `apps/nereye-go/app.json` (`scheme`), `apps/nereye-go/lib/share-text.ts` |
@@ -25,9 +25,9 @@ biçimindedir; alan adı uydurulmamıştır.
 
 ## Uzun açıklama (taslak)
 
-> Nereye, "şimdi nereye gitsem?" sorusuna kısa bir liste ile cevap verir.
+> Kararbaz, "şimdi nereye gitsem?" sorusuna kısa bir liste ile cevap verir.
 >
-> Ne istediğini seç (kahve, yemek, eğlence, kültür, açık hava, gece), Nereye bulunduğun yere göre yakındaki
+> Ne istediğini seç (kahve, yemek, eğlence, kültür, açık hava, gece), Kararbaz bulunduğun yere göre yakındaki
 > mekanları sıralasın. Uzun listelerde kaybolmak yok: önce sana en uygun birkaç yer.
 >
 > • Niyete göre öneri: Kültür'de müze ve tiyatro, Yemek'te restoran; karışık liste yok.

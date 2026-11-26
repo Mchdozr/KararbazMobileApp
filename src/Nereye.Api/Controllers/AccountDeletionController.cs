@@ -17,7 +17,7 @@ namespace Nereye.Api.Controllers;
 [EnableRateLimiting("auth")]
 public sealed class AccountDeletionController : ControllerBase
 {
-    private const string Title = "Nereye hesabını sil";
+    private const string Title = "Kararbaz hesabını sil";
 
     private const string WhatHappens = """
         <div class="card">
@@ -85,7 +85,7 @@ public sealed class AccountDeletionController : ControllerBase
 
         // Kayıtlı olsun olmasın aynı yanıt: hangi adresin kayıtlı olduğu bu sayfadan öğrenilemesin.
         return PublicPages.Html(Title, """
-            <div class="card"><p>Bu adres bir Nereye hesabına kayıtlıysa, birkaç dakika içinde bir onay bağlantısı gelecek.
+            <div class="card"><p>Bu adres bir Kararbaz hesabına kayıtlıysa, birkaç dakika içinde bir onay bağlantısı gelecek.
             Bağlantı 2 saat geçerlidir.</p><p class="muted">Gelen kutunda yoksa istenmeyen klasörüne bak.</p></div>
             """);
     }
@@ -120,7 +120,7 @@ public sealed class AccountDeletionController : ControllerBase
         }
 
         return PublicPages.Html("Hesabın silindi", """
-            <div class="card"><p>Nereye hesabın ve yukarıda listelenen verilerin silindi. Uygulamada açık oturumların kapatıldı.</p></div>
+            <div class="card"><p>Kararbaz hesabın ve yukarıda listelenen verilerin silindi. Uygulamada açık oturumların kapatıldı.</p></div>
             """);
     }
 

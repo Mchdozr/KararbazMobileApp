@@ -210,7 +210,7 @@ public sealed class MetNorwayTests
         // Koordinat en çok 4 ondalık (MET kuralı) ve ~5 km bölge merkezi: kullanıcının tam konumu gitmez.
         Assert.Matches(@"^\?lat=\d+(\.\d{1,4})?&lon=\d+(\.\d{1,4})?$", call.RequestUri.Query);
         Assert.DoesNotContain("40.9885", call.RequestUri.Query);
-        Assert.StartsWith("Nereye/", call.Headers.UserAgent.ToString());
+        Assert.StartsWith("Kararbaz/", call.Headers.UserAgent.ToString());
     }
 
     [Fact]

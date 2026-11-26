@@ -101,7 +101,7 @@ public sealed class PublicListsController : ControllerBase
 
         var e = PublicPages.Encode;
         var body = new StringBuilder();
-        body.Append(CultureInfo.InvariantCulture, $"""<p class="muted">{list.Items.Count} mekan · Nereye ile hazırlandı</p>""");
+        body.Append(CultureInfo.InvariantCulture, $"""<p class="muted">{list.Items.Count} mekan · Kararbaz ile hazırlandı</p>""");
         foreach (var i in list.Items)
         {
             var img = i.PhotoUrl is null ? "" : $"""<img src="{e(i.PhotoUrl)}" alt="" loading="lazy">""";
@@ -112,7 +112,7 @@ public sealed class PublicListsController : ControllerBase
                 """);
         }
 
-        body.Append(CultureInfo.InvariantCulture, $"""<p><a class="app" href="nereyego://list/{e(code)}">Nereye uygulamasında aç</a></p>""");
+        body.Append(CultureInfo.InvariantCulture, $"""<p><a class="app" href="nereyego://list/{e(code)}">Kararbaz uygulamasında aç</a></p>""");
         const string head = """
             <style>
               .item { display:flex; align-items:center; gap:12px; margin-top:10px; padding:10px; background:#fffdf8;

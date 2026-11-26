@@ -23,7 +23,7 @@ Varsayılan sağlayıcı **MET Norway** (Norveç Meteoroloji Enstitüsü, `api.m
   - Uygulamada hava notunun altında "Kaynak: MET Norway" yazar.
   - Kullanım koşullarında lisans bağlantısı var; gizlilik metninde MET'e ne gittiği yazılı.
 - **Kurallarına uyum** (`MetNorwayWeatherProvider`, testli):
-  - Tanımlayıcı User-Agent: `HttpIdentity` ile `Nereye/1.0 (Places:Contact)`. Ya da `Weather:UserAgent` ile açıkça
+  - Tanımlayıcı User-Agent: `HttpIdentity` ile `Kararbaz/1.0 (Places:Contact)`. Ya da `Weather:UserAgent` ile açıkça
     verilir. MET iletişim bilgisi ister; yayında `Places__Contact` (ya da `NEREYE_CONTACT`) doldurulmalıdır. Bu
     ayar OSM servisleri için zaten gerekli.
   - Koordinat en çok 4 ondalık. Gönderilen nokta ~5 km'lik bölgenin (geohash 5) merkezidir; kullanıcının tam
@@ -50,7 +50,7 @@ Ayarlar:
 ```text
 Weather__Enabled=true
 Weather__Provider=MetNorway            # ya da OpenMeteo (ücretli: Weather__BaseUrl + Weather__ApiKey)
-Weather__UserAgent=                    # boşsa Nereye/1.0 (Places__Contact)
+Weather__UserAgent=                    # boşsa Kararbaz/1.0 (Places__Contact)
 ```
 
 Sahte modda hava `Weather:Fake` ile seçilir: `clear`, `cloudy`, `rain`, `snow`, `storm`, `fog` ya da `live`.

@@ -211,12 +211,12 @@ function widgetFiles(pkg) {
     [path.join(res, 'drawable/nereye_widget_row.xml')]: ROW_BG,
     [path.join(res, 'values/nereye_widget_strings.xml')]: strings(
       'Yakındaki açık mekanlar',
-      "Güncel liste için Nereye\\'yi aç.",
+      "Güncel liste için Kararbaz\\'ı aç.",
       'Yakınındaki şu an açık mekanlar',
     ),
     [path.join(res, 'values-en/nereye_widget_strings.xml')]: strings(
       'Open places nearby',
-      'Open Nereye to refresh the list.',
+      'Open Kararbaz to refresh the list.',
       'Places open near you right now',
     ),
   };

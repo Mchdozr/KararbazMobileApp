@@ -12,7 +12,7 @@ export function BrandLogo({
       source={LOGO}
       style={{ width: size, height: size, borderRadius: size * 0.12 }}
       contentFit="contain"
-      accessibilityLabel="Nereye"
+      accessibilityLabel="Kararbaz"
     />
   );
 }

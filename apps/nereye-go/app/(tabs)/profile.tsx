@@ -539,7 +539,7 @@ export default function Profile() {
           </>
         ) : null}
       </View>
-      <Text style={styles.version}>{t('Nereye · sürüm {v}', { v: Constants.expoConfig?.version ?? '1.0.0' })}</Text>
+      <Text style={styles.version}>{t('Kararbaz · sürüm {v}', { v: Constants.expoConfig?.version ?? '1.0.0' })}</Text>
     </ScrollView>
   );
 }

@@ -94,7 +94,7 @@ class NearbyWidgetProviderTest {
         assertEquals("Yakındaki açık mekanlar", view.text(R.id.nereye_title))
         assertEquals("", view.text(R.id.nereye_updated))
         assertEquals(true, view.shown(R.id.nereye_empty))
-        assertEquals("Güncel liste için Nereye'yi aç.", view.text(R.id.nereye_empty))
+        assertEquals("Güncel liste için Kararbaz'ı aç.", view.text(R.id.nereye_empty))
         assertEquals(false, view.shown(R.id.nereye_row1))
     }
 
@@ -112,7 +112,7 @@ class NearbyWidgetProviderTest {
     fun english_device_gets_english_texts() {
         val view = render()
         assertEquals("Open places nearby", view.text(R.id.nereye_title))
-        assertEquals("Open Nereye to refresh the list.", view.text(R.id.nereye_empty))
+        assertEquals("Open Kararbaz to refresh the list.", view.text(R.id.nereye_empty))
     }
 
     @Test

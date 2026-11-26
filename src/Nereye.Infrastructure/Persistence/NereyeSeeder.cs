@@ -103,7 +103,7 @@ public static class NereyeSeeder
                 Id = Guid.NewGuid(),
                 Email = "admin@nereye.app",
                 UserName = "admin@nereye.app",
-                DisplayName = "Nereye Admin",
+                DisplayName = "Kararbaz Admin",
                 EmailConfirmed = true
             };
             // Bilinen varsayılan şifre yalnızca geliştirmede. Production'da ADMIN_PASSWORD verilmezse

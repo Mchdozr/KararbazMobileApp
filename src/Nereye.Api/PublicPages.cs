@@ -12,7 +12,7 @@ public static class PublicPages
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="robots" content="noindex">
-        <title>{{Encode(title)}} · Nereye</title>
+        <title>{{Encode(title)}} · Kararbaz</title>
         <style>
           :root { --bg:#fbf6ee; --ink:#064e3b; --muted:#3f6f5c; --line:#ebe3d2; --danger:#a8402b; }
           * { box-sizing: border-box; }
