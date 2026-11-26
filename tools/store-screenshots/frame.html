@@ -1,0 +1,29 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:F;src:url(../../apps/nereye-go/node_modules/@expo-google-fonts/fraunces/900Black/Fraunces_900Black.ttf)}
+@font-face{font-family:D;src:url(../../apps/nereye-go/node_modules/@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf)}
+@font-face{font-family:I;src:url(../../apps/nereye-go/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf)}
+html,body{margin:0;width:1080px;height:1920px;overflow:hidden}
+body{background:radial-gradient(120% 70% at 50% 0%,#14765a 0%,#0b5d45 38%,#063a2b 100%);font-family:D;position:relative}
+.grain{position:absolute;inset:0;background:radial-gradient(60% 40% at 85% 95%,rgba(224,123,57,.22),transparent 70%)}
+h1{position:absolute;left:50px;right:50px;top:130px;margin:0;font-family:F;font-weight:900;color:#fff;font-size:84px;line-height:96px;letter-spacing:-1.5px;text-align:center}
+h1 .a{color:#ffb27a}
+.phone{position:absolute;left:50%;top:420px;width:660px;height:1430px;transform:translateX(-50%);border-radius:96px;background:#0d0f0e;padding:22px;box-sizing:border-box;
+  box-shadow:0 60px 120px rgba(0,0,0,.45),0 0 0 3px #2c312f inset}
+.screen{position:relative;width:100%;height:100%;border-radius:76px;overflow:hidden;background:#f6f1e8}
+.screen img{width:100%;height:auto;display:block}
+.island{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:190px;height:54px;border-radius:30px;background:#000}
+.status{position:absolute;top:28px;left:0;right:0;height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 58px 0 66px;font-size:30px;color:#fff}
+.status.dark{color:#111}
+.status .r{font-family:I;font-size:28px;letter-spacing:6px}
+.brand{position:absolute;bottom:56px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:18px;color:rgba(255,255,255,.92);font-family:F;font-size:44px}
+.brand img{width:64px;height:64px;border-radius:16px}
+</style></head><body><div class="grain"></div>
+<h1 id="h"></h1>
+<div class="phone"><div class="screen"><img id="shot"><div class="island"></div><div class="status" id="st"><span>20:41</span><span class="r">&#xf208;&#xf631;&#xf187;</span></div></div></div>
+<script>
+const q=new URLSearchParams(location.search);
+document.getElementById('h').innerHTML=q.get('h');
+document.getElementById('shot').src=q.get('img');
+if(q.get('dark')==='1') document.getElementById('st').classList.add('dark');
+Promise.all([document.fonts.ready,new Promise(r=>{const i=document.getElementById('shot');i.complete?r():i.onload=r;})]).then(()=>window.done=true);
+</script></body></html>
