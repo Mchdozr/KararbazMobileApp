@@ -162,3 +162,83 @@ public sealed class ExpoPushSenderTests
         Assert.True(results[0].Ok);
     }
 }
+
+/// <summary>
+/// Gerçek Expo push servisine karşı: NEREYE_LIVE_EXPO=1 ister (CI'da kapalı, ağ gerektirir). Belirteçler uydurmadır;
+/// hiçbir cihaza bildirim gitmez, Expo "DeviceNotRegistered" döner. Böylece gerçek yanıt biçimi ve geçersiz belirtecin
+/// silinmesi uçtan uca denenir.
+/// </summary>
+public sealed class LiveExpoFactAttribute : FactAttribute
+{
+    public LiveExpoFactAttribute()
+    {
+        if (Environment.GetEnvironmentVariable("NEREYE_LIVE_EXPO") != "1")
+        {
+            Skip = "NEREYE_LIVE_EXPO=1 değil (gerçek Expo push servisi gerekir).";
+        }
+    }
+}
+
+public sealed class LiveExpoApiFactory : NereyeApiFactory
+{
+    protected override void ConfigureExtraServices(IServiceCollection services)
+    {
+        services.RemoveAll<IPushSender>();
+        services.AddSingleton<IPushSender>(_ => new ExpoPushSender(new HttpClient(), Options.Create(new PushOptions { Enabled = true }), NullLogger<ExpoPushSender>.Instance));
+    }
+}
+
+public sealed class LiveExpoPushTests : IClassFixture<LiveExpoApiFactory>
+{
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private readonly LiveExpoApiFactory _factory;
+
+    public LiveExpoPushTests(LiveExpoApiFactory factory) => _factory = factory;
+
+    private static string Token() => $"ExponentPushToken[{Guid.NewGuid():N}]";
+
+    [LiveExpoFact]
+    public async Task Real_service_reports_unknown_tokens_as_unregistered()
+    {
+        var sender = new ExpoPushSender(new HttpClient(), Options.Create(new PushOptions { Enabled = true }), NullLogger<ExpoPushSender>.Instance);
+        var results = await sender.SendAsync([new(Token(), "Deneme", "Deneme", "nereyego://venue/x"), new(Token(), "Deneme", "Deneme", "nereyego://")]);
+        Assert.Equal(2, results.Count);
+        Assert.All(results, r => Assert.True(!r.Ok && r.Unregistered));
+    }
+
+    [LiveExpoFact]
+    public async Task Reminder_job_through_real_service_drops_the_dead_token()
+    {
+        async Task<HttpClient> User(string name)
+        {
+            var c = _factory.CreateClient();
+            var r = await c.PostAsJsonAsync("/api/auth/register", new { acceptTerms = true, email = $"live{Guid.NewGuid():N}@nereye.test", password = "Passw0rd!", displayName = name });
+            var t = (await r.Content.ReadFromJsonAsync<JsonElement>(Json)).GetProperty("accessToken").GetString();
+            c.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", t);
+            return c;
+        }
+
+        var owner = await User("Sahip");
+        var claim = await (await owner.PostAsJsonAsync("/api/venues/nereye:federica/claims", new { message = "Sahibiyim" })).Content.ReadFromJsonAsync<JsonElement>(Json);
+        using var adminClient = _factory.CreateClient();
+        var admin = await (await adminClient.PostAsJsonAsync("/api/auth/login", new { email = "admin@nereye.app", password = "Admin!12345" })).Content.ReadFromJsonAsync<JsonElement>(Json);
+        adminClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", admin.GetProperty("accessToken").GetString());
+        (await adminClient.PostAsync($"/api/admin/claims/{claim.GetProperty("id").GetGuid()}/approve", null)).EnsureSuccessStatusCode();
+        var ownerEmail = (await owner.GetFromJsonAsync<JsonElement>("/api/me", Json)).GetProperty("email").GetString();
+        var relogin = await (await _factory.CreateClient().PostAsJsonAsync("/api/auth/login", new { email = ownerEmail, password = "Passw0rd!" })).Content.ReadFromJsonAsync<JsonElement>(Json);
+        owner.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", relogin.GetProperty("accessToken").GetString());
+        var startsAt = DateTime.UtcNow.AddMinutes(90);
+        (await owner.PostAsJsonAsync("/api/venues/nereye:federica/events", new { title = "Canlı deneme", startsAt, endsAt = startsAt.AddHours(2) })).EnsureSuccessStatusCode();
+
+        var fan = await User("Hayran");
+        (await fan.PostAsync("/api/venues/nereye:federica/favorite", null)).EnsureSuccessStatusCode();
+        var token = Token();
+        Assert.Equal(HttpStatusCode.NoContent, (await fan.PostAsJsonAsync("/api/me/push", new { token, platform = "android" })).StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Nereye.Infrastructure.Persistence.NereyeDbContext>();
+        Assert.Equal(1, db.PushDevices.Count(d => d.Token == token));
+        Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<EventReminderJob>().RunOnceAsync(CancellationToken.None));
+        Assert.Equal(0, db.PushDevices.Count(d => d.Token == token));
+    }
+}
