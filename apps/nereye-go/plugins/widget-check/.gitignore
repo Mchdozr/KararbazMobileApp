@@ -1,0 +1,6 @@
+# generate.mts üretir
+src/main/
+src/test/resources/
+.gradle/
+build/
+local.properties

@@ -94,8 +94,10 @@ function row(n) {
         android:layout_marginTop="6dp"
         android:background="@drawable/nereye_widget_row"
         android:orientation="vertical"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="6dp">
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
         <TextView
             android:id="@+id/nereye_name${n}"
             android:layout_width="match_parent"

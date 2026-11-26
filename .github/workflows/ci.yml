@@ -103,3 +103,35 @@ jobs:
           name: playwright-report
           path: e2e/playwright-report
           retention-days: 7
+
+  # Android ana ekran bileşeni: eklentinin ürettiği Kotlin/XML derlenir, Robolectric ile çizilir, lint'ten geçer.
+  android-widget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/nereye-go/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.9.2
+      - name: Kaynakları eklentiden üret
+        working-directory: apps/nereye-go
+        run: npm ci && node --experimental-strip-types plugins/widget-check/generate.mts
+      - name: Derle, test et, lint
+        working-directory: apps/nereye-go/plugins/widget-check
+        run: gradle --no-daemon testDebugUnitTest lintDebug
+      - name: Önizleme
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: widget-preview
+          path: apps/nereye-go/plugins/widget-check/build/widget-preview-*.png
+          retention-days: 7
