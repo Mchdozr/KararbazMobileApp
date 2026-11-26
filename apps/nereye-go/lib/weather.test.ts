@@ -14,3 +14,10 @@ test('hava notu: ikon, metin ve önerilen niyet düğmesi', () => {
   assert.equal(weatherView(null), null);
   assert.equal(weatherView({ kind: 'Snow', temperatureC: -1, note: 'Kar yağıyor (-1°).', suggestIntent: null })?.action, undefined);
 });
+
+test('hava notu: veri kaynağı atfı (CC BY) yalnızca kaynak varsa', () => {
+  const met = weatherView({ kind: 'Rain', temperatureC: 9, note: 'Yağmur yağıyor (9°).', suggestIntent: null, source: 'MET Norway' });
+  assert.equal(met?.credit, 'Kaynak: MET Norway');
+  const fake = weatherView({ kind: 'Rain', temperatureC: 9, note: 'Yağmur yağıyor (9°).', suggestIntent: null });
+  assert.equal(fake?.credit, undefined);
+});

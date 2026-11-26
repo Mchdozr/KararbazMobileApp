@@ -219,20 +219,42 @@ public static class DependencyInjection
                 sp.GetService<ILogger<PlacesWarmupService>>()));
         }
 
-        // Hava: sahte veriyle sahte; değilse yalnızca Weather:Enabled ile Open-Meteo (docs/hava-durumu.md).
+        // Hava: sahte veriyle sahte; değilse Weather:Enabled ile MET Norway (varsayılan) ya da Open-Meteo (docs/hava-durumu.md).
         services.Configure<Weather.WeatherOptions>(configuration.GetSection(Weather.WeatherOptions.Section));
         services.AddHttpClient<Weather.OpenMeteoWeatherProvider>()
             .AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("open-meteo"));
+        services.AddHttpClient(Weather.MetNorwayWeatherProvider.HttpClientName, c => c.Timeout = TimeSpan.FromSeconds(4))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                // MET kuralı: gzip ve yönlendirme desteği.
+                AutomaticDecompression = System.Net.DecompressionMethods.All,
+                AllowAutoRedirect = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+            })
+            .AddHttpMessageHandler(() => new Telemetry.UpstreamMetricsHandler("met-norway"));
+        services.AddSingleton(sp => new Weather.MetNorwayWeatherProvider(
+            () => sp.GetRequiredService<IHttpClientFactory>().CreateClient(Weather.MetNorwayWeatherProvider.HttpClientName),
+            sp.GetRequiredService<IPlacesCache>(),
+            sp.GetRequiredService<IClock>(),
+            sp.GetRequiredService<IOptions<Weather.WeatherOptions>>().Value,
+            sp.GetService<ILogger<Weather.MetNorwayWeatherProvider>>()));
         services.AddScoped<Application.Weather.IWeatherProvider>(sp =>
         {
-            if (sp.GetRequiredService<IOptions<GooglePlacesOptions>>().Value.UseFake)
+            var options = sp.GetRequiredService<IOptions<Weather.WeatherOptions>>().Value;
+            // Sahte mekan modunda hava da sahtedir; Weather:Fake=live ile örnek mekanlar gerçek havayla denenir.
+            if (sp.GetRequiredService<IOptions<GooglePlacesOptions>>().Value.UseFake && !options.FakeIsLive)
             {
                 return new Weather.FakeWeatherProvider(sp.GetRequiredService<IOptions<Weather.WeatherOptions>>());
             }
 
-            return sp.GetRequiredService<IOptions<Weather.WeatherOptions>>().Value.Enabled
+            if (!options.Enabled)
+            {
+                return new Weather.NoWeatherProvider();
+            }
+
+            return options.UsesOpenMeteo
                 ? sp.GetRequiredService<Weather.OpenMeteoWeatherProvider>()
-                : new Weather.NoWeatherProvider();
+                : sp.GetRequiredService<Weather.MetNorwayWeatherProvider>();
         });
 
         services.AddScoped<IGeoSuggest>(sp =>

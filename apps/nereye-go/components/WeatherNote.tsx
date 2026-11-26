@@ -12,7 +12,10 @@ export function WeatherNote({ weather, onSuggest }: { weather: WeatherInfo | nul
   return (
     <View style={styles.wrap} accessibilityRole="summary" accessibilityLabel={view.text}>
       <Ionicons name={view.icon} size={22} color={colors.coral} />
-      <Text style={styles.text}>{view.text}</Text>
+      <View style={styles.body}>
+        <Text style={styles.text}>{view.text}</Text>
+        {view.credit ? <Text style={styles.credit}>{view.credit}</Text> : null}
+      </View>
       {view.action ? (
         <Pressable
           onPress={() => onSuggest(view.action!.intent)}
@@ -40,7 +43,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  text: { flex: 1, color: colors.ink, fontFamily: fonts.sans, fontSize: 13, lineHeight: 18 },
+  body: { flex: 1, gap: 2 },
+  text: { color: colors.ink, fontFamily: fonts.sans, fontSize: 13, lineHeight: 18 },
+  credit: { color: colors.muted, fontFamily: fonts.sans, fontSize: 11, lineHeight: 14 },
   action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 },
   actionText: { color: colors.coral, fontFamily: fonts.sansBold, fontSize: 13 },
 });

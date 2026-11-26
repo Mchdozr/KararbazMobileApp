@@ -12,7 +12,8 @@ public enum WeatherKind
     Storm
 }
 
-public sealed record WeatherNow(WeatherKind Kind, double TemperatureC, bool IsDay);
+/// <summary>Anlık hava. Source, atıf için verinin kaynağıdır (ör. "MET Norway"); sahte veride null.</summary>
+public sealed record WeatherNow(WeatherKind Kind, double TemperatureC, bool IsDay, string? Source = null);
 
 public sealed record WeatherNote(string Text, Intent? Suggest);
 
@@ -34,6 +35,31 @@ public static class WeatherRules
         >= 95 and <= 99 => WeatherKind.Storm,
         _ => WeatherKind.Cloudy
     };
+
+    /// <summary>
+    /// MET Norway simge kodu (ör. "lightrainshowers_day", "partlycloudy_night"). Ek (_day/_night/_polartwilight) atılır.
+    /// Karla karışık yağmur (sleet) yağmur sayılır; gök gürültülü her şey fırtına.
+    /// </summary>
+    public static WeatherKind FromMetSymbol(string? symbolCode)
+    {
+        var code = (symbolCode ?? "").Trim().ToLowerInvariant();
+        var cut = code.IndexOf('_');
+        if (cut >= 0)
+        {
+            code = code[..cut];
+        }
+
+        return code switch
+        {
+            "clearsky" or "fair" => WeatherKind.Clear,
+            "partlycloudy" or "cloudy" => WeatherKind.Cloudy,
+            "fog" => WeatherKind.Fog,
+            _ when code.Contains("thunder", StringComparison.Ordinal) => WeatherKind.Storm,
+            _ when code.Contains("snow", StringComparison.Ordinal) => WeatherKind.Snow,
+            _ when code.Contains("rain", StringComparison.Ordinal) || code.Contains("sleet", StringComparison.Ordinal) => WeatherKind.Rain,
+            _ => WeatherKind.Cloudy
+        };
+    }
 
     public static bool IsWet(WeatherKind kind) => kind is WeatherKind.Rain or WeatherKind.Snow or WeatherKind.Storm;
 

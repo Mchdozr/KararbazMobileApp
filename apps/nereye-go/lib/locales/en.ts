@@ -375,6 +375,7 @@ export const en: Record<string, string> = {
   "Bölge": "Region",
   "Açık havaya bak": "See outdoors",
   "Kültüre bak": "See culture",
+  "Kaynak: {source}": "Source: {source}",
   "Kahve dükkanı": "Coffee shop",
   "Kafe": "Café",
   "Restoran": "Restaurant",

@@ -110,7 +110,7 @@ public sealed class OpenMeteoTests
         var client = new OpenMeteoWeatherProvider(new HttpClient(handler), cache, Options.Create(new WeatherOptions { Enabled = true }));
 
         var now = await client.CurrentAsync(40.9885, 29.0250);
-        Assert.Equal(new WeatherNow(WeatherKind.Rain, 13.4, false), now);
+        Assert.Equal(new WeatherNow(WeatherKind.Rain, 13.4, false, "Open-Meteo"), now);
         Assert.Contains("current=temperature_2m,weather_code,is_day", handler.Calls[0].Query);
         Assert.Equal("api.open-meteo.com", handler.Calls[0].Host);
 
@@ -129,5 +129,186 @@ public sealed class OpenMeteoTests
         await client.CurrentAsync(41.04, 29.0);
         Assert.Equal("customer-api.open-meteo.com", handler.Calls[0].Host);
         Assert.Contains("apikey=test-anahtari", handler.Calls[0].Query);
+    }
+}
+
+public sealed class MetNorwayTests
+{
+    // Kısaltılmış gerçek /compact yanıtı: 15:00 hafif yağmur, 16:00 açık.
+    private const string Body = """
+        {"type":"Feature","properties":{"meta":{"updated_at":"2026-11-24T14:10:00Z"},"timeseries":[
+          {"time":"2026-11-24T15:00:00Z","data":{"instant":{"details":{"air_temperature":11.6}},"next_1_hours":{"summary":{"symbol_code":"lightrain"},"details":{}}}},
+          {"time":"2026-11-24T16:00:00Z","data":{"instant":{"details":{"air_temperature":10.9}},"next_1_hours":{"summary":{"symbol_code":"clearsky_night"},"details":{}}}},
+          {"time":"2026-11-24T17:00:00Z","data":{"instant":{"details":{"air_temperature":10.1}},"next_1_hours":{"summary":{"symbol_code":"cloudy"},"details":{}}}},
+          {"time":"2026-11-24T18:00:00Z","data":{"instant":{"details":{"air_temperature":9.8}},"next_1_hours":{"summary":{"symbol_code":"cloudy"},"details":{}}}},
+          {"time":"2026-11-24T19:00:00Z","data":{"instant":{"details":{"air_temperature":9.4}},"next_1_hours":{"summary":{"symbol_code":"cloudy"},"details":{}}}}
+        ]}}
+        """;
+
+    private const string LastModified = "Tue, 24 Nov 2026 14:12:00 GMT";
+
+    private sealed class Handler : HttpMessageHandler
+    {
+        public List<HttpRequestMessage> Calls { get; } = [];
+        public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
+        public TimeSpan Delay { get; set; }
+        public Func<DateTime>? Expires { get; set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            lock (Calls)
+            {
+                Calls.Add(request);
+            }
+
+            if (Delay > TimeSpan.Zero)
+            {
+                await Task.Delay(Delay, cancellationToken);
+            }
+
+            var res = new HttpResponseMessage(Status);
+            if (Status is HttpStatusCode.OK or HttpStatusCode.NonAuthoritativeInformation)
+            {
+                res.Content = new StringContent(Body, System.Text.Encoding.UTF8, "application/json");
+                res.Content.Headers.LastModified = DateTimeOffset.Parse(LastModified, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                res.Content = new StringContent("");
+            }
+
+            if (Expires is not null)
+            {
+                res.Content.Headers.Expires = Expires();
+            }
+
+            return res;
+        }
+    }
+
+    private static (MetNorwayWeatherProvider Provider, Handler Handler, ManualClock Clock) Create(WeatherOptions? options = null)
+    {
+        var handler = new Handler();
+        var clock = new ManualClock { UtcNow = new DateTime(2026, 11, 24, 15, 20, 0, DateTimeKind.Utc) };
+        handler.Expires = () => clock.UtcNow.AddMinutes(30);
+        var cache = new DistributedPlacesCache(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));
+        var provider = new MetNorwayWeatherProvider(() => new HttpClient(handler), cache, clock, options ?? new WeatherOptions { Enabled = true });
+        return (provider, handler, clock);
+    }
+
+    [Fact]
+    public async Task Reads_the_current_hour_with_identifying_request()
+    {
+        var (provider, handler, _) = Create();
+        var now = await provider.CurrentAsync(40.9885, 29.0250);
+
+        // 15:20 UTC = 18:20 İstanbul, kasımda gece.
+        Assert.Equal(new WeatherNow(WeatherKind.Rain, 11.6, false, "MET Norway"), now);
+        var call = Assert.Single(handler.Calls);
+        Assert.Equal("api.met.no", call.RequestUri!.Host);
+        Assert.Equal("/weatherapi/locationforecast/2.0/compact", call.RequestUri.AbsolutePath);
+        // Koordinat en çok 4 ondalık (MET kuralı) ve ~5 km bölge merkezi: kullanıcının tam konumu gitmez.
+        Assert.Matches(@"^\?lat=\d+(\.\d{1,4})?&lon=\d+(\.\d{1,4})?$", call.RequestUri.Query);
+        Assert.DoesNotContain("40.9885", call.RequestUri.Query);
+        Assert.StartsWith("Nereye/", call.Headers.UserAgent.ToString());
+    }
+
+    [Fact]
+    public async Task User_agent_can_be_set_explicitly()
+    {
+        var (provider, handler, _) = Create(new WeatherOptions { Enabled = true, UserAgent = "OrnekUygulama/2.0 destek.example" });
+        await provider.CurrentAsync(41.04, 29.0);
+        Assert.Equal("OrnekUygulama/2.0 destek.example", handler.Calls[0].Headers.UserAgent.ToString());
+    }
+
+    [Fact]
+    public async Task Same_area_is_asked_at_most_every_three_hours_even_if_expires_is_sooner()
+    {
+        var (provider, handler, clock) = Create();
+        await provider.CurrentAsync(40.9885, 29.0250);
+        clock.Advance(TimeSpan.FromMinutes(40));
+        var later = await provider.CurrentAsync(40.9890, 29.0260);
+
+        Assert.Single(handler.Calls);
+        // Önbellekteki seriden yeni saat okunur: 16:00 adımı.
+        Assert.Equal(WeatherKind.Clear, later!.Kind);
+        Assert.Equal(10.9, later.TemperatureC);
+    }
+
+    [Fact]
+    public async Task After_three_hours_it_revalidates_with_if_modified_since()
+    {
+        var (provider, handler, clock) = Create();
+        await provider.CurrentAsync(40.9885, 29.0250);
+        clock.Advance(TimeSpan.FromHours(3) + TimeSpan.FromMinutes(1));
+        handler.Status = HttpStatusCode.NotModified;
+        var now = await provider.CurrentAsync(40.9885, 29.0250);
+
+        Assert.Equal(2, handler.Calls.Count);
+        Assert.Equal(LastModified, handler.Calls[1].Headers.IfModifiedSince!.Value.ToString("R"));
+        // 304: eski seri kullanılır (18:21 UTC adımı).
+        Assert.Equal(9.8, now!.TemperatureC);
+
+        // 304 tazeliği de uzattı: hemen yeni istek yok.
+        await provider.CurrentAsync(40.9885, 29.0250);
+        Assert.Equal(2, handler.Calls.Count);
+    }
+
+    [Fact]
+    public async Task Longer_expires_is_respected()
+    {
+        var (provider, handler, clock) = Create();
+        handler.Expires = () => clock.UtcNow.AddHours(5);
+        await provider.CurrentAsync(40.9885, 29.0250);
+        clock.Advance(TimeSpan.FromHours(4));
+        await provider.CurrentAsync(40.9885, 29.0250);
+        Assert.Single(handler.Calls);
+    }
+
+    [Fact]
+    public async Task Failure_backs_off_and_keeps_the_old_forecast()
+    {
+        var (provider, handler, clock) = Create();
+        await provider.CurrentAsync(40.9885, 29.0250);
+        clock.Advance(TimeSpan.FromHours(3) + TimeSpan.FromMinutes(1));
+        handler.Status = HttpStatusCode.InternalServerError;
+
+        var now = await provider.CurrentAsync(40.9885, 29.0250);
+        Assert.Equal(9.8, now!.TemperatureC);
+        Assert.Equal(2, handler.Calls.Count);
+
+        // Hemen tekrar sorulmaz.
+        clock.Advance(TimeSpan.FromMinutes(5));
+        await provider.CurrentAsync(40.9885, 29.0250);
+        Assert.Equal(2, handler.Calls.Count);
+    }
+
+    [Fact]
+    public async Task Unknown_area_failure_returns_null_and_is_not_hammered()
+    {
+        var (provider, handler, clock) = Create();
+        handler.Status = HttpStatusCode.TooManyRequests;
+        Assert.Null(await provider.CurrentAsync(40.9885, 29.0250));
+        clock.Advance(TimeSpan.FromMinutes(20));
+        Assert.Null(await provider.CurrentAsync(40.9885, 29.0250));
+        Assert.Single(handler.Calls);
+    }
+
+    [Fact]
+    public async Task Deprecated_version_status_still_works()
+    {
+        var (provider, handler, _) = Create();
+        handler.Status = HttpStatusCode.NonAuthoritativeInformation;
+        Assert.NotNull(await provider.CurrentAsync(40.9885, 29.0250));
+    }
+
+    [Fact]
+    public async Task Concurrent_requests_for_one_area_share_one_call()
+    {
+        var (provider, handler, _) = Create();
+        handler.Delay = TimeSpan.FromMilliseconds(200);
+        var all = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => provider.CurrentAsync(40.9885, 29.0250)));
+        Assert.All(all, w => Assert.Equal(WeatherKind.Rain, w!.Kind));
+        Assert.Single(handler.Calls);
     }
 }

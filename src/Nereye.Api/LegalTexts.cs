@@ -52,7 +52,8 @@ public static class LegalTexts
             new("Kimlerle paylaşıyoruz?",
                 "Mekan ve adres bilgisi için sunucumuz OpenStreetMap tabanlı servislere (Overpass, Nominatim, OSRM) ve Google Places'e " +
                 "arama metni ve koordinat iletir; bu isteklere kimliğin eklenmez. Android'de harita Google Haritalar ile gösterilir; " +
-                "harita bileşeni cihazından doğrudan Google'a bağlanır. E-posta doğrulama, şifre sıfırlama ve hesap silme e-postaları " +
+                "harita bileşeni cihazından doğrudan Google'a bağlanır. Hava durumu için sunucumuz MET Norway'e (Norveç Meteoroloji " +
+                "Enstitüsü) yalnızca yaklaşık 5 km'lik bölgenin merkez koordinatını iletir; IP adresin ve kimliğin gitmez. E-posta doğrulama, şifre sıfırlama ve hesap silme e-postaları " +
                 "bir e-posta gönderim hizmeti üzerinden gönderilir; bu hizmete yalnızca e-posta adresin ve mektubun içeriği iletilir. " +
                 "Verilerini reklam amacıyla üçüncü kişilere satmayız."),
             new("Saklama süresi",
@@ -81,7 +82,8 @@ public static class LegalTexts
                 "kendinden gizleyebilirsin. Şikayetler incelenir; kurala aykırı içerik kaldırılır, kuralı tekrar ihlal eden hesap kapatılabilir."),
             new("Mekan bilgisi",
                 "Mekan bilgileri OpenStreetMap ve Google gibi kaynaklardan gelir ve güncel olmayabilir. Gitmeden önce açılış saatlerini " +
-                "kontrol et. Öne çıkan (sponsorlu) kartlar ayrıca işaretlenir."),
+                "kontrol et. Öne çıkan (sponsorlu) kartlar ayrıca işaretlenir. Hava durumu MET Norway verisinden (CC BY 4.0, " +
+                "https://creativecommons.org/licenses/by/4.0/) özetlenir; bir tahmindir."),
             new("Hesabın sona ermesi",
                 "Hesabını istediğin an silebilirsin. Bu koşulları ihlal eden hesaplar uyarısız kapatılabilir."),
             new("İletişim", contact is null ? NoContact : $"Sorular ve başvurular için: {contact}")

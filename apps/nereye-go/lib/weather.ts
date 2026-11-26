@@ -1,6 +1,13 @@
 // Ana sayfadaki hava notu. React Native içe aktarmaz: node ile test edilir.
 import { language, t } from './i18n.ts';
-export type WeatherInfo = { kind: string; temperatureC: number; note?: string | null; suggestIntent?: string | null };
+export type WeatherInfo = {
+  kind: string;
+  temperatureC: number;
+  note?: string | null;
+  suggestIntent?: string | null;
+  /** Atıf için veri kaynağı (ör. "MET Norway", CC BY 4.0). Sahte veride yok. */
+  source?: string | null;
+};
 
 type Icon = 'sunny-outline' | 'partly-sunny-outline' | 'rainy-outline' | 'snow-outline' | 'thunderstorm-outline' | 'cloudy-outline';
 
@@ -39,5 +46,6 @@ export function weatherView(w: WeatherInfo | null | undefined) {
     icon: ICONS[w.kind] ?? 'partly-sunny-outline',
     text: language() === 'en' ? englishNote(w) : w.note,
     action: intent && ACTION_LABELS[intent] ? { intent, label: t(ACTION_LABELS[intent]) } : undefined,
+    credit: w.source ? t('Kaynak: {source}', { source: w.source }) : undefined,
   };
 }

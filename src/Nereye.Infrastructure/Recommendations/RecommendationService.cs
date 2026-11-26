@@ -199,7 +199,7 @@ public sealed class RecommendationService : IRecommendationService
         var note = WeatherRules.Note(weather, query.Intent);
         var weatherDto = weather is null
             ? null
-            : new Application.Weather.WeatherDto(weather.Kind.ToString(), Math.Round(weather.TemperatureC, 1), note?.Text, note?.Suggest?.ToString());
+            : new Application.Weather.WeatherDto(weather.Kind.ToString(), Math.Round(weather.TemperatureC, 1), note?.Text, note?.Suggest?.ToString(), weather.Source);
         return new RecommendationResponse(items, geohash, attribution, hasMore, weatherDto);
     }
 

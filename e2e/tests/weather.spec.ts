@@ -5,6 +5,8 @@ test('yağmurda ana sayfa açık hava mekanlarının geri alındığını söyle
   await openApp(page, '/', { 'analytics.consent': 'denied' });
   await waitForCards(page);
   await expect(page.getByText(/Yağmur yağıyor \(12°\)\. Açık hava mekanlarını geriye/)).toBeVisible();
+  // CC BY atfı: kaynak notun altında (sahte veride "demo").
+  await expect(page.getByText("Kaynak: demo")).toBeVisible();
 });
 
 test('açık hava listesinde yağmur notu kültüre geçişi önerir', async () => {
