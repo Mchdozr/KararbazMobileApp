@@ -19,27 +19,55 @@ biçimindedir; alan adı uydurulmamıştır.
 | Hesap silme | `https://{API hostu}/hesap-sil` — insan kendi API hostunu yazar | `src/Nereye.Api/Controllers/AccountDeletionController.cs` |
 | İletişim e-postası | İnsan verir (Play zorunlu alanı); repoda tanımlı değil | `src/Nereye.Api/appsettings.json` (`Legal:Contact` boş) |
 
-## Kısa açıklama (en fazla 80 karakter)
+## Kısa açıklama (en fazla 80 karakter; 79)
 
-> Kahve, yemek, kültür ya da gece: konumuna göre kısa ve net mekan önerisi.
+> Kararsız mısın? Kahve, yemek, eğlence: yakınındaki en iyi yeri Kararbaz seçsin.
 
-## Uzun açıklama (taslak)
+## Tam açıklama (en fazla 4000 karakter; 2117)
 
-> Kararbaz, "şimdi nereye gitsem?" sorusuna kısa bir liste ile cevap verir.
+> "Nereye gidelim?" sorusunun cevabı artık tek dokunuş uzağında.
 >
-> Ne istediğini seç (kahve, yemek, eğlence, kültür, açık hava, gece), Kararbaz bulunduğun yere göre yakındaki
-> mekanları sıralasın. Uzun listelerde kaybolmak yok: önce sana en uygun birkaç yer.
+> Kararbaz, canın ne çektiğini seçtiğin anda bulunduğun yere göre kısa ve net bir mekan listesi çıkarır. Uzun listelerde kaybolmak, dakikalarca harita kaydırmak yok: önce sana en uygun birkaç yer.
 >
-> • Niyete göre öneri: Kültür'de müze ve tiyatro, Yemek'te restoran; karışık liste yok.
-> • Şu an açık olanlar, mesafe ve yürüme/araç süresi.
-> • Mekan sayfasında fotoğraflar, çalışma saatleri, kullanıcı yorumları.
-> • Beğendiğin yerleri kaydet, ev ve iş konumlarını ekle.
-> • Konum izni vermeden de semt seçerek kullanabilirsin.
+> NE İSTEDİĞİNİ SEÇ
+> Kahve, yemek, eğlence, kültür, açık hava ya da gece. Her niyet kendi mekanlarını getirir: Kültür'de müze ve tiyatro, Yemek'te restoran; karışık liste yok.
 >
-> Yorumlar topluluk kurallarına tabidir: uygunsuz içeriği şikayet edebilir, kullanıcıları engelleyebilirsin.
-> Hesabını uygulamadan ya da web'den istediğin an silebilirsin.
+> BENİM İÇİN SEÇ
+> Kararsız kaldığında tek dokunuşla en uygun yeri seçer ve nedenini söyler: şu an açık mı, kaç dakika yürüme, ne zamana kadar açık. Beğenmezsen "Başka öner" de.
 >
-> Mekan verisi © OpenStreetMap katkıcıları; harita ve ek mekan bilgileri Google.
+> ARKADAŞLARINLA KARAR VER
+> Kısa listeyi bir bağlantıyla paylaş, herkes oyunu versin. Uygulaması olmayan arkadaşların da web sayfasından oy verebilir. Kazanan yer belli olunca yol tarifi bir dokunuş uzağında.
+>
+> ŞU AN AÇIK MI?
+> Çalışma saatlerine göre "23:00'e kadar açık", "Yakında kapanıyor" gibi net bilgiler. Mesafe, yürüme ve araç süresi, yol tarifi.
+>
+> FİLTRELE
+> Şu an açık olanlar, sessiz, laptop dostu, manzaralı, romantik, çocuklu ve daha fazlası. Mesafeyi sen belirle.
+>
+> HAVAYA GÖRE ÖNERİ
+> Yağmurda açık hava mekanlarını geriye, kapalı mekanları öne alır; güzel havada dış masası olan yerleri öne çıkarır.
+>
+> BU AKŞAM
+> Yakınındaki mekanlarda bu akşam olan etkinlikleri ana sayfada gör.
+>
+> LİSTELERİN
+> "Kahve rotam", "Hafta sonu" gibi kendi listelerini oluştur, istersen bağlantıyla paylaş. Beğendiğin yerleri kaydet.
+>
+> MEKAN SAYFASI
+> Fotoğraflar, çalışma saatleri, olanaklar, kullanıcı yorumları ve yol tarifi tek sayfada.
+>
+> DAHA FAZLASI
+> • Gece modu
+> • Türkçe ve İngilizce arayüz
+> • Android ana ekran bileşeni: yakındaki açık mekanlar ana ekranında
+> • Konum izni vermeden de semt seçerek kullanabilirsin
+>
+> GİZLİLİK
+> Kullanım istatistikleri ve bildirimler yalnızca iznin olursa açılır. Hesabını uygulamadan ya da web'den istediğin an silebilirsin. Yorumlar topluluk kurallarına tabidir; uygunsuz içeriği şikayet edebilir, kullanıcıları engelleyebilirsin.
+>
+> "Öne çıkan" olarak işaretli kartlar ücretli tanıtımdır.
+>
+> Mekan verisi © OpenStreetMap katkıcıları; ek mekan bilgileri Google. Hava durumu verisi MET Norway (CC BY 4.0).
 
 Not: "Öne çıkan" kartlar ücretli tanıtımdır; açıklamada gizlenmez.
 
@@ -55,9 +83,15 @@ Not: "Öne çıkan" kartlar ücretli tanıtımdır; açıklamada gizlenmez.
 
 ## Mağaza görselleri
 
-İnsan onaylar. Ekran görüntüleri gerçek uygulamadan alınmalı; sahte mekan verisiyle (`Places__UseFake=true`)
-alınan görüntüler mağazada kullanılmamalı. Ayrık `origin/main` `b8863aa` commit'i "mağaza görselleri" içeriyor;
-elle bakılacak (`docs/yayin-riskleri.md`).
+Telefon ekran görüntüleri (8 adet, 1080x1920, 9:16): `docs/tanitim/magaza/`.
+
+- Gerçek veriyle alındı: OpenStreetMap mekanları (kendi Overpass'ımız, İstanbul kırpımı), gerçek rota (OSRM),
+  gerçek hava (MET Norway). Google anahtarı olmadığı için puan ve fotoğraf yok; uydurma puan ya da yorum yok.
+- Uygulamanın web derlemesinden (aynı React Native arayüzü) alındı; telefon çerçevesi ve başlıklar sonradan
+  eklendi. Harita ekranı web'de yer tutucu olduğu için kullanılmadı.
+- Zincir bir markanın (Starbucks) tescilli logosu görünmesin diye o kayıt çekimde listeden çıkarıldı.
+- Demo hesapla alındı (oylama, "Kahve rotam" listesi). İnsan onaylar; yayından önce gerçek cihazdan alınan
+  görüntülerle değiştirilmesi daha iyi olur.
 
 ## Test kanalı
 
