@@ -33,16 +33,33 @@ her yerel derlemede prebuild ile yeniden üretilir.
 
 ## Doğrulama
 
-- **Doğrulanan:**
-  - Birim testleri (`npm test`) ve tip denetimi.
-  - Geçici bir kopyada `npx expo prebuild --platform android --clean` başarıyla bitti. Kotlin dosyası,
-    yerleşim, `xml/nereye_nearby_widget_info.xml`, çizimler, `values`/`values-en` metinleri ve manifest alıcısı
-    üretildi.
-- **Doğrulanmayan:**
-  - Kotlin kodu derlenmedi ve bileşen gerçek bir cihazda ya da öykünücüde denenmedi. Bu ortamda Android SDK
-    yok; EAS derlemesi de bilerek çalıştırılmadı.
-  - İlk yerel derlemede bileşen seçicide "Nereye" altında görünmeli, ana listeyi açtıktan sonra en geç 30 dk
-    içinde dolmalı ve satıra dokununca mekan sayfası açılmalıdır.
+- **Birim testleri** (`npm test`) ve tip denetimi.
+- **Android derlemesi ve çizim testi** (`apps/nereye-go/plugins/widget-check`, CI'da `android-widget` işi):
+  - Eklentinin ürettiği Kotlin/XML, uygulamayla aynı sürümlerle derlenir: AGP 9.2.1, compileSdk 37, minSdk 24.
+  - Robolectric testlerinin okuduğu örnek veri, uygulamanın `widgetSnapshot()` çıktısıdır.
+  - 8 test: taze, bayat ve bozuk veri; satır ve başlık bağlantıları; İngilizce cihaz; `AppWidgetManager`
+    güncellemesi; yerel grafikle PNG önizleme. Lint 0 hata.
+
+  ```bash
+  cd apps/nereye-go && node --experimental-strip-types plugins/widget-check/generate.mts
+  cd plugins/widget-check && gradle testDebugUnitTest lintDebug    # önizleme: build/widget-preview-*.png
+  ```
+
+- **Tam uygulama derlemesi** (2026-11-26): `expo prebuild` ve ardından
+  `./gradlew assembleDebug -PreactNativeArchitectures=x86_64` başarılı oldu (6 dk 43 sn, 84 MB APK). APK'da:
+  - manifest'te `com.mchdozr.nereye.widget.NearbyWidgetProvider` alıcısı, `exported=false`, `APPWIDGET_UPDATE`;
+  - dex içinde sınıf;
+  - `layout/nereye_nearby_widget`, `xml/nereye_nearby_widget_info` ve Türkçe/İngilizce metinler.
+
+  Bu ortama özel iki not:
+  - Maven Central geçici olarak 429 döndüğü için derleme Google'ın Maven Central aynasına yönlendirildi.
+    Bu yönlendirme repoya girmeyen bir Gradle init betiğiyle yapıldı.
+  - Robolectric'in yerel çalışma zamanı jar'ı elle indirildi ve SHA1'i Maven Central'daki ile karşılaştırıldı.
+- **Doğrulanmayan:** bileşenin gerçek bir ana ekranda görünmesi. Geliştirme konteynerinde KVM olmadığı için
+  emülatör açılamıyor; bağlı cihaz da yok. İlk denemede şunlar beklenir:
+  - Bileşen seçicide "Nereye" altında görünür.
+  - Ana listeyi açtıktan sonra en geç 30 dk içinde dolar.
+  - Satıra dokununca mekan sayfası açılır.
 
 ## Yapılmayanlar
 

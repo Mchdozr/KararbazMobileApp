@@ -98,7 +98,7 @@ Bu belge uygulamanın uçtan uca taranmasıyla çıktı: istemci (Expo), API, ö
 | Bildirimler (açık rızayla) | Sunucu ve istemci yapıldı: kaydedilen mekandaki etkinlik hatırlatması. Sunucu gerçek Expo servisiyle denendi; cihazda izin ve görünüm denenmedi. Android'de FCM dosyası insan tarafından eklenir. Bkz. [bildirimler.md](bildirimler.md). "Kaydettiğin mekan açık ve 5 dk uzakta" bildirimi arka plan konumu gerektirdiği için yapılmadı. |
 | Karanlık tema | Yapıldı: sistem temasını izler, Profil'de seçim, kontrast testli. |
 | İngilizce arayüz | Ana akışlar çevrildi. Sunucudan gelen metinler (hata iletileri, hava notu, yasal metinler) Türkçe kalıyor. Bkz. [coklu-dil.md](coklu-dil.md). |
-| Ana ekran bileşeni | Android yapıldı (config plugin). Derlenip cihazda denenmedi; iOS yapılmadı. Bkz. [ana-ekran-bileseni.md](ana-ekran-bileseni.md). |
+| Ana ekran bileşeni | Android yapıldı (config plugin). Tam APK derlendi; bileşen Robolectric ile çizilip test edildi (CI'da). Ana ekranda cihazla denenmedi; iOS yapılmadı. Bkz. [ana-ekran-bileseni.md](ana-ekran-bileseni.md). |
 | İşletme paneli istatistikleri | Yapıldı: sahip ekranında "Son 30 gün" (görüntülenme, yol tarifi, kaydetme, paylaşım, dönüşüm). |
 
 ### Sıradaki işler (insan ya da cihaz gerektirenler)
