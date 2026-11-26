@@ -24,6 +24,7 @@
     "expo-splash-screen": "~58.0.14",
     "expo-status-bar": "~58.0.5",
     "expo-symbols": "~58.0.5",
+    "expo-system-ui": "~58.0.7",
     "expo-web-browser": "~58.0.8",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -46,7 +47,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/ui-critical.test.ts lib/release-config.test.ts lib/map-policy.test.ts lib/play-policy.test.ts lib/account-policy.test.ts lib/offline.test.ts lib/cover-store.test.ts lib/open-status.test.ts lib/decide.test.ts lib/etag-cache.test.ts lib/request-control.test.ts lib/media-width.test.ts lib/crash.test.ts lib/analytics-queue.test.ts lib/venue-stats.test.ts lib/poll.test.ts lib/tonight.test.ts lib/weather.test.ts lib/collections.test.ts lib/a11y.test.ts lib/push-route.test.ts lib/palette.test.ts lib/i18n.test.ts"
+    "test": "node --experimental-strip-types --test lib/ui-critical.test.ts lib/release-config.test.ts lib/map-policy.test.ts lib/play-policy.test.ts lib/account-policy.test.ts lib/offline.test.ts lib/cover-store.test.ts lib/open-status.test.ts lib/decide.test.ts lib/etag-cache.test.ts lib/request-control.test.ts lib/media-width.test.ts lib/crash.test.ts lib/analytics-queue.test.ts lib/venue-stats.test.ts lib/poll.test.ts lib/tonight.test.ts lib/weather.test.ts lib/collections.test.ts lib/a11y.test.ts lib/push-route.test.ts lib/palette.test.ts lib/i18n.test.ts lib/widget-data.test.ts lib/widget-plugin.test.ts"
   },
   "private": true,
   "overrides": {

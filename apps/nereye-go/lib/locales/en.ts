@@ -460,4 +460,5 @@ export const en: Record<string, string> = {
   "Rezervasyon": "Reservations",
   "Brunch": "Brunch",
   "Tuvalet": "Restroom",
+  "Güncelleme {time}": "Updated {time}",
 };

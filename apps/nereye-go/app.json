@@ -75,7 +75,8 @@
         {
           "color": "#0b5d45"
         }
-      ]
+      ],
+      "./plugins/withNearbyWidget"
     ],
     "extra": {
       "eas": {

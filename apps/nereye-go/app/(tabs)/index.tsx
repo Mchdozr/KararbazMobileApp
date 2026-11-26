@@ -6,6 +6,8 @@ import { VenueCardSkeleton, VenueRowSkeleton } from '@/components/Skeleton';
 import { CategoryGrid } from '@/components/home/CategoryGrid';
 import { AnalyticsPrompt } from '@/components/AnalyticsPrompt';
 import { TonightBand } from '@/components/TonightBand';
+import { WIDGET_FILE, widgetSnapshot } from '@/lib/widget-data';
+import { minutesOfDay } from '@/lib/open-status';
 import { WeatherNote } from '@/components/WeatherNote';
 import type { WeatherInfo } from '@/lib/weather';
 import { DecisionSheet } from '@/components/DecisionSheet';
@@ -32,7 +34,7 @@ import type { VenueCard, TonightEvent } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const NO_CARDS: VenueCard[] = [];
@@ -131,6 +133,13 @@ export default function Home() {
       setHasMore(page.hasMore);
       if (res.items.length > 0) {
         void setLargeJson(savedListName(filters.intent), toSaved(filters.intent, filters.label, res.items));
+      }
+      // Android ana ekran bileşeni bu dosyayı okur (plugins/withNearbyWidget.js).
+      if (Platform.OS === 'android') {
+        void setLargeJson(
+          WIDGET_FILE,
+          widgetSnapshot(res.items, { label: filters.label, intent: filters.intent, now: Date.now(), nowMinutes: minutesOfDay() }),
+        );
       }
     } catch (e) {
       if (n !== seq.current) {

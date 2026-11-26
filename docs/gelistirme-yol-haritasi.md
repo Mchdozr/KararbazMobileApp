@@ -64,41 +64,51 @@ Bu belge uygulamanın uçtan uca taranmasıyla çıktı: istemci (Expo), API, ö
   - park 7/24
   - "kapalı" örnek mekanın saati yok
 
-## Öncelikli iş listesi
+## İkinci tur: iş listesinin tamamı yapıldı
+
+Önceki iş listesindeki 19 iş sırayla yapıldı. Her satırda ayrıntı ve doğrulama durumu ilgili belgededir.
 
 ### P1 — Hız ve güvenilirlik
 
-| İş | Neden | Çaba |
-| --- | --- | --- |
-| **Önbellekte bayat veriyi sunup arkada tazeleme ve popüler semtleri önceden ısıtma** | Yeni bir semtte ilk liste Overpass'e bağlı (soğuk 15–22 sn). Popüler semt × niyet çiftleri arka plan işiyle süre dolmadan tazelenirse kullanıcı hiç beklemez. | M |
-| **ETag/304** (öneri ve mekan detayı) | Mobil veride tekrar açılışta gövde inmez. | S |
-| **İstek iptali** (`AbortController`) | Niyet ya da konum hızla değişince eski istekler ağda sürüyor; şu an yalnızca cevapları yok sayılıyor. | S |
-| **Kendi OSRM'imiz (yaya profiliyle) ya da yaya destekli bir sağlayıcı** | Genel OSRM sunucusu araç-only ve adil kullanım sınırlı. Gerçek yaya rotası tek yönlü sokakları doğru çizer. | M |
-| **Kendi Overpass'ımız ya da ticari POI kaynağı** | Genel Overpass uçları yoğunlukta 429 dönüyor; yayın trafiğinde tek nokta riski. | L |
-| **Görsel boyutları** | Demo görselleri 480 KB (1400 px), kartta 164 pt gösteriliyor. Yerel medya için 400/800 px varyant ve `srcset` mantığı. Google fotoğrafları zaten 800 px. | S |
+| İş | Durum |
+| --- | --- |
+| Bayat listeyi beklemeden sun, arkada tazele; popüler semtleri ısıt | Yapıldı (`CacheRefresher`, `PlacesWarmupService`). Isıtma `Places:Warmup:Enabled` ile açılır; yalnızca OSM'yi ısıtır, Google kotası harcanmaz. |
+| ETag/304 | Yapıldı (`[ETag]`: öneri ve mekan detayı). |
+| İstek iptali | Yapıldı (`AbortController`, niyet/konum değişince eski istek kesilir). |
+| Kendi OSRM'imiz (yaya) ve Overpass'ımız | Uçlar yapılandırılabilir; kurulum `docker-compose.selfhost.yml`. Konteynerler bu ortamda ayağa kaldırılamadı. Bkz. [kendi-sunucular.md](kendi-sunucular.md). |
+| Görsel boyutları | Yapıldı: 400/800 px sürümler. |
 
 ### P1 — Profesyonel işletme
 
-| İş | Neden | Çaba |
-| --- | --- | --- |
-| **Hata ve çökme raporlama** (Sentry ya da benzeri, kişisel veri ayıklanmış) | Şu an sahada oluşan hata görünmüyor; yalnızca sunucu günlükleri var. | S |
-| **Ölçümler** (OpenTelemetry: uç başına p95, Overpass/Google hata oranı, önbellek isabeti) | Yukarıdaki hız işlerinin etkisini ölçmek için. | M |
-| **Onaylı, gizlilik dostu kullanım analitiği** | Huni: açılış → liste → mekan → yol tarifi. KVKK açık rıza akışı zaten var (`/api/me/consent`). | M |
-| **Uçtan uca testler** (web için Playwright, yerel için Maestro) | Arayüz değişiklikleri şu an elle ve ekran görüntüsüyle doğrulanıyor. | M |
+| İş | Durum |
+| --- | --- |
+| Hata ve çökme raporlama | Yapıldı: kişisel veri ayıklanır, yönetim panelinde "Hatalar". |
+| Ölçümler | Yapıldı: uç p95, dış servis hata oranı, önbellek isabeti. OTLP dışa aktarımı yazıldı ama gerçek bir toplayıcıyla denenmedi. Bkz. [olcumler.md](olcumler.md). |
+| Onaylı kullanım analitiği | Yapıldı: rıza istemi, huni, yönetim panelinde "Kullanım". |
+| Uçtan uca testler | Playwright (web) CI'da koşuyor. Maestro akışları yazıldı, cihaz olmadığı için çalıştırılmadı. Bkz. [uctan-uca-testler.md](uctan-uca-testler.md). |
 
 ### P2 — Ürün
 
-| Özellik | Fikir | Çaba |
-| --- | --- | --- |
-| **Arkadaşlarla karar ver** | "Benim için seç"in grup sürümü: 3–5 mekanlık kısa liste bağlantıyla paylaşılır, arkadaşlar oylar, kazanan yol tarifine düşer. | L |
-| **Bu akşam etkinlikler** | Mekanlarda etkinlik verisi var (`events`); ana sayfada "bu akşam" bandı ve bildirim. | M |
-| **Hava durumuna göre öneri** | Yağmurda kapalı mekan, güneşte "Açık hava" öne çıkar. | M |
-| **Koleksiyonlar** ("Kahve rotam") ve paylaşılabilir listeler | Kaydedilenler tek liste; adlandırılmış listeler ve paylaşım. | M |
-| **Bildirimler** (açık rızayla) | "Kaydettiğin mekan şu an açık ve 5 dk uzakta", "Favorindeki etkinlik bu akşam". | M |
-| **Karanlık tema** | Tema belirteçleri hazır (`lib/theme.ts`); sistem temasını izleyen ikinci palet. | M |
-| **İngilizce arayüz** | İstanbul'da turist kitlesi büyük; metinler tek yerde toplanırsa kolay. | L |
-| **Ana ekran bileşeni** | "Yakındaki açık kahveciler" iOS/Android widget'ı. | L |
-| **İşletme paneli istatistikleri** | Sahiplenilmiş mekana görüntülenme, kaydetme, yol tarifi sayıları; öne çıkarmanın ölçülebilir değeri. | M |
+| Özellik | Durum |
+| --- | --- |
+| Arkadaşlarla karar ver | Yapıldı: kısa liste bağlantıyla paylaşılır, uygulama ya da web sayfasından oylanır (`/k/{kod}`). |
+| Bu akşam etkinlikler | Yapıldı: sahip etkinlik ekler, yakındakiler ana sayfada "Bu akşam" bandında. |
+| Hava durumuna göre öneri | Yapıldı. Yayında kapalı: Open-Meteo'nun ücretsiz ucu ticari kullanıma kapalı, lisans kararı insanda. Bkz. [hava-durumu.md](hava-durumu.md). |
+| Koleksiyonlar ve paylaşılabilir listeler | Yapıldı: adlandırılmış listeler, `/l/{kod}` paylaşım sayfası. |
+| Bildirimler (açık rızayla) | Sunucu ve istemci yapıldı: kaydedilen mekandaki etkinlik hatırlatması. Gerçek cihazda denenmedi; Android'de FCM dosyası insan tarafından eklenir. Bkz. [bildirimler.md](bildirimler.md). "Kaydettiğin mekan açık ve 5 dk uzakta" bildirimi arka plan konumu gerektirdiği için yapılmadı. |
+| Karanlık tema | Yapıldı: sistem temasını izler, Profil'de seçim, kontrast testli. |
+| İngilizce arayüz | Ana akışlar çevrildi. Sunucudan gelen metinler (hata iletileri, hava notu, yasal metinler) Türkçe kalıyor. Bkz. [coklu-dil.md](coklu-dil.md). |
+| Ana ekran bileşeni | Android yapıldı (config plugin). Derlenip cihazda denenmedi; iOS yapılmadı. Bkz. [ana-ekran-bileseni.md](ana-ekran-bileseni.md). |
+| İşletme paneli istatistikleri | Yapıldı: sahip ekranında "Son 30 gün" (görüntülenme, yol tarifi, kaydetme, paylaşım, dönüşüm). |
+
+### Sıradaki işler (insan ya da cihaz gerektirenler)
+
+- İlk yerel Android derlemesinde: bileşen, bildirim izni/belirteci ve Maestro akışları.
+- Open-Meteo ticari abonelik ya da başka sağlayıcı kararı.
+- Kendi OSRM/Overpass konteynerlerinin gerçek sunucuda kurulumu.
+- OTLP toplayıcısı seçimi ve bağlantısı.
+- Sunucu metinlerinin İngilizcesi (`Accept-Language`).
+- iOS bileşeni (WidgetKit + App Group).
 
 ## Kontrol listesi (her iş için)
 
