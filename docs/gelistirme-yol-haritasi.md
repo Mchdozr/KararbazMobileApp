@@ -75,7 +75,7 @@ Bu belge uygulamanın uçtan uca taranmasıyla çıktı: istemci (Expo), API, ö
 | Bayat listeyi beklemeden sun, arkada tazele; popüler semtleri ısıt | Yapıldı (`CacheRefresher`, `PlacesWarmupService`). Isıtma `Places:Warmup:Enabled` ile açılır; yalnızca OSM'yi ısıtır, Google kotası harcanmaz. |
 | ETag/304 | Yapıldı (`[ETag]`: öneri ve mekan detayı). |
 | İstek iptali | Yapıldı (`AbortController`, niyet/konum değişince eski istek kesilir). |
-| Kendi OSRM'imiz (yaya) ve Overpass'ımız | Uçlar yapılandırılabilir; kurulum `docker-compose.selfhost.yml`. Konteynerler bu ortamda ayağa kaldırılamadı. Bkz. [kendi-sunucular.md](kendi-sunucular.md). |
+| Kendi OSRM'imiz (yaya) ve Overpass'ımız | Yapıldı ve denendi: `docker-compose.selfhost.yml` İstanbul kırpımıyla ~1 dakikada kuruldu; API gerçek OSM mekanlarını kendi Overpass'ımızdan (~120 ms) ve yaya rotasını kendi OSRM'imizden aldı. Geofabrik'ten indirme bu ağdan denenemedi. Bkz. [kendi-sunucular.md](kendi-sunucular.md). |
 | Görsel boyutları | Yapıldı: 400/800 px sürümler. |
 
 ### P1 — Profesyonel işletme
@@ -83,9 +83,9 @@ Bu belge uygulamanın uçtan uca taranmasıyla çıktı: istemci (Expo), API, ö
 | İş | Durum |
 | --- | --- |
 | Hata ve çökme raporlama | Yapıldı: kişisel veri ayıklanır, yönetim panelinde "Hatalar". |
-| Ölçümler | Yapıldı: uç p95, dış servis hata oranı, önbellek isabeti. OTLP dışa aktarımı yazıldı ama gerçek bir toplayıcıyla denenmedi. Bkz. [olcumler.md](olcumler.md). |
+| Ölçümler | Yapıldı: uç p95, dış servis hata oranı, önbellek isabeti. OTLP gerçek OpenTelemetry Collector ile denendi; ölçümler ve izler ulaştı. Bkz. [olcumler.md](olcumler.md). |
 | Onaylı kullanım analitiği | Yapıldı: rıza istemi, huni, yönetim panelinde "Kullanım". |
-| Uçtan uca testler | Playwright (web) CI'da koşuyor. Maestro akışları yazıldı, cihaz olmadığı için çalıştırılmadı. Bkz. [uctan-uca-testler.md](uctan-uca-testler.md). |
+| Uçtan uca testler | Playwright (web) CI'da koşuyor. Maestro akışları yazıldı; emülatör için KVM ve cihaz olmadığından çalıştırılamadı. Bkz. [uctan-uca-testler.md](uctan-uca-testler.md). |
 
 ### P2 — Ürün
 
@@ -93,9 +93,9 @@ Bu belge uygulamanın uçtan uca taranmasıyla çıktı: istemci (Expo), API, ö
 | --- | --- |
 | Arkadaşlarla karar ver | Yapıldı: kısa liste bağlantıyla paylaşılır, uygulama ya da web sayfasından oylanır (`/k/{kod}`). |
 | Bu akşam etkinlikler | Yapıldı: sahip etkinlik ekler, yakındakiler ana sayfada "Bu akşam" bandında. |
-| Hava durumuna göre öneri | Yapıldı. Yayında kapalı: Open-Meteo'nun ücretsiz ucu ticari kullanıma kapalı, lisans kararı insanda. Bkz. [hava-durumu.md](hava-durumu.md). |
+| Hava durumuna göre öneri | Yapıldı ve yayında açık: MET Norway (ücretsiz, ticari kullanım serbest, CC BY 4.0 atfıyla). Gerçek servisle denendi. Bkz. [hava-durumu.md](hava-durumu.md). |
 | Koleksiyonlar ve paylaşılabilir listeler | Yapıldı: adlandırılmış listeler, `/l/{kod}` paylaşım sayfası. |
-| Bildirimler (açık rızayla) | Sunucu ve istemci yapıldı: kaydedilen mekandaki etkinlik hatırlatması. Gerçek cihazda denenmedi; Android'de FCM dosyası insan tarafından eklenir. Bkz. [bildirimler.md](bildirimler.md). "Kaydettiğin mekan açık ve 5 dk uzakta" bildirimi arka plan konumu gerektirdiği için yapılmadı. |
+| Bildirimler (açık rızayla) | Sunucu ve istemci yapıldı: kaydedilen mekandaki etkinlik hatırlatması. Sunucu gerçek Expo servisiyle denendi; cihazda izin ve görünüm denenmedi. Android'de FCM dosyası insan tarafından eklenir. Bkz. [bildirimler.md](bildirimler.md). "Kaydettiğin mekan açık ve 5 dk uzakta" bildirimi arka plan konumu gerektirdiği için yapılmadı. |
 | Karanlık tema | Yapıldı: sistem temasını izler, Profil'de seçim, kontrast testli. |
 | İngilizce arayüz | Ana akışlar çevrildi. Sunucudan gelen metinler (hata iletileri, hava notu, yasal metinler) Türkçe kalıyor. Bkz. [coklu-dil.md](coklu-dil.md). |
 | Ana ekran bileşeni | Android yapıldı (config plugin). Derlenip cihazda denenmedi; iOS yapılmadı. Bkz. [ana-ekran-bileseni.md](ana-ekran-bileseni.md). |
@@ -103,10 +103,10 @@ Bu belge uygulamanın uçtan uca taranmasıyla çıktı: istemci (Expo), API, ö
 
 ### Sıradaki işler (insan ya da cihaz gerektirenler)
 
-- İlk yerel Android derlemesinde: bileşen, bildirim izni/belirteci ve Maestro akışları.
-- Open-Meteo ticari abonelik ya da başka sağlayıcı kararı.
-- Kendi OSRM/Overpass konteynerlerinin gerçek sunucuda kurulumu.
-- OTLP toplayıcısı seçimi ve bağlantısı.
+- Bir telefonda ya da KVM'li makinede: bileşenin ana ekranda görünmesi, bildirim izni/belirteci ve Maestro akışları.
+- Yayında `Places__Contact` (MET ve OSM servisleri iletişim bilgisi ister).
+- Kendi OSRM/Overpass'ın gerçek sunucuda, Geofabrik farklarıyla uzun süreli çalışması.
+- Kalıcı OTLP hedefi seçimi (Grafana, Honeycomb…).
 - Sunucu metinlerinin İngilizcesi (`Accept-Language`).
 - iOS bileşeni (WidgetKit + App Group).
 

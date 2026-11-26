@@ -36,9 +36,19 @@ Geçersiz belirteçler (`DeviceNotRegistered`) otomatik silinir. Ölçümler pan
 
 ## Durum
 
-- **Doğrulanan:** sunucu tarafı uçtan uca (sahte gönderici ile API testleri), Expo yanıtının ayrıştırılması (100'lük
-  paketler, geçersiz belirteç), bildirim bağlantısının ekrana çevrilmesi.
-- **Doğrulanmayan:** gerçek cihazda izin, belirteç ve bildirim. Bu ortamda cihaz ve EAS derlemesi yok.
+- **Doğrulanan:**
+  - Sunucu tarafı uçtan uca: sahte gönderici ile API testleri.
+  - Expo yanıtının ayrıştırılması: 100'lük paketler, geçersiz belirteç.
+  - Bildirim bağlantısının ekrana çevrilmesi.
+  - **Gerçek Expo servisiyle** (`LiveExpoPushTests`, `NEREYE_LIVE_EXPO=1`, 2026-11-26): uydurma belirteçlere
+    gönderim `DeviceNotRegistered` döndü. Hatırlatma işi gerçek servis üzerinden çalıştı ve geçersiz belirteci
+    veritabanından sildi. Hiçbir cihaza bildirim gitmedi.
+
+    ```bash
+    NEREYE_LIVE_EXPO=1 dotnet test tests/Nereye.Api.Tests --filter LiveExpoPushTests
+    ```
+- **Doğrulanmayan:** gerçek cihazda izin, belirteç ve bildirimin görünmesi. Bu ortamda cihaz, emülatör (KVM yok)
+  ve EAS derlemesi yok.
   - Push belirteci yalnızca geliştirme ya da yayın derlemesinde alınır; Expo Go'da alınmaz.
   - `app.json` içine `expo-notifications` eklentisi eklendi.
   - Android'de FCM için `google-services.json` gerekir. Bu dosya insan tarafından eklenir ve repoya konmaz.

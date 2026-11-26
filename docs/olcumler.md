@@ -32,3 +32,17 @@
 - Özet örnek başınadır. Birden çok API örneği aynı Redis'e yazarsa panel son yazanı gösterir. Toplam görünüm için
   OTLP kullanın.
 - Pencere 15 dakikadır. Geçmiş trend yalnızca OTLP tarafında tutulur.
+
+## Doğrulama
+
+Gerçek bir OpenTelemetry Collector ile denendi (2026-11-26):
+- Kurulum: `otel/opentelemetry-collector-contrib:0.120.0`, OTLP gRPC 4317, `debug` dışa aktarıcısı.
+- API ayarları: `OpenTelemetry__Endpoint=http://localhost:4317` ve `OTEL_METRIC_EXPORT_INTERVAL=5000`.
+- Gelen ölçümler: `nereye.upstream.duration` (ör. `service=overpass, outcome=ok`), `nereye.cache.lookups` ve
+  `http.server.request.duration`.
+- Gelen izler: `api/recommendations` ve `api/routes`, dış çağrı alt aralıklarıyla birlikte
+  (`url.full=http://localhost:12345/api/interpreter`).
+- Kaynakta `service.name=nereye-api` var.
+
+Kalıcı bir toplayıcı (Grafana, Honeycomb, Jaeger…) seçimi yayın kararıdır. Yukarıdaki ayar herhangi bir OTLP
+uyumlu hedefe çalışır.

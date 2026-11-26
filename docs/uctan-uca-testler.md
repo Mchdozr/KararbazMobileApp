@@ -47,6 +47,13 @@ maestro test .maestro
 Sahte veriyle çalıştırmak için derleme `EXPO_PUBLIC_API_URL`, sahte veriyle başlatılmış API'yi göstermelidir
 (`CLAUDE.md` içindeki komut).
 
-**Durum:** Maestro akışları yazıldı ama bu geliştirme ortamında çalıştırılamadı (emülatör ya da cihaz yok).
-CI'ya da eklenmedi: Android emülatörü GitHub'ın standart çalıştırıcısında yavaş ve kararsızdır. İlk
-çalıştırmada seçici düzeltmesi gerekebilir.
+**Durum:** Maestro akışları yazıldı ama henüz çalıştırılmadı.
+
+- Geliştirme konteynerinde donanım sanallaştırması (`/dev/kvm`) yok. Android emülatörü bu yüzden açılamıyor;
+  bağlı bir cihaz da yoktu (2026-11-26'da yeniden denendi).
+- CI'ya eklenmedi: Android emülatörü GitHub'ın standart çalıştırıcısında yavaş ve kararsızdır.
+- İlk çalıştırma bir telefonda ya da KVM'li bir makinede yapılmalı; seçici düzeltmesi gerekebilir.
+
+Yerel uygulamanın cihaz gerektirmeyen kısmı başka yollarla denendi:
+- Ana ekran bileşeni Robolectric ile çizildi (bkz. [ana-ekran-bileseni.md](ana-ekran-bileseni.md)).
+- Tam APK derlemesi denendi (aynı belge).
