@@ -1,0 +1,40 @@
+Kararbaz — 30 sn tanıtım videosu (uygulamanın yeni adı ve logosuyla)
+
+Seslendirme metni ve zamanları
+    0.3 sn  Bu akşam nereye gitsek?
+    2.5 sn  Canın ne çekiyorsa seç!
+    4.8 sn  Yağmur mu var? Kapalı mekanlar öne çıkar!
+    8.2 sn  Bu akşamki etkinlikler de burada!
+   10.9 sn  Kararsız mısın? Senin için seçelim!
+   13.8 sn  Arkadaşlarınla oyla, kazanan yere git!
+   17.1 sn  Fotoğraf, yorum, yol tarifi; hepsi tek dokunuşta!
+   20.6 sn  Listeni yap, arkadaşlarınla paylaş!
+   23.6 sn  Gece modu da hazır!
+   25.4 sn  Kararbaz. Kararını ver, yola çık!
+
+Gösterilen özellikler (sırasıyla)
+1. Kategori seçimi (Kahve, Yemek, Eğlence, Kültür)
+2. Hava durumuna göre öneri (yağmurda kapalı mekanlar öne çıkar)
+3. "Bu akşam yakında" etkinlik bandı
+4. "Benim için seç" (tek dokunuşla öneri)
+5. Arkadaşlarla karar ver (kısa liste oylaması)
+6. Mekan detayı (fotoğraf, yorum, yol tarifi)
+7. Listeler (listeye ekle, Listelerim, paylaşım)
+8. Karanlık tema (Gece modu)
+
+Ses
+v4 ile aynı yapay zeka sesi ve aynı ayarlar. Üç satır (açılış, "Canın ne çekiyorsa seç!", mekan satırı)
+v4'teki kayıtların aynısı; yedi yeni satır (kapanış "Kararbaz…" dahil) aynı referans sesle üretildi ve anlaşılırlık (Whisper), Türkçe
+telaffuz, ton canlılığı ve önceki satırlara ses benzerliği ölçülerek 8-12 aday arasından seçildi.
+
+Teknik
+1080x1920, 30 kare/sn, H.264 + AAC 48 kHz 320 kb/sn, tam 30,00 sn
+Ses: -14 LUFS, en yüksek -1 dBTP
+
+Kaynaklar ve lisanslar
+- Yapay zeka sesi: Chatterbox Multilingual (Resemble AI, MIT lisansı); çıktıda duyulmayan filigran (Perth) var.
+- Müzik ve efektler: bu iş için kodla sentezlendi, özgün.
+- Görüntüler: uygulamanın web derlemesi, demo (sahte) mekan verisi ve demo hesapla. Puanlar, yorumlar,
+  mesafeler demo verisidir. Hava notu demo modunda "yağmurlu" ayarıyla gösterildi; yayında gerçek hava
+  (MET Norway) kullanılır ve notun altında kaynak yazar (demo kaydında bu satır gizlendi).
+  Demo etkinliği "Akustik akşam" kayıtta bu akşam 21:00'e alındı (demo veride öğlen saatine kurulu).
