@@ -11,6 +11,11 @@ if (Test-Path $target) { Copy-Item $target "$target.bak" -Force }
 Copy-Item (Join-Path $here 'CLAUDE.md') $target -Force
 Write-Host "Kurallar yazildi: $target"
 
+$skills = Join-Path $claudeDir 'skills'
+New-Item -ItemType Directory -Force -Path $skills | Out-Null
+Copy-Item (Join-Path $here 'skills\*') $skills -Recurse -Force
+Write-Host "Skill'ler kopyalandi: $skills (/caveman)"
+
 claude plugin marketplace add anthropics/skills
 claude plugin install superpowers@claude-plugins-official --scope user
 claude plugin install example-skills@anthropic-agent-skills --scope user

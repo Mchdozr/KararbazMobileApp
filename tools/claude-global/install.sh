@@ -12,6 +12,10 @@ target="$claude_dir/CLAUDE.md"
 cp "$here/CLAUDE.md" "$target"
 echo "Kurallar yazıldı: $target"
 
+mkdir -p "$claude_dir/skills"
+cp -R "$here/skills/." "$claude_dir/skills/"
+echo "Skill'ler kopyalandı: $claude_dir/skills (/caveman)"
+
 claude plugin marketplace add anthropics/skills
 claude plugin install superpowers@claude-plugins-official --scope user
 claude plugin install example-skills@anthropic-agent-skills --scope user
