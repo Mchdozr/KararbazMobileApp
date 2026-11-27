@@ -2,15 +2,15 @@ Kararbaz — 30 sn tanıtım videosu (uygulamanın yeni adı ve logosuyla)
 
 Seslendirme metni ve zamanları
     0.3 sn  Bu akşam nereye gitsek?
-    2.5 sn  Canın ne çekiyorsa seç!
-    4.8 sn  Yağmur mu var? Kapalı mekanlar öne çıkar!
-    8.2 sn  Bu akşamki etkinlikler de burada!
-   10.9 sn  Kararsız mısın? Senin için seçelim!
-   13.8 sn  Arkadaşlarınla oyla, kazanan yere git!
-   17.1 sn  Fotoğraf, yorum, yol tarifi; hepsi tek dokunuşta!
-   20.6 sn  Listeni yap, arkadaşlarınla paylaş!
-   23.6 sn  Gece modu da hazır!
-   25.4 sn  Kararbaz. Kararını ver, yola çık!
+    2.3 sn  Canın ne çekiyorsa seç!
+    4.7 sn  Yağmur mu var? Kapalı mekanlar öne çıkar!
+    8.1 sn  Bu akşamki etkinlikler de burada!
+   11.0 sn  Kararsız mısın? Senin için seçelim!
+   13.9 sn  Arkadaşlarınla oyla, kazanan yere git!
+   17.2 sn  Fotoğraf, yorum, yol tarifi; hepsi tek dokunuşta!
+   20.8 sn  Listeni yap, istersen paylaş!
+   23.3 sn  Gece modu da hazır!
+   25.2 sn  Kararbaz. Kararını ver, yola çık!
 
 Gösterilen özellikler (sırasıyla)
 1. Kategori seçimi (Kahve, Yemek, Eğlence, Kültür)
@@ -23,9 +23,11 @@ Gösterilen özellikler (sırasıyla)
 8. Karanlık tema (Gece modu)
 
 Ses
-v4 ile aynı yapay zeka sesi ve aynı ayarlar. Üç satır (açılış, "Canın ne çekiyorsa seç!", mekan satırı)
-v4'teki kayıtların aynısı; yedi yeni satır (kapanış "Kararbaz…" dahil) aynı referans sesle üretildi ve anlaşılırlık (Whisper), Türkçe
-telaffuz, ton canlılığı ve önceki satırlara ses benzerliği ölçülerek 8-12 aday arasından seçildi.
+Erkek yapay zeka sesi (Chatterbox Multilingual). Referans ses gerçek bir kişiye ait değildir: modelin kendi
+varsayılan sesiyle üretilmiş yapay bir kayıt, Praat ile erkek perdesine ve formantlarına kaydırıldı. Tonlama
+önceki sürüme göre daha doğal (daha az abartılı) ayarlarla üretildi; her satır 6-8 aday arasından Whisper ile
+anlaşılırlık, Türkçe telaffuz, erkek perde aralığı (medyan ~120 Hz) ve ses benzerliği ölçülerek seçildi.
+"Listeni yap, arkadaşlarınla paylaş!" satırı telaffuzu netleşsin diye "Listeni yap, istersen paylaş!" oldu.
 
 Teknik
 1080x1920, 30 kare/sn, H.264 + AAC 48 kHz 320 kb/sn, tam 30,00 sn
